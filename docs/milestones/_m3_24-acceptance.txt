@@ -1,0 +1,223 @@
+Milestone 3 is complete only when every applicable item is checked and evidenced in the completion report.
+
+A. Base and M2 closure
+
+A1. Work is based on commit 4a39a1c.
+
+A2. Work is on milestone-3/evidence-claim-intelligence.
+
+A3. Browser APIs no longer expose exact local database/data/raw paths.
+
+A4. pnpm data:path still reports exact local paths in the terminal.
+
+A5. One shared guard protects all administrative mutation routes.
+
+A6. Non-loopback mutation access is disabled unless explicitly overridden.
+
+A7. Source/feed baseline state is independent and migration-safe.
+
+A8. Persisted queued jobs return 202 semantics and recover after restart.
+
+A9. Duplicate equivalent jobs are coalesced/rejected.
+
+A10. The real Australia/Brisbane scheduler and startup catch-up are implemented.
+
+A11. Principal list/search routes use server-side pagination and bounded queries.
+
+A12. Route handlers use service/repository boundaries.
+
+A13. README, roadmap, M2 status, architecture, and data-model docs are current.
+
+B. Schema and provenance
+
+B1. Forward-only M3 migrations preserve M2 data.
+
+B2. All required intelligence/job/review/model entities are implemented or equivalently mapped with documented rationale.
+
+B3. Every current Live claim has a valid primary source span.
+
+B4. Every assessment identifies all source-record versions it depends on.
+
+B5. Analysis identity includes input and pipeline versions.
+
+B6. Identical reanalysis reuses the existing immutable analysis.
+
+B7. A material source change marks dependent intelligence stale.
+
+B8. Prior analyses and review decisions remain historically available.
+
+B9. No composite scientific score is persisted for Live intelligence.
+
+B10. pnpm intelligence:doctor detects orphaned or inconsistent intelligence data.
+
+C. Deterministic evidence model
+
+C1. Study-design normalization is implemented and versioned.
+
+C2. Evidence availability is separate from study design/maturity.
+
+C3. Evidence maturity follows the fixed categorical ladder.
+
+C4. Organism and population context are explicit and can be unknown.
+
+C5. Outcome families are multi-valued and source-grounded.
+
+C6. Translation gaps use the controlled taxonomy.
+
+C7. Methodological signals are explicit and are not presented as formal risk-of-bias.
+
+C8. Classification confidence is labelled separately from scientific confidence.
+
+C9. Assessment completeness is implemented.
+
+C10. “What would change the assessment” is deterministic and explainable.
+
+C11. Hallmark tags are labelled as potential relationships, with method/confidence.
+
+C12. Protocol-only trials cannot produce observed efficacy findings.
+
+C13. Animal/cell findings cannot be displayed as human evidence.
+
+C14. Biomarker changes cannot be presented as demonstrated lifespan extension.
+
+C15. Retractions/corrections override ordinary presentation and trigger reassessment.
+
+D. Claims and relationships
+
+D1. Atomic claim extraction supports the fixed roles, kinds, and directions.
+
+D2. Claim wording never exceeds the cited source’s assertion.
+
+D3. Planned outcomes and objectives remain distinguishable from findings.
+
+D4. Claim provenance includes source object/version, section/field, and span.
+
+D5. Claim fingerprints prevent duplicate claims on identical input.
+
+D6. Potential conflict detection records comparability dimensions.
+
+D7. Automated disagreement is labelled potentially_conflicts, not definitive contradiction.
+
+D8. Human review can accept, edit, reject, mark uncertain, or dismiss.
+
+D9. Review decisions are immutable and version-scoped.
+
+D10. A source update can make a previous review stale without deleting it.
+
+E. Optional AI
+
+E1. AI is disabled by default.
+
+E2. Provider-neutral, disabled, fixture, and OpenAI Responses adapters exist.
+
+E3. OpenAI output is schema-constrained and storage is disabled.
+
+E4. No permanent hard-coded model default is required when AI is disabled.
+
+E5. AI receives only minimal public-source segments.
+
+E6. Source text is isolated as untrusted data and model tools are disabled.
+
+E7. AI cannot write directly to persistence.
+
+E8. Invalid or uncited output fails policy validation.
+
+E9. Provider failure leaves deterministic intelligence usable.
+
+E10. Daily/request/concurrency caps are enforced.
+
+E11. Secrets and hidden reasoning are not stored or logged.
+
+E12. AI-assisted Live output is visibly labelled and carries provider/model provenance.
+
+E13. High-impact AI-assisted cases create review tasks.
+
+E14. Default automated tests make no OpenAI calls.
+
+F. API and UI
+
+F1. Intelligence run/status/item/history APIs are implemented and validated.
+
+F2. Assessment and claim lists support server-side filters/pagination.
+
+F3. Review APIs enforce local-admin and source-version concurrency rules.
+
+F4. Live Today shows intelligence status and non-baseline intelligence changes.
+
+F5. Live Research displays evidence profiles without fabricated scores.
+
+F6. Paper detail shows claims, gaps, signals, provenance, and history.
+
+F7. Trial detail visibly separates planned design, status, and posted results.
+
+F8. TGA detail preserves source wording and causal caveats.
+
+F9. Claims workspace and claim provenance view are implemented.
+
+F10. Review Queue works on desktop and mobile.
+
+F11. Retraction/correction and stale states are prominent.
+
+F12. Methodology explains all taxonomies, formulae, AI, and limitations.
+
+F13. Live missing intelligence uses honest not-assessed states.
+
+F14. Demo mode remains fully functional and separate.
+
+F15. Accessibility checks cover new controls, badges, dialogs, and charts.
+
+G. Research activity
+
+G1. Live Signal Radar uses evidence maturity and transparent research activity.
+
+G2. Activity is not labelled social attention, truth, or efficacy.
+
+G3. Tooltips expose raw counts and formula version.
+
+G4. Retractions are excluded from supportive maturity aggregation but remain warned.
+
+G5. TGA/correction signals use visible markers rather than a hidden score.
+
+G6. Insufficient-data topics are omitted or shown honestly.
+
+G7. Research activity snapshots are reproducible and versioned.
+
+H. Evaluation, security, and quality
+
+H1. The committed offline corpus contains at least 72 cases.
+
+H2. At least 16 claim-pair relationship cases are included.
+
+H3. All deterministic evaluation gates in Section 18.1 pass.
+
+H4. Prompt-injection-like source text is safely treated as data.
+
+H5. No new external source connector or full-text scraper was added.
+
+H6. No personal-health data or medical recommendation feature was added.
+
+H7. No secret, raw database, raw live snapshot, or provider response is committed.
+
+H8. pnpm lint passes with zero warnings.
+
+H9. pnpm typecheck passes.
+
+H10. pnpm test passes.
+
+H11. pnpm test:e2e passes for desktop and mobile.
+
+H12. pnpm build passes.
+
+H13. pnpm intelligence:eval passes.
+
+H14. pnpm intelligence:doctor passes.
+
+H15. pnpm db:doctor passes.
+
+H16. Documentation and ADRs match implementation.
+
+H17. M3 screenshots and completion report are committed.
+
+H18. The branch is pushed and the final commit hash is reported.
+
+H19. No Milestone 4 work has begun.

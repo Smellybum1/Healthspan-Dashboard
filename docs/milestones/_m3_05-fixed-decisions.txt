@@ -1,0 +1,436 @@
+5.1 Live source scope
+
+Milestone 3 intelligence may use only the sources already ingested during M2:
+
+PubMed
+ClinicalTrials.gov
+Crossref enrichment
+TGA RSS
+
+Do not add new external source connectors.
+
+Permitted connector work is limited to extracting additional fields already present in those official responses, including structured abstract sections and explicit ClinicalTrials.gov results modules.
+
+Do not scrape article webpages, paywalled full text, trial webpages, creator pages, or TGA linked articles.
+
+5.2 Claim scope
+
+Milestone 3 claims may come from:
+
+Paper title and abstract sections
+
+Explicit PubMed publication and relation metadata
+
+ClinicalTrials.gov brief/detailed descriptions
+
+Trial design and eligibility fields
+
+Trial planned outcomes, clearly labelled as planned
+
+Explicit ClinicalTrials.gov posted-results structures
+
+TGA feed title and description
+
+Crossref correction, retraction, licence, funding, and relationship metadata
+
+Milestone 3 claims must not come from:
+
+YouTube
+
+X/Twitter
+
+Podcasts
+
+Creator websites
+
+Vendor pages
+
+User anecdotes
+
+Personal-health data
+
+Model world knowledge
+
+Uncited web search
+
+5.3 Claim roles
+
+Every claim receives one assertion role:
+
+background
+hypothesis
+objective
+method
+planned_outcome
+result
+author_conclusion
+registry_result
+regulatory_statement
+
+Only these roles may be treated as observed/reported findings:
+
+result
+author_conclusion
+registry_result
+regulatory_statement
+
+objective, hypothesis, and planned_outcome must never be displayed as demonstrated findings.
+
+5.4 Claim kinds
+
+Use an extensible controlled taxonomy including:
+
+efficacy_or_benefit
+harm_or_safety
+null_or_no_effect
+association
+mechanism
+biomarker_change
+functional_outcome
+mortality_or_lifespan
+pharmacokinetic
+feasibility
+study_objective
+regulatory_or_market_statement
+other
+
+A claim may have more than one outcome family but one primary claim kind.
+
+5.5 Result direction
+
+Use:
+
+beneficial
+harmful
+null
+mixed
+unclear
+not_applicable
+
+Direction describes the source-bound reported result, not the project manager’s treatment recommendation.
+
+5.6 Study-design taxonomy
+
+Support at least:
+
+mechanistic_or_theoretical
+in_vitro
+ex_vivo
+animal_interventional
+animal_observational
+case_report
+case_series
+cross_sectional
+case_control
+cohort
+observational_other
+single_arm_interventional
+nonrandomized_controlled
+randomized_controlled
+crossover_randomized
+pragmatic_trial
+systematic_review
+meta_analysis
+umbrella_review
+protocol_or_registry_only
+regulatory_notice
+other
+unknown
+
+A source may expose multiple design characteristics. Preserve source wording and the normalized label.
+
+5.7 Evidence-availability taxonomy
+
+Support:
+
+objective_or_protocol_only
+not_yet_recruiting
+recruiting_or_ongoing_no_results
+completed_no_results
+terminated_no_results
+registry_results_posted
+published_results
+evidence_synthesis
+regulatory_notice
+unknown
+
+This dimension remains independent from study design and evidence maturity.
+
+5.8 Evidence-maturity ladder
+
+Use this categorical ladder for Live-mode research records:
+
+not_assessable
+mechanistic_hypothesis
+in_vitro_or_ex_vivo
+animal_evidence
+human_observational
+early_human_interventional
+controlled_human_trial
+replicated_or_synthesized_human_evidence
+
+Rules:
+
+The ladder describes translation maturity, not effect magnitude, safety, or certainty.
+
+A protocol-only record may describe a controlled design but must remain explicitly without results.
+
+replicated_or_synthesized_human_evidence is assigned only for an explicit systematic review/meta-analysis/umbrella review or a human-reviewed group of sufficiently comparable independent human studies.
+
+Do not add approved, guideline_supported, or clinically_recommended as a maturity stage in M3. Intervention approval and indication-specific regulatory modelling belong to M4.
+
+Do not assign human maturity to animal or cell evidence.
+
+Use not_assessable rather than guessing.
+
+For plotting only, map the ordered categories to a documented ordinal. Never show the ordinal as a scientific score.
+
+5.9 Organism and population
+
+Support:
+
+organism_level:
+  in_vitro
+  ex_vivo
+  animal
+  human
+  mixed
+  not_applicable
+  unknown
+
+population_context:
+  healthy
+  disease_specific
+  frailty_or_age_related_condition
+  mixed
+  not_reported
+  not_applicable
+  unknown
+
+Preserve age range, sex eligibility, sample size, condition, and healthy-volunteer status only when explicit.
+
+5.10 Outcome relevance
+
+Support multi-valued outcome families:
+
+mortality_or_lifespan
+major_clinical_event
+physical_function_or_mobility
+strength_or_sarcopenia
+cognition
+frailty
+quality_of_life
+patient_reported_outcome
+safety_or_adverse_event
+validated_surrogate
+exploratory_biomarker
+biological_age_measure
+molecular_or_mechanistic
+pharmacokinetic
+feasibility_or_adherence
+healthspan_composite
+other
+unknown
+
+Do not label an endpoint a validated surrogate unless the source or a curated rule explicitly establishes that status. Otherwise use exploratory_biomarker or unknown.
+
+5.11 Translation gaps
+
+Use a controlled many-to-many taxonomy:
+
+cell_to_organism
+animal_to_human
+disease_to_healthy_population
+disease_treatment_to_longevity
+biomarker_to_meaningful_outcome
+surrogate_to_clinical_outcome
+short_term_to_durable_benefit
+association_to_causation
+selected_sample_to_general_population
+dose_route_or_formulation
+sex_or_age_generalization
+single_study_to_independent_replication
+protocol_to_reported_results
+mechanism_to_observed_benefit
+other
+
+A gap is a caution about translation, not proof that a finding is false.
+
+5.12 Methodological signals
+
+Use explicit, auditable signals rather than a formal quality score. Examples:
+
+randomization_reported
+randomization_not_reported
+comparator_present
+no_comparator
+blinding_reported
+blinding_not_reported
+prospective
+retrospective
+observational_design
+small_sample_context
+short_follow_up_context
+attrition_reported
+attrition_not_available
+prespecified_outcome
+exploratory_outcome
+registry_results_available
+completed_without_results
+preprint_or_nonfinal
+conference_abstract_only
+correction_present
+expression_of_concern
+retracted
+funding_reported
+funding_not_reported
+conflict_disclosure_reported
+conflict_disclosure_not_available
+registry_publication_discrepancy
+abstract_only_assessment
+insufficient_methods_detail
+
+Rules:
+
+Signals must state what was observed or unavailable.
+
+Do not convert “not reported” automatically into “did not happen.”
+
+Thresholds such as “small sample” must be documented by design context and presented as context, not a universal verdict.
+
+Never generate a formal overall risk-of-bias grade.
+
+5.13 Classification confidence is not evidence confidence
+
+Store and display a separate extraction/classification confidence:
+
+high
+medium
+low
+not_available
+
+This answers:
+
+How confident is the pipeline that it classified the source text correctly?
+
+It does not answer:
+
+How likely is the intervention to work?
+
+Label it clearly as classification confidence or extraction confidence.
+
+5.14 Assessment completeness
+
+Use:
+
+not_assessed
+limited
+partial
+substantial
+
+Completeness reflects available fields and processed source material, not scientific certainty.
+
+5.15 What would change the assessment
+
+Generate deterministic, source-grounded next-evidence needs. Examples:
+
+Cell finding → animal and human evidence
+
+Animal finding → controlled human study
+
+Observational association → randomized or otherwise causal human evidence
+
+Biomarker-only result → functional or clinical outcome
+
+Short follow-up → durable follow-up
+
+Small single study → larger independent replication
+
+Protocol-only record → posted or published results
+
+Disease population → evidence in generally healthy older adults, when that is the claimed target population
+
+Corrected or retracted record → independent unaffected evidence
+
+Store these as controlled needs plus a short deterministic explanation. AI may improve wording but may not invent a new scientific requirement without mapping it to a controlled need.
+
+5.16 Hallmarks of ageing
+
+Support the twelve expanded hallmarks as optional discovery tags:
+
+genomic_instability
+telomere_attrition
+epigenetic_alterations
+loss_of_proteostasis
+disabled_macroautophagy
+deregulated_nutrient_sensing
+mitochondrial_dysfunction
+cellular_senescence
+stem_cell_exhaustion
+altered_intercellular_communication
+chronic_inflammation
+dysbiosis
+
+Display them as:
+
+Potentially related hallmarks
+
+They are navigation aids, not proof that modifying the tagged process extends human life.
+
+Every tag must record assignment method and confidence. Low-confidence automatic tags require review or remain visibly unreviewed.
+
+5.17 Claim relationships
+
+Support:
+
+duplicate_or_paraphrase
+supports
+qualifies
+updates
+potentially_conflicts
+contradicts
+related
+
+Automated relationship creation is conservative:
+
+Exact or near-exact paraphrases may be marked duplicate_or_paraphrase.
+
+Source-declared updates/corrections may be marked updates.
+
+Machine-detected disagreement must be labelled potentially_conflicts, not contradicts.
+
+Only human review or an explicit source relationship may promote a relationship to contradicts.
+
+Population, intervention/exposure, comparator, outcome family, direction, and timeframe compatibility must be recorded.
+
+Disparate studies must not be synthesized merely because they mention the same broad topic.
+
+5.18 Intervention and peptide boundary
+
+Milestone 3 may extract:
+
+Source intervention/exposure text
+
+Normalized mention tokens
+
+Controlled concept tags
+
+Claim-level intervention phrases
+
+It must not create:
+
+Canonical intervention dossiers
+
+Peptide dossiers
+
+Alias-resolution systems presented as definitive
+
+Regulatory status by intervention
+
+Dosing guidance
+
+Vendor or sourcing data
+
+Comparison recommendations
+
+Those belong to Milestone 4.

@@ -82,7 +82,6 @@ export async function runIngestion(opts: IngestOptions) {
   const connectors = buildConnectors(opts);
   const lookbackDays = opts.lookbackDays ?? Number(process.env.HEALTHSPAN_PUBMED_INITIAL_LOOKBACK_DAYS ?? 90);
   const recordCap = opts.recordCap ?? Number(process.env.HEALTHSPAN_FIRST_RUN_RECORD_CAP ?? 1000);
-  const isBaseline = opts.isBaseline ?? false;
 
   opts.db
     .insert(ingestionRuns)
@@ -101,6 +100,13 @@ export async function runIngestion(opts: IngestOptions) {
   const childSummaries: string[] = [];
 
   for (const connector of connectors) {
+    const sourceRow = opts.db.select().from(sources).where(eq(sources.id, connector.id)).all()[0];
+    const isBaseline =
+      opts.isBaseline === true
+        ? true
+        : opts.isBaseline === false
+          ? false
+          : sourceRow?.baselineCompletedAt == null;
     const childId = randomUUID();
     const childStart = now();
     opts.db
@@ -319,6 +325,10 @@ export async function runIngestion(opts: IngestOptions) {
           lastFailureAt: result.ok ? undefined : now(),
           consecutiveFailures: result.ok ? 0 : 1,
           lastError: result.errorMessage ?? null,
+          baselineCompletedAt:
+            result.ok && isBaseline
+              ? sourceRow?.baselineCompletedAt ?? now()
+              : sourceRow?.baselineCompletedAt ?? undefined,
           updatedAt: now(),
         })
         .where(eq(sources.id, connector.id))

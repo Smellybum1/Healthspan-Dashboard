@@ -24,6 +24,8 @@ export const sources = sqliteTable('sources', {
   lastFailureAt: tsNull('last_failure_at'),
   consecutiveFailures: integer('consecutive_failures').notNull().default(0),
   lastError: text('last_error'),
+  /** First successful import completed at (source-scoped baseline). */
+  baselineCompletedAt: tsNull('baseline_completed_at'),
   createdAt: ts('created_at'),
   updatedAt: ts('updated_at'),
 });
@@ -43,6 +45,8 @@ export const sourceFeeds = sqliteTable(
     lastModified: text('last_modified'),
     lastCheckedAt: tsNull('last_checked_at'),
     lastSuccessAt: tsNull('last_success_at'),
+    /** First successful feed import completed at (TGA child-feed baseline). */
+    baselineCompletedAt: tsNull('baseline_completed_at'),
   },
   (t) => [uniqueIndex('source_feeds_source_key').on(t.sourceId, t.feedKey)],
 );
@@ -398,4 +402,46 @@ export const appMeta = sqliteTable('app_meta', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
   updatedAt: ts('updated_at').default(sql`(unixepoch() * 1000)`),
+});
+
+export const backgroundJobs = sqliteTable(
+  'background_jobs',
+  {
+    id: id(),
+    kind: text('kind').notNull(),
+    status: text('status').notNull().default('queued'),
+    priority: integer('priority').notNull().default(100),
+    payloadJson: text('payload_json').notNull().default('{}'),
+    dedupeKey: text('dedupe_key').notNull(),
+    availableAt: ts('available_at'),
+    claimedAt: tsNull('claimed_at'),
+    leaseExpiresAt: tsNull('lease_expires_at'),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(3),
+    lastError: text('last_error'),
+    parentJobId: text('parent_job_id'),
+    relatedRunId: text('related_run_id'),
+    createdAt: ts('created_at'),
+    startedAt: tsNull('started_at'),
+    completedAt: tsNull('completed_at'),
+  },
+  (t) => [
+    index('background_jobs_claim').on(t.status, t.availableAt, t.priority),
+    index('background_jobs_lease').on(t.leaseExpiresAt),
+    uniqueIndex('background_jobs_dedupe').on(t.dedupeKey),
+    index('background_jobs_parent').on(t.parentJobId),
+    index('background_jobs_created').on(t.createdAt),
+  ],
+);
+
+export const schedulerState = sqliteTable('scheduler_state', {
+  id: text('id').primaryKey().default('local'),
+  timezone: text('timezone').notNull().default('Australia/Brisbane'),
+  cronExpression: text('cron_expression').notNull().default('0 6 * * *'),
+  enabled: bool('enabled').default(true),
+  lastEnqueuedAt: tsNull('last_enqueued_at'),
+  lastCompletedAt: tsNull('last_completed_at'),
+  nextRunAt: tsNull('next_run_at'),
+  lastCatchupReason: text('last_catchup_reason'),
+  updatedAt: ts('updated_at'),
 });

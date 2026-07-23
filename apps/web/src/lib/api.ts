@@ -58,6 +58,14 @@ export function runIngestion(body: { sourceId?: string; recordCap?: number } = {
   return postJson<Record<string, unknown>>('/api/ingestion/run', body);
 }
 
+export function fetchJob(id: string) {
+  return getJson<Record<string, unknown>>(`/api/jobs/${id}`);
+}
+
+export function fetchJobs() {
+  return getJson<{ jobs: Array<Record<string, unknown>> }>('/api/jobs');
+}
+
 export function fetchItems(params: Record<string, string | undefined> = {}) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

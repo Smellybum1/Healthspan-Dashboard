@@ -1,12 +1,12 @@
 /**
- * Scheduler boundary for Milestone 2.
- * Local MVP uses manual / CLI / API-triggered runs.
+ * Scheduler boundary for Milestone 3.
+ * Local MVP uses Australia/Brisbane 06:00 daily + startup catch-up.
  * Hosted scheduling belongs to Milestone 7.
  */
 export type SchedulerTrigger = 'manual' | 'scheduled' | 'startup_catchup' | 'cli' | 'test';
 
 export interface IngestionScheduler {
-  /** Optional catch-up on API boot. Default implementation is a no-op. */
+  /** Catch-up / schedule arm on API boot. */
   onStartupCatchup(): Promise<void>;
   /** Future: register periodic jobs. */
   schedule?(cronExpression: string): void;
@@ -15,7 +15,7 @@ export interface IngestionScheduler {
 export function createNoopScheduler(): IngestionScheduler {
   return {
     async onStartupCatchup() {
-      // Intentionally empty in M2 — first sync is explicit via Settings / CLI / API.
+      // Disabled in tests / when HEALTHSPAN_SCHEDULER_ENABLED is not true.
     },
   };
 }

@@ -1,0 +1,643 @@
+Preserve all M2 data and migrations. Add forward-only Drizzle migrations.
+
+Use text UUIDs, UTC Unix-millisecond integer timestamps, integer-backed booleans, text enums validated with Zod, explicit foreign keys, and ordinary indexes.
+
+Do not use triggers, generated columns, custom SQLite extensions, stored procedures, FTS5, vector extensions, or filesystem paths as identifiers.
+
+The exact physical table decomposition may be refined, but the following logical entities and semantics are required.
+
+8.1 background_jobs
+
+Supports ingestion and intelligence work.
+
+Required concepts:
+
+ID
+
+Job kind
+
+Status: queued, running, succeeded, partial, failed, cancelled
+
+Priority
+
+Validated payload JSON
+
+Stable deduplication key
+
+Available-at
+
+Claimed-at
+
+Lease-expires-at
+
+Attempt count
+
+Maximum attempts
+
+Last sanitised error
+
+Created/started/completed timestamps
+
+Parent job ID when applicable
+
+Related ingestion/intelligence run ID
+
+Required indexes:
+
+Status/available-at/priority
+
+Lease expiration
+
+Deduplication key
+
+Parent job
+
+Created timestamp
+
+8.2 intelligence_runs
+
+Required concepts:
+
+ID
+
+Trigger: automatic, manual, backfill, source_change, retraction, review, cli, test
+
+Scope
+
+Status
+
+Ruleset version
+
+AI enabled flag
+
+Provider/model when used
+
+Requested/completed item counts
+
+Deterministic/AI/review-task counts
+
+Reused/unchanged count
+
+Warning/error counts
+
+Started/completed timestamps
+
+Sanitised summary
+
+8.3 intelligence_run_items
+
+Required concepts:
+
+Run ID
+
+Content item ID
+
+Source-record version set hash
+
+Status
+
+Analysis ID when completed
+
+Processing mode
+
+Error code/message
+
+Started/completed timestamps
+
+8.4 intelligence_run_errors
+
+Store:
+
+Run/item ID
+
+Pipeline stage
+
+Stable error code
+
+Sanitised message
+
+Retryable flag
+
+Small validated diagnostics
+
+Timestamp
+
+No raw prompts, keys, authorization headers, local paths, or unredacted source payloads.
+
+8.5 evidence_text_segments
+
+Store the structured source segments described in Section 6.2.
+
+Required uniqueness should prevent duplicate segments for the same source version, kind, field path, and text hash.
+
+8.6 intelligence_analyses
+
+One immutable analysis package per unique analysis identity.
+
+Required concepts:
+
+ID
+
+Content item ID
+
+Analysis mode: deterministic, ai_assisted, human_reviewed_projection
+
+Input/source-version-set hash
+
+Ruleset version
+
+Segment-builder version
+
+Claim-schema version
+
+Prompt version when applicable
+
+Provider/model when applicable
+
+Status: complete, partial, failed, stale, superseded
+
+Classification confidence
+
+Assessment completeness
+
+Created timestamp
+
+Superseded/stale timestamp
+
+Unique analysis identity constraint
+
+8.7 content_intelligence_state
+
+One row per Live content item.
+
+Required concepts:
+
+Content item ID
+
+Current analysis ID
+
+Last successful analysis timestamp
+
+Stale flag
+
+Stale reason
+
+Pending job ID
+
+Last review timestamp
+
+Updated timestamp
+
+8.8 study_profiles
+
+One profile per analysis.
+
+Required concepts:
+
+Analysis ID
+
+Normalized study design
+
+Evidence availability
+
+Evidence maturity
+
+Organism level
+
+Population context
+
+Sample size when explicit
+
+Study phase when explicit
+
+Randomization/masking/comparator fields as tri-state values
+
+Follow-up duration/source text when explicit
+
+Publication/source status
+
+Results-present flag
+
+Retraction/correction status
+
+Extraction method and confidence
+
+Source wording/metadata references
+
+8.9 study_profile_outcomes
+
+Required concepts:
+
+Profile ID
+
+Outcome family
+
+Primary/secondary/exploratory role
+
+Measure text
+
+Timeframe text
+
+Planned-versus-result state
+
+Source segment/span ID
+
+Extraction method and confidence
+
+8.10 study_profile_signals
+
+Required concepts:
+
+Profile ID
+
+Controlled methodological-signal code
+
+State: present, absent, not_reported, not_applicable, unknown
+
+Deterministic rule or extraction method
+
+Source segment/span
+
+Concise explanation
+
+8.11 claims
+
+One atomic, source-bound claim per analysis.
+
+Required concepts:
+
+ID
+
+Analysis ID
+
+Content item ID
+
+Claim fingerprint
+
+Claim kind
+
+Assertion role
+
+Canonical concise claim text
+
+Direction
+
+Subject/population text
+
+Intervention/exposure text
+
+Comparator text
+
+Outcome text and family
+
+Timeframe text
+
+Organism/population context
+
+Reported statistical fields only when explicit
+
+Extraction method
+
+Classification confidence
+
+Review status
+
+Active/stale state
+
+Created timestamp
+
+A canonical claim text must remain a faithful paraphrase. It must not be more assertive than the cited source.
+
+8.12 claim_source_spans
+
+Every claim requires one or more source spans.
+
+Required concepts:
+
+Claim ID
+
+Segment ID
+
+Source-record version ID
+
+Source field path/section
+
+Start/end offsets when meaningful
+
+Short excerpt subject to display limits
+
+Span hash
+
+Primary-support flag
+
+A claim without a valid primary span fails validation.
+
+8.13 claim_concepts
+
+Map claims to controlled concepts, source terms, and optional hallmark tags.
+
+Store:
+
+Assignment method
+
+Confidence
+
+Review state
+
+Source phrase
+
+Do not create a canonical intervention dossier.
+
+8.14 claim_relationships
+
+Required concepts:
+
+Source claim ID
+
+Target claim ID
+
+Relationship kind
+
+Relationship status: candidate, reviewed, rejected
+
+Population compatibility
+
+Intervention/exposure compatibility
+
+Outcome compatibility
+
+Timeframe compatibility
+
+Detection method
+
+Confidence
+
+Rationale
+
+Created/reviewed timestamps
+
+Unique directed relationship constraint
+
+8.15 evidence_assessments
+
+One assessment projection per analysis.
+
+Required concepts:
+
+Analysis ID
+
+Evidence maturity
+
+Evidence availability
+
+Assessment completeness
+
+Classification confidence
+
+Outcome-relevance summary
+
+Retraction/correction state
+
+Concise deterministic summary
+
+“What this does not establish” summary
+
+Assessment method/version
+
+Created timestamp
+
+Do not store a composite scientific score.
+
+8.16 assessment_translation_gaps
+
+Map assessments to controlled translation gaps.
+
+Store:
+
+Gap code
+
+Rule/method
+
+Confidence
+
+Concise explanation
+
+Source basis where applicable
+
+8.17 assessment_methodological_signals
+
+Map assessments to the relevant study-profile signals for efficient querying and history.
+
+8.18 assessment_evidence_needs
+
+Store the controlled “what would change the assessment” needs and deterministic explanations.
+
+8.19 assessment_source_versions
+
+Join each assessment to every source-record version on which it depends.
+
+This table is the basis for staleness detection.
+
+8.20 concepts
+
+Controlled, versioned concept registry.
+
+Concept types may include:
+
+hallmark
+mechanism
+condition
+outcome_family
+source_keyword
+research_topic
+intervention_mention
+
+Rules:
+
+Stable slug
+
+Preferred label
+
+Aliases for matching only
+
+Version/source
+
+Active/deprecated state
+
+No product dossier fields
+
+8.21 content_item_concepts
+
+Map content items to concepts with:
+
+Assignment method
+
+Confidence
+
+Source phrase
+
+Review state
+
+Analysis ID
+
+8.22 review_tasks
+
+Required concepts:
+
+ID
+
+Task kind/reason
+
+Priority
+
+Status: open, in_review, resolved, dismissed, superseded
+
+Content item/analysis/claim/relationship references
+
+Machine-proposed value
+
+Current displayed value
+
+Source-span references
+
+Created/updated/resolved timestamps
+
+Stale/superseded reason
+
+8.23 review_decisions
+
+Immutable decision log.
+
+Required concepts:
+
+Review task ID
+
+Decision: accept, edit, reject, uncertain, dismiss
+
+Validated field patch
+
+User reason/note
+
+Prior and resulting value hashes
+
+Decision timestamp
+
+Local reviewer identity label, default owner
+
+Source-version-set hash
+
+A new source version never mutates an old decision.
+
+8.24 model_runs
+
+Required concepts:
+
+ID
+
+Intelligence run/item ID
+
+Provider
+
+Model
+
+Task type
+
+Prompt/schema version
+
+Input hash
+
+Output hash
+
+Status
+
+Start/end/latency
+
+Request/token usage where returned
+
+Estimated cost only when deterministically calculable from configured pricing; otherwise null
+
+Validation/policy result
+
+Sanitised error
+
+Created timestamp
+
+Do not store chain-of-thought. Do not store secrets. Raw provider payload storage is unnecessary; validated structured output belongs to the analysis package.
+
+8.25 research_activity_snapshots
+
+Required for reproducible Signal Radar history.
+
+Store per topic/window:
+
+Topic concept ID
+
+Window start/end
+
+New paper count
+
+New/updated trial count
+
+Results-posted count
+
+TGA notice count
+
+Correction/retraction count
+
+Prior-window values
+
+Activity percentile
+
+Evidence-maturity category used for plotting
+
+Linked item count
+
+Formula version
+
+Created timestamp
+
+8.26 Required indexes and query checks
+
+At minimum index:
+
+Current/stale intelligence state
+
+Analysis content item/input hash/version
+
+Claim kind/assertion role/direction/review status
+
+Claim concepts
+
+Claim relationships
+
+Evidence maturity/availability/organism/outcome
+
+Translation gaps
+
+Methodological signals
+
+Review status/priority/created date
+
+Model provider/model/status/date
+
+Jobs status/availability/lease
+
+Radar topic/window
+
+Source-version dependency joins
+
+Add query-plan tests or documented checks for:
+
+Filtered Research list
+
+Claims list
+
+Review queue
+
+Item intelligence detail
+
+Potential-conflict query
+
+Signal Radar query
+
+Job claim query

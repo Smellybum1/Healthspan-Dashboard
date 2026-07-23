@@ -1,0 +1,233 @@
+Preserve the visual quality and responsive behaviour of M1/M2.
+
+15.1 Live Today
+
+Add:
+
+Intelligence processing status
+
+“What changed” intelligence events, excluding baseline backfill
+
+Recently assessed records
+
+Retraction/correction alerts
+
+Trial-results-posted events
+
+Research-activity Signal Radar
+
+Open review-task count
+
+Honest partial/stale state
+
+Do not imply that recently analyzed means scientifically new.
+
+15.2 Research list
+
+Add filters and columns/badges for:
+
+Study design
+
+Organism
+
+Evidence maturity
+
+Evidence availability
+
+Outcome family
+
+Retraction/correction state
+
+Assessment status
+
+Claim count
+
+Potential-conflict state
+
+Default sort remains recency or user-selected, not an opaque “best” ranking.
+
+15.3 Paper detail
+
+Add sections:
+
+Evidence profile
+What the source reports
+Atomic claims
+Outcome relevance
+Translation gaps
+Methodological signals
+What this does not establish
+What evidence would change the assessment
+Funding/conflict information when supplied
+Related and potentially conflicting claims
+Corrections/retractions
+Assessment provenance
+Assessment history
+Review state
+
+Every claim card shows:
+
+Assertion role
+
+Direction
+
+Source span
+
+Official source link
+
+Extraction method
+
+Classification confidence
+
+Review status
+
+15.4 Trial detail
+
+Make the distinction visually unavoidable:
+
+Study design
+Trial status
+Results availability
+Reported results
+Planned outcomes
+
+A protocol-only randomized trial must not receive a reported-benefit claim.
+
+Show:
+
+Trial design profile
+
+Phase, enrollment, masking, allocation, comparator
+
+Planned outcomes separately
+
+Posted registry results separately
+
+Status/change history
+
+Australian sites
+
+Assessment provenance and history
+
+Potential publication links
+
+Registry/publication discrepancy tasks where detected
+
+15.5 TGA detail
+
+Show:
+
+Regulatory statement
+
+Feed category
+
+Source wording
+
+Claim kind
+
+Related topic mentions
+
+Source and detection dates
+
+TGA caveat
+
+No inferred causation
+
+No inferred approval status
+
+15.6 Claims workspace
+
+Add a Live-mode Claims page with:
+
+Atomic claims
+
+Filters
+
+Source type
+
+Role
+
+Kind
+
+Direction
+
+Organism/population
+
+Outcome
+
+Evidence maturity
+
+Review state
+
+Potential conflicts
+
+Source link and span
+
+A claim detail page/drawer should show relationships and provenance.
+
+15.7 Review Queue
+
+Implement the workflow in Section 12 with desktop and mobile layouts.
+
+15.8 Methodology
+
+Expand Methodology with:
+
+Evidence-maturity definitions
+
+Results-availability definitions
+
+Study-design taxonomy
+
+Outcome taxonomy
+
+Translation gaps
+
+Methodological signals
+
+Claim roles and kinds
+
+Relationship policy
+
+Retraction/correction policy
+
+Research-activity formula
+
+AI use, limitations, and provenance
+
+Human-review precedence
+
+Explicit statement that the product is informational and not medical advice
+
+Explicit statement that no current record predicts personal lifespan
+
+15.9 Honest states
+
+Support:
+
+not assessed
+analysis queued
+analysis running
+partial analysis
+AI disabled
+AI provider error
+needs review
+human reviewed
+stale after source update
+retracted
+corrected
+insufficient source text
+
+Do not replace missing intelligence with Demo data in Live mode.
+
+15.10 Demo mode
+
+Preserve all M1 Demo functionality.
+
+Do not silently convert demo assessments into the Live V2 schema.
+
+Keep Demo labels conspicuous.
+
+Mode-specific IDs/preferences remain separated.
+
+All existing Demo E2E coverage remains green.

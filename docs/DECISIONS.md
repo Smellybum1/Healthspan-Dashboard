@@ -9,3 +9,4 @@ Short ADRs for Milestone 1:
 - [ADR-0005: Per-user SQLite application data directory](adr/ADR-0005-sqlite-app-data-path.md)
 - [ADR-0006: Primary-source connectors and raw snapshot store](adr/ADR-0006-primary-source-connectors.md)
 - [ADR-0007: Live and Demo data modes](adr/ADR-0007-live-demo-data-modes.md)
+- [ADR-0008: Deterministic-first Live evidence intelligence](adr/ADR-0008-deterministic-first-intelligence.md)

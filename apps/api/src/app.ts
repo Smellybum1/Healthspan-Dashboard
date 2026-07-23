@@ -18,6 +18,15 @@ import {
   regulatoryEvents,
 } from '@healthspan/db';
 import { runIngestion } from './ingest.js';
+import { assertAdminMutationAllowed, warnIfRemoteAdminEnabled } from './admin-guard.js';
+import {
+  enqueueJob,
+  getJob,
+  listJobs,
+  startJobWorker,
+  stableDedupeKey,
+} from './jobs.js';
+import { createLocalScheduler } from './local-scheduler.js';
 
 type DataMode = 'demo' | 'live';
 
@@ -74,6 +83,49 @@ export function createApp() {
   });
   seedOperationalSources(live.db);
   const rawStore = new FileRawSnapshotStore(live.paths.rawDir);
+  warnIfRemoteAdminEnabled();
+
+  const scheduler = createLocalScheduler({
+    db: live.db,
+    enabled: process.env.HEALTHSPAN_SCHEDULER_ENABLED === 'true',
+  });
+  void scheduler.onStartupCatchup();
+
+  const worker = startJobWorker({
+    db: live.db,
+    enabled: process.env.HEALTHSPAN_JOB_WORKER_ENABLED !== 'false',
+    handler: async (job) => {
+      if (job.kind === 'ingestion') {
+        const sourceId =
+          (job.payload.sourceId as
+            | 'pubmed'
+            | 'clinicaltrials-gov'
+            | 'crossref'
+            | 'tga'
+            | 'all'
+            | undefined) ?? 'all';
+        const result = await runIngestion({
+          db: live.db,
+          rawStore,
+          sourceId,
+          trigger: (job.payload.trigger as 'manual' | 'scheduled' | 'cli' | 'test') ?? 'manual',
+          recordCap: Number(job.payload.recordCap ?? 25),
+        });
+        const status =
+          result && typeof result === 'object' && 'status' in result
+            ? String((result as { status?: string }).status)
+            : 'succeeded';
+        return {
+          status: status === 'failed' ? 'failed' : status === 'partial' ? 'partial' : 'succeeded',
+          relatedRunId:
+            result && typeof result === 'object' && 'parentRunId' in result
+              ? String((result as { parentRunId?: string }).parentRunId)
+              : undefined,
+        };
+      }
+      return { status: 'failed', error: `unsupported job kind: ${job.kind}` };
+    },
+  });
 
   const app = new Hono();
 
@@ -92,9 +144,13 @@ export function createApp() {
       dataMode: currentMode(),
       mode: currentMode(),
       persistence: currentMode() === 'demo' ? demoRepo.mode : 'sqlite',
-      dbPath: live.paths.dbPath,
-      dataDir: live.paths.dataDir,
-      dbDoctor: doctor,
+      database: {
+        status: doctor.ok ? 'healthy' : 'degraded',
+        integrity: doctor.integrity,
+        journalMode: doctor.journalMode,
+        migrationVersion: '0001_m3_closure',
+      },
+      scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),
     });
   });
@@ -102,6 +158,11 @@ export function createApp() {
   app.get('/api/mode', (c) => c.json({ dataMode: currentMode(), mode: currentMode() }));
 
   app.post('/api/mode', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
     const body = (await c.req.json().catch(() => ({}))) as { mode?: string; dataMode?: string };
     const requested = body.dataMode ?? body.mode;
     const mode = requested === 'live' ? 'live' : requested === 'demo' ? 'demo' : null;
@@ -335,12 +396,33 @@ export function createApp() {
       dataMode: currentMode(),
       mode: currentMode(),
       sources: rows.map((s) => ({
-        ...s,
+        id: s.id,
+        displayName: s.displayName,
+        kind: s.kind,
+        officialBaseUrl: s.officialBaseUrl,
+        enabled: s.enabled,
         health: mapSourceHealth(s.healthState),
+        healthState: s.healthState,
+        consecutiveFailures: s.consecutiveFailures,
         lastSuccessfulFetchAt: s.lastSuccessAt ? new Date(s.lastSuccessAt).toISOString() : null,
+        lastError: s.lastError,
+        baselineCompletedAt: s.baselineCompletedAt
+          ? new Date(s.baselineCompletedAt).toISOString()
+          : null,
       })),
-      feeds,
-      paths: { dbPath: live.paths.dbPath, rawDir: live.paths.rawDir, dataDir: live.paths.dataDir },
+      feeds: feeds.map((f) => ({
+        id: f.id,
+        sourceId: f.sourceId,
+        feedKey: f.feedKey,
+        category: f.category,
+        enabled: f.enabled,
+        baselineCompletedAt: f.baselineCompletedAt
+          ? new Date(f.baselineCompletedAt).toISOString()
+          : null,
+        lastSuccessAt: f.lastSuccessAt ? new Date(f.lastSuccessAt).toISOString() : null,
+        // URL retained intentionally for Source Health diagnostics of official endpoints
+        url: f.url,
+      })),
     });
   });
 
@@ -362,6 +444,11 @@ export function createApp() {
   });
 
   app.post('/api/ingestion/run', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
     const body = (await c.req.json().catch(() => ({}))) as {
       sourceId?: string;
       recordCap?: number;
@@ -369,16 +456,67 @@ export function createApp() {
     const sourceId =
       (body.sourceId as 'pubmed' | 'clinicaltrials-gov' | 'crossref' | 'tga' | 'all' | undefined) ??
       'all';
-    const result = await runIngestion({
-      db: live.db,
-      rawStore,
+    const payload = {
       sourceId,
-      trigger: 'manual',
       recordCap: body.recordCap ?? Number(process.env.HEALTHSPAN_LIVE_SMOKE_RECORD_CAP ?? 25),
-      isBaseline: live.db.select().from(contentItems).all().length === 0,
+      trigger: 'manual',
+    };
+    const { job, created } = enqueueJob(live.db, {
+      kind: 'ingestion',
+      payload,
+      dedupeKey: stableDedupeKey('ingestion-manual', {
+        sourceId,
+        // coalesce identical in-flight manual requests
+        window: Math.floor(Date.now() / 30_000),
+      }),
+      priority: 10,
     });
-    return c.json(result);
+    return c.json(
+      {
+        accepted: true,
+        created,
+        jobId: job.id,
+        status: job.status,
+        kind: job.kind,
+      },
+      202,
+    );
   });
+
+  app.get('/api/jobs', (c) => {
+    return c.json({
+      jobs: listJobs(live.db).map((j) => ({
+        id: j.id,
+        kind: j.kind,
+        status: j.status,
+        attemptCount: j.attemptCount,
+        lastError: j.lastError,
+        relatedRunId: j.relatedRunId,
+        createdAt: new Date(j.createdAt).toISOString(),
+        startedAt: j.startedAt ? new Date(j.startedAt).toISOString() : null,
+        completedAt: j.completedAt ? new Date(j.completedAt).toISOString() : null,
+      })),
+    });
+  });
+
+  app.get('/api/jobs/:id', (c) => {
+    const job = getJob(live.db, c.req.param('id'));
+    if (!job) return c.json({ error: 'Not found' }, 404);
+    return c.json({
+      id: job.id,
+      kind: job.kind,
+      status: job.status,
+      attemptCount: job.attemptCount,
+      lastError: job.lastError,
+      relatedRunId: job.relatedRunId,
+      payload: JSON.parse(job.payloadJson),
+      createdAt: new Date(job.createdAt).toISOString(),
+      startedAt: job.startedAt ? new Date(job.startedAt).toISOString() : null,
+      completedAt: job.completedAt ? new Date(job.completedAt).toISOString() : null,
+    });
+  });
+
+  app.get('/api/scheduler', (c) => c.json(scheduler.getStatus()));
 
   app.get('/api/meta/seed', (c) => {
     const seed = demoRepo.getSeedBundle();
@@ -408,7 +546,11 @@ export function createApp() {
     return c.json({ error: err instanceof Error ? err.message : 'Server error' }, 500);
   });
 
-  (app as unknown as { __close?: () => void }).__close = () => closeDatabase(live.sqlite);
+  (app as unknown as { __close?: () => void }).__close = () => {
+    worker.stop();
+    scheduler.stop();
+    closeDatabase(live.sqlite);
+  };
 
   return app;
 }

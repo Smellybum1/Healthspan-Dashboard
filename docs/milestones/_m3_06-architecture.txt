@@ -1,0 +1,282 @@
+Use the following pipeline:
+
+Current source-record version
+    ↓
+Material input builder
+    ↓
+Versioned evidence text segments
+    ↓
+Deterministic study/profile extraction
+    ↓
+Deterministic evidence maturity and gap rules
+    ↓
+Deterministic source-fact claim candidates
+    ↓
+Optional AI enrichment for unresolved fields
+    ↓
+Strict schema and policy validation
+    ↓
+Immutable analysis package
+    ↓
+Review tasks for ambiguity/high-impact cases
+    ↓
+Current intelligence projection
+    ↓
+API, UI, history, and research-activity radar
+6.1 Analysis inputs
+
+An analysis input must identify:
+
+Content item ID
+
+Source object ID
+
+Source-record version ID
+
+Input segment hashes
+
+Parser version
+
+Ruleset version
+
+Prompt/schema version if AI is used
+
+Provider and model if AI is used
+
+Creation timestamp
+
+Input hash
+
+Only current, validated source-record versions are eligible by default.
+
+6.2 Evidence text segments
+
+Create structured, versioned segments rather than passing an undifferentiated raw payload through the pipeline.
+
+Segment kinds include:
+
+title
+abstract_background
+abstract_objective
+abstract_methods
+abstract_results
+abstract_conclusions
+abstract_unstructured
+trial_brief_summary
+trial_detailed_description
+trial_design
+trial_eligibility
+trial_planned_primary_outcome
+trial_planned_secondary_outcome
+trial_posted_result
+trial_adverse_event_result
+tga_title
+tga_description
+crossref_relation
+source_metadata
+
+Each segment stores:
+
+Source-record version ID
+
+Content item ID
+
+Segment kind
+
+Source field path or section label
+
+Text hash
+
+Character offsets where meaningful
+
+Source language
+
+Created timestamp
+
+Whether the segment is eligible for claim extraction
+
+Copyright/display policy
+
+Do not add article-body or paywalled full-text acquisition.
+
+6.3 Deterministic extraction
+
+Deterministic rules should cover unambiguous explicit metadata such as:
+
+Publication type
+
+Trial allocation
+
+Trial masking
+
+Study phase
+
+Recruitment/status state
+
+Results availability
+
+Organism terms when explicit
+
+Human/animal/cell distinctions
+
+Sample size where explicit
+
+Outcome family from structured trial fields
+
+Retraction/correction relations
+
+TGA regulatory-source role
+
+Funding and conflict fields when supplied
+
+Protocol versus result separation
+
+Research-activity counts
+
+Use versioned rule modules. Every label must record the rule ID(s) that produced it.
+
+6.4 Optional AI enrichment
+
+AI is optional and disabled by default.
+
+Define a provider-neutral interface similar to:
+
+interface IntelligenceProvider {
+  readonly providerId: string;
+
+  analyze(input: IntelligenceProviderInput): Promise<IntelligenceProviderOutput>;
+}
+
+Implement:
+
+DisabledIntelligenceProvider
+FixtureIntelligenceProvider
+OpenAIResponsesIntelligenceProvider
+
+The OpenAI adapter must:
+
+Use the current official Responses API.
+
+Use schema-constrained structured output.
+
+Set storage off for requests where the API supports it.
+
+Use a model supplied through configuration; do not hard-code a model name as the permanent project default.
+
+Send only the minimum public-source segments required for the task.
+
+Never send local paths, environment variables, API keys, raw snapshots, user preferences, watchlists, or personal-health data.
+
+Treat all source text as untrusted data and delimit it from system/developer instructions.
+
+Use no web, shell, file, or other model tools.
+
+Never request or store hidden chain-of-thought.
+
+Return only validated structured fields and concise cited rationales.
+
+Fail closed on invalid schema output.
+
+Leave the deterministic result usable when the provider fails.
+
+AI may be used for:
+
+Candidate atomic claim extraction
+
+Ambiguous study-design classification
+
+Population/intervention/outcome phrase extraction
+
+Translation-gap suggestions mapped to the controlled taxonomy
+
+Hallmark suggestions
+
+Potential claim-relationship candidates
+
+Plain-language explanation constrained to source facts
+
+AI must not be used for:
+
+Medical advice
+
+Treatment recommendations
+
+Dosing
+
+Sourcing
+
+Predicted lifespan extension
+
+Regulatory approval inference
+
+Overall scoring
+
+Uncited consensus claims
+
+Provider world knowledge that is absent from the source input
+
+6.5 AI publication policy
+
+AI-assisted output may appear in Live mode only when:
+
+It passes schema validation.
+
+All source spans resolve.
+
+Every claim maps to a permitted assertion role.
+
+Policy checks find no species, protocol/result, or provenance violation.
+
+It is visibly labelled AI-assisted, unreviewed unless human-reviewed.
+
+High-impact cases create a review task.
+
+High-impact review reasons include:
+
+human_efficacy_claim
+harm_or_safety_claim
+mortality_or_lifespan_claim
+retraction_or_correction
+potential_conflict
+low_extraction_confidence
+ambiguous_population
+ambiguous_outcome
+missing_or_invalid_provenance
+registry_publication_discrepancy
+
+Deterministic explicit source facts may publish automatically with a Deterministic extraction label.
+
+6.6 AI usage controls
+
+Add configuration:
+
+HEALTHSPAN_AI_ENABLED=false
+HEALTHSPAN_AI_PROVIDER=openai
+HEALTHSPAN_AI_MODEL=
+HEALTHSPAN_AI_MAX_ITEMS_PER_RUN=20
+HEALTHSPAN_AI_DAILY_REQUEST_CAP=50
+HEALTHSPAN_AI_MAX_CONCURRENCY=1
+HEALTHSPAN_AI_STORE=false
+OPENAI_API_KEY=
+
+Rules:
+
+Empty model is valid while AI is disabled.
+
+Enabling AI without a provider, model, or key fails with a clear configuration error.
+
+No UI field for entering API keys.
+
+No automatic paid AI backfill.
+
+AI backfill requires an explicit CLI flag or validated local-admin action.
+
+Enforce persisted daily request caps.
+
+Report provider/model, request count, token usage where returned, latency, and status.
+
+Never log the key or authorization header.
+
+Do not store raw hidden reasoning.
+
+Validated structured output and concise source-grounded rationale may be stored as analysis provenance.

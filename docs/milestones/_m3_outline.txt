@@ -1,0 +1,35 @@
+lines=3827
+chars=79678
+
+1. Controlling instruction
+2. Product intent
+3. Non-negotiable product and scientific principles
+4. Mandatory Milestone 2 closure items
+5. Fixed Milestone 3 product-management decisions
+6. Deterministic-first intelligence architecture
+7. Versioning, staleness, and review precedence
+8. Required database/schema work
+9. Core schemas and taxonomies
+10. Package requirements
+11. Evidence and claim processing rules
+12. Review workflow
+13. Research-activity Signal Radar
+14. API requirements
+15. UI requirements
+16. Intelligence and job commands
+17. Environment configuration
+# Evidence intelligence
+# Optional AI
+# Existing local scheduler
+# Local administration boundary
+18. Offline evaluation corpus
+19. Testing requirements
+20. Security, privacy, and source-integrity requirements
+21. Performance and reliability targets
+22. Documentation and ADR requirements
+23. What must NOT be done in Milestone 3
+24. Acceptance criteria checklist
+25. Required completion report
+26. Consult the project manager early only when
+27. Stop conditions
+28. Authorised start message

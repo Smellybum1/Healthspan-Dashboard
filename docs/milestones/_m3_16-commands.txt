@@ -1,0 +1,28 @@
+Add Windows-safe root scripts:
+
+pnpm intelligence:backfill
+pnpm intelligence:run -- --item <content-item-id>
+pnpm intelligence:reassess -- --stale
+pnpm intelligence:status
+pnpm intelligence:doctor
+pnpm intelligence:eval
+pnpm jobs:status
+pnpm test:intelligence:live
+
+Rules:
+
+intelligence:backfill is deterministic-only by default.
+
+AI use requires an explicit flag such as:
+
+--allow-ai
+
+intelligence:reassess -- --stale processes only stale/currently unassessed records unless --force is given.
+
+intelligence:doctor checks provenance, orphan spans, stale pointers, unresolved source-version dependencies, and job leases.
+
+intelligence:eval runs the committed offline evaluation corpus.
+
+test:intelligence:live is opt-in and excluded from default gates.
+
+Existing M2 commands remain functional.

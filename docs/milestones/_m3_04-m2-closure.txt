@@ -1,0 +1,177 @@
+Complete these before treating the Milestone 3 intelligence layer as finished. These are closure tasks, not a reopening of the M2 scope.
+
+4.1 Redact local filesystem paths from browser APIs
+
+The browser-visible /health, /api/sources, diagnostics, and error responses must not expose:
+
+Exact database path
+
+Exact user data directory
+
+Exact raw snapshot directory
+
+Windows username or home directory
+
+Secret-bearing URLs
+
+Raw stack traces
+
+Return safe values such as:
+
+{
+  "database": {
+    "status": "healthy",
+    "migrationVersion": "..."
+  }
+}
+
+Exact local paths remain available through:
+
+pnpm data:path
+
+and local terminal diagnostics only.
+
+Add automated tests proving browser API responses do not contain the temporary test path or user-home path.
+
+4.2 Enforce the local administrative-mutation boundary
+
+All mutation routes, including ingestion, intelligence runs, review resolution, and future administrative actions, must use one shared guard.
+
+Rules:
+
+Default server binding remains 127.0.0.1.
+
+When bound to a non-loopback address, administrative mutations are disabled unless:
+
+HEALTHSPAN_ALLOW_REMOTE_ADMIN=true
+
+Enabling remote administration must emit a conspicuous startup warning.
+
+Read-only routes may remain available under the configured host.
+
+Do not add authentication in Milestone 3.
+
+Test IPv4 loopback, IPv6 loopback, localhost, non-loopback, and explicit override behaviour.
+
+4.3 Make baseline state source-scoped
+
+Replace any global “database is empty” baseline inference.
+
+Baseline completion must be tracked independently for:
+
+PubMed
+
+ClinicalTrials.gov
+
+Crossref
+
+Each enabled TGA feed, or a clearly documented TGA child-feed unit
+
+Rules:
+
+A source’s first successful import is its baseline.
+
+Adding a new connector or feed later must not cause its old records to appear as fresh changes.
+
+A source that previously completed a baseline must not become baseline again after another source is cleared or disabled.
+
+Existing M2 data must migrate safely.
+
+Preserve prior content and event history.
+
+Add tests for staggered first runs and newly enabled TGA feeds.
+
+4.4 Implement real queued run semantics
+
+Replace long-running synchronous mutation behaviour with persisted jobs.
+
+Required:
+
+POST run endpoints return 202 Accepted.
+
+The response includes job/run IDs.
+
+The UI polls or refreshes job status.
+
+An in-process worker executes jobs while the local API is running.
+
+Jobs survive process restarts.
+
+Stale leases are recoverable.
+
+Duplicate equivalent jobs are coalesced or rejected deterministically.
+
+One source failure does not destroy other completed source work.
+
+Graceful shutdown stops claiming new work and safely releases or expires leases.
+
+Default automated tests do not use real time or the live network.
+
+Use the same job framework for ingestion and intelligence analysis.
+
+4.5 Implement the local scheduler and startup catch-up
+
+Implement the scheduler promised by the local architecture.
+
+Defaults:
+
+Timezone: Australia/Brisbane
+Schedule: 06:00 daily
+Startup catch-up: enabled
+Stale threshold: 24 hours
+
+The scheduler must enqueue rather than directly execute long-running work.
+
+Rules:
+
+Disabled in automated tests unless explicitly enabled.
+
+Does not block API startup.
+
+Never creates overlapping full refresh jobs.
+
+Shows last run, next run, and catch-up reason.
+
+Resumes correctly after restart.
+
+Remains behind a replaceable Scheduler interface.
+
+Does not add hosted scheduling or assume a permanently running cloud process.
+
+4.6 Move list/search work behind services and server-side queries
+
+Do not load every content row into application memory for ordinary list/search requests.
+
+Required:
+
+Repository/service boundaries for content, claims, assessments, reviews, and radar queries
+
+Server-side pagination
+
+Validated sort and filter fields
+
+Bounded query limits
+
+Indexed query paths
+
+No route-level raw SQL except small health/diagnostic checks
+
+Documented EXPLAIN QUERY PLAN checks for principal queries
+
+Existing API response contracts preserved or versioned safely
+
+4.7 Correct documentation status
+
+Update stale project documentation so that it reflects reality:
+
+README describes M2 as complete and M3 as current.
+
+Roadmap marks M1 and M2 complete.
+
+docs/milestones/M2.md is marked complete.
+
+Architecture and data-model documents describe the implemented M2 system.
+
+Decision log references the new M3 ADRs.
+
+Do not rewrite the historical M2 completion report except to correct an objectively wrong link or typo; preserve it as a historical record.

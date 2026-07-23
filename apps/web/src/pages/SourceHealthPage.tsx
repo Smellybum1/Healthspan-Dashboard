@@ -1,6 +1,6 @@
 import { PageHeader } from '../components/Common';
 import { useAsync } from '../hooks/useAsync';
-import { fetchIngestionRuns, fetchSources, runIngestion } from '../lib/api';
+import { fetchIngestionRuns, fetchSources, runIngestion, fetchJob } from '../lib/api';
 import { formatWhen } from '../lib/nav';
 import { useState } from 'react';
 import { SkeletonBlock } from '@healthspan/ui';
@@ -13,10 +13,19 @@ export function SourceHealthPage() {
 
   async function sync(sourceId: string) {
     setBusy(true);
-    setMessage(`Running ingestion for ${sourceId}…`);
+    setMessage(`Queueing ingestion for ${sourceId}…`);
     try {
-      const result = await runIngestion({ sourceId, recordCap: 25 });
-      setMessage(`Finished ${sourceId}: status=${String(result.status ?? 'ok')}`);
+      const accepted = await runIngestion({ sourceId, recordCap: 25 });
+      const jobId = String(accepted.jobId ?? '');
+      setMessage(`Accepted job ${jobId} (${String(accepted.status)})`);
+      if (jobId) {
+        for (let i = 0; i < 40; i += 1) {
+          await new Promise((r) => setTimeout(r, 500));
+          const job = await fetchJob(jobId);
+          setMessage(`Job ${jobId}: ${job.status}`);
+          if (['succeeded', 'partial', 'failed', 'cancelled'].includes(String(job.status))) break;
+        }
+      }
       sources.reload();
       runs.reload();
     } catch (err) {
@@ -42,9 +51,10 @@ export function SourceHealthPage() {
         description="Operational status for PubMed, ClinicalTrials.gov, Crossref, and TGA RSS. Live SQLite only — never mixed with Demo seed."
       />
 
-      {sources.data?.paths ? (
+      {sources.data ? (
         <p className="text-xs text-[var(--muted)]">
-          Data directory: <code>{String(sources.data.paths.dataDir)}</code>
+          Exact local database paths are intentionally hidden from the browser. Use{' '}
+          <code>pnpm data:path</code> in a terminal.
         </p>
       ) : null}
 

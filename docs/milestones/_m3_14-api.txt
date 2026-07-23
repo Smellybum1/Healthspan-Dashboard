@@ -1,0 +1,141 @@
+Retain the M2 response envelope and strict Live/Demo separation.
+
+All list endpoints require server-side pagination and validated filters.
+
+14.1 Intelligence status and runs
+GET  /api/intelligence/status
+GET  /api/intelligence/runs
+GET  /api/intelligence/runs/:id
+POST /api/intelligence/runs
+POST /api/items/:id/reassess
+
+Suggested run body:
+
+{
+  "scope": "stale",
+  "itemIds": [],
+  "includeAi": false,
+  "force": false,
+  "maxItems": 100
+}
+
+Rules:
+
+Mutation routes use the local-admin guard.
+
+Return 202 Accepted.
+
+includeAi defaults false.
+
+Paid AI requires AI enabled plus explicit request.
+
+Reject unknown item IDs and invalid scopes.
+
+Report queued, running, partial, failed, and complete states.
+
+14.2 Item evidence and history
+GET /api/items/:id/intelligence
+GET /api/items/:id/assessment
+GET /api/items/:id/assessment/history
+GET /api/items/:id/claims
+GET /api/items/:id/source-segments
+
+Source-segment output must respect display limits and never return raw snapshots.
+
+14.3 Evidence/claim lists
+GET /api/assessments
+GET /api/claims
+GET /api/claims/:id
+GET /api/claim-relationships
+
+Filters should include, where applicable:
+
+content type
+source
+study design
+organism
+population context
+evidence maturity
+evidence availability
+outcome family
+translation gap
+methodological signal
+claim kind
+assertion role
+direction
+review status
+retracted/corrected
+date range
+has claims
+has potential conflict
+14.4 Review API
+GET   /api/review-tasks
+GET   /api/review-tasks/:id
+PATCH /api/review-tasks/:id
+POST  /api/review-tasks/:id/resolve
+GET   /api/review-decisions
+
+Review writes require:
+
+Local-admin guard
+
+Zod validation
+
+Source-version concurrency check
+
+Audit record
+
+Clear conflict response if the task became stale
+
+14.5 Radar and methodology
+GET /api/signal-radar
+GET /api/methodology/evidence-model
+GET /api/methodology/rulesets
+GET /api/methodology/ai-provenance
+
+The methodology response should expose definitions and versions, not internal secrets or prompt text that would weaken safety boundaries.
+
+14.6 Jobs and scheduler
+GET /api/jobs
+GET /api/jobs/:id
+GET /api/scheduler/status
+
+Administrative cancellation/retry may be added if safely implemented:
+
+POST /api/jobs/:id/cancel
+POST /api/jobs/:id/retry
+
+These are local-admin mutations.
+
+14.7 Response metadata
+
+Include where relevant:
+
+{
+  dataMode: "live" | "demo";
+  generatedAt: string;
+  partial: boolean;
+  stale?: boolean;
+  rulesetVersion?: string;
+  analysisVersion?: string;
+  sourceVersionIds?: string[];
+  extractionMethod?: "deterministic" | "ai_assisted" | "human_reviewed";
+  provider?: string;
+  model?: string;
+}
+
+Never return:
+
+API keys
+
+Raw provider prompts containing source text
+
+Hidden reasoning
+
+Full raw model response
+
+Full raw source snapshots
+
+Exact local filesystem paths
+
+Raw error stacks

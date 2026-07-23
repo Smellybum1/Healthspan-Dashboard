@@ -1,0 +1,212 @@
+10.1 packages/core
+
+Add:
+
+Live V2 evidence and claim schemas
+
+Controlled taxonomies and labels
+
+API request/response schemas
+
+Version/provenance types
+
+Review and model-run schemas
+
+Job schemas
+
+Pure identifier/fingerprint helpers where source-independent
+
+Keep it free of:
+
+Database drivers
+
+Network calls
+
+Provider SDKs
+
+React
+
+10.2 packages/db
+
+Add:
+
+Forward-only M3 migrations
+
+Repository interfaces and implementations for all M3 logical entities
+
+Background-job repository and lease logic
+
+Server-side filter/sort/pagination query builders
+
+Transactional current-analysis pointer updates
+
+Staleness queries
+
+Review-decision persistence
+
+Research-activity snapshot persistence
+
+Database doctor checks for orphan claims/spans/dependencies/jobs
+
+Keep scientific rules out of this package.
+
+10.3 packages/connectors
+
+Permitted work:
+
+Expose richer normalized sections already present in M2 source responses
+
+Parse structured PubMed abstract sections
+
+Parse explicit ClinicalTrials.gov results structures
+
+Preserve source field paths needed for provenance
+
+Expose TGA descriptions and Crossref relations cleanly
+
+Reprocess existing raw snapshots after parser-version changes
+
+Not permitted:
+
+New external sources
+
+Full-text scraping
+
+AI calls
+
+Scientific assessment
+
+Canonical intervention resolution
+
+10.4 packages/intelligence
+
+This becomes the main Milestone 3 domain package.
+
+Recommended structure:
+
+packages/intelligence/src/
+├─ inputs/
+├─ segments/
+├─ study-profile/
+├─ claims/
+├─ evidence/
+├─ relationships/
+├─ activity/
+├─ review/
+├─ providers/
+│  ├─ disabled/
+│  ├─ fixture/
+│  └─ openai/
+├─ prompts/
+├─ policy/
+├─ evaluation/
+├─ pipeline/
+└─ index.ts
+
+Responsibilities:
+
+Pure deterministic extraction/classification functions
+
+Ruleset IDs and versions
+
+Segment building
+
+Claim fingerprinting
+
+Evidence maturity and availability rules
+
+Translation gaps
+
+Methodological signals
+
+“What would change the assessment”
+
+Conservative relationship candidates
+
+Research-activity formula
+
+Provider-neutral AI contract
+
+Prompt/schema definitions
+
+Output validation and policy guard
+
+Evaluation harness
+
+Design functions so most tests run without a database or network.
+
+10.5 apps/api
+
+Add:
+
+Application services for content, intelligence, reviews, jobs, radar, and methodology
+
+Worker lifecycle
+
+Scheduler integration
+
+Intelligence orchestration
+
+Local-admin mutation guard
+
+Provider configuration
+
+API routes
+
+Safe health/diagnostics
+
+Structured sanitised logging
+
+Graceful startup/shutdown
+
+Routes should depend on services, not issue broad table reads directly.
+
+10.6 apps/web
+
+Add:
+
+Evidence-profile components
+
+Claim cards and provenance views
+
+Research filters
+
+Trial result-availability distinction
+
+Assessment history
+
+Potential-conflict view
+
+Review Queue
+
+Intelligence status and run UI
+
+Research-activity Signal Radar
+
+Expanded Methodology pages
+
+AI disclosure and provenance
+
+Honest not-assessed/stale/error states
+
+Mobile layouts
+
+Demo regression preservation
+
+10.7 packages/ui
+
+Extract reusable presentation primitives when useful:
+
+EvidenceMaturityBadge
+EvidenceAvailabilityBadge
+ClaimRoleBadge
+OutcomeFamilyBadge
+TranslationGapList
+MethodologicalSignalList
+ProvenancePanel
+ReviewStatusBadge
+RetractionWarning
+ClassificationConfidenceBadge
+AssessmentHistoryTimeline
+
+Do not over-generalize components that are specific to one screen.

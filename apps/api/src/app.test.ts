@@ -6,6 +6,8 @@ import fs from 'node:fs';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hs-api-test-'));
 process.env.HEALTHSPAN_DATA_DIR = dataDir;
 process.env.HEALTHSPAN_DATA_MODE = 'demo';
+process.env.HEALTHSPAN_JOB_WORKER_ENABLED = 'false';
+process.env.HEALTHSPAN_SCHEDULER_ENABLED = 'false';
 
 const { createApp } = await import('./app.js');
 
@@ -16,12 +18,17 @@ describe('API contract', () => {
     process.env.HEALTHSPAN_DATA_MODE = 'demo';
   });
 
-  it('returns health', async () => {
+  it('returns health without filesystem paths', async () => {
     const res = await app.request('/health');
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.service).toBe('healthspan-dashboard-api');
+    const encoded = JSON.stringify(body);
+    expect(encoded).not.toContain(process.env.HEALTHSPAN_DATA_DIR);
+    expect(encoded.toLowerCase()).not.toContain('appdata');
+    expect(body.dbPath).toBeUndefined();
+    expect(body.dataDir).toBeUndefined();
   });
 
   it('returns dashboard payload', async () => {

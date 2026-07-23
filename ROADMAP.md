@@ -3,14 +3,14 @@
 ## Completed
 
 - Milestone 1 — Product foundation and high-fidelity prototype
+- Milestone 2 — Persistent data backbone and primary-source ingestion (`4a39a1c`)
 
-## Next
+## In progress
 
-- Milestone 2 — Persistent data backbone and primary-source ingestion
+- Milestone 3 — Evidence and claim intelligence
 
 ## Later
 
-- M3 Evidence and claim intelligence
 - M4 Trials, interventions, peptides, regulation
 - M5 Creator/social layer
 - M6 Personalisation and hardening

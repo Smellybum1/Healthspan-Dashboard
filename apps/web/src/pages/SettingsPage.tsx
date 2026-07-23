@@ -46,8 +46,8 @@ export function SettingsPage() {
     setMessage('Running first sync (capped). This may take a minute…');
     try {
       await setMode('live');
-      const result = await runIngestion({ sourceId: 'all', recordCap: 25 });
-      setMessage(`First sync finished: ${JSON.stringify(result).slice(0, 240)}…`);
+      const accepted = await runIngestion({ sourceId: 'all', recordCap: 25 });
+      setMessage(`Queued job ${String(accepted.jobId)} — watch Source Health for status.`);
       modeState.reload();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Sync failed');
