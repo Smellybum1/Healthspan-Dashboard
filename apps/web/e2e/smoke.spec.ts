@@ -81,3 +81,30 @@ test.describe('Milestone 3 Live intelligence surfaces', () => {
     await page.screenshot({ path: path.join(shotDir, 'm3-mobile-review.png'), fullPage: true });
   });
 });
+
+test.describe('Milestone 4 intervention surfaces', () => {
+  test('entity resolution, compare, and methodology are reachable', async ({ page }) => {
+    await page.goto('/entity-resolution');
+    await expect(page.getByRole('heading', { name: 'Entity Resolution Queue' })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm4-entity-resolution.png'), fullPage: true });
+
+    await page.goto('/compare');
+    await expect(page.getByRole('heading', { name: 'Intervention comparison' })).toBeVisible();
+    await expect(page.getByText(/No winner/i)).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm4-compare.png'), fullPage: true });
+
+    await page.goto('/methodology');
+    await expect(page.getByText(/Intervention identity and aliases/i)).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm4-methodology.png'), fullPage: true });
+  });
+
+  test('mobile compare is reachable', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'mobile project only');
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('link', { name: 'Compare' }).click();
+    await expect(page.getByRole('heading', { name: 'Intervention comparison' })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm4-mobile-compare.png'), fullPage: true });
+  });
+});

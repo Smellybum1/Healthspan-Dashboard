@@ -286,3 +286,85 @@ export const dossierChangeEvents = sqliteTable('dossier_change_events', {
   changeSummary: text('change_summary').notNull(),
   createdAt: ts('created_at'),
 });
+
+export const peptideModifications = sqliteTable('peptide_modifications', {
+  id: id(),
+  profileId: text('profile_id').notNull(),
+  sequenceId: text('sequence_id'),
+  modificationType: text('modification_type').notNull(),
+  positionOrRange: text('position_or_range'),
+  sourceWording: text('source_wording'),
+  sourceId: text('source_id'),
+  sourceRecordVersionId: text('source_record_version_id'),
+  reviewState: text('review_state').notNull().default('accepted'),
+  createdAt: ts('created_at'),
+});
+
+export const regulatorSignalRecords = sqliteTable(
+  'regulator_signal_records',
+  {
+    id: id(),
+    authority: text('authority').notNull(),
+    jurisdiction: text('jurisdiction').notNull(),
+    quarter: text('quarter'),
+    publishedAt: tsNull('published_at'),
+    productOrClass: text('product_or_class').notNull(),
+    signalText: text('signal_text').notNull(),
+    additionalInformation: text('additional_information'),
+    officialUrl: text('official_url'),
+    entityId: text('entity_id'),
+    sourceRecordVersionId: text('source_record_version_id'),
+    provenCausality: bool('proven_causality').default(false),
+    currentState: text('current_state').notNull().default('current'),
+    createdAt: ts('created_at'),
+  },
+  (t) => [index('regulator_signals_entity').on(t.entityId)],
+);
+
+export const adverseEventQueryDefinitions = sqliteTable('adverse_event_query_definitions', {
+  id: id(),
+  label: text('label').notNull(),
+  authority: text('authority').notNull(),
+  queryJson: text('query_json').notNull().default('{}'),
+  identifierScheme: text('identifier_scheme'),
+  identifierValue: text('identifier_value'),
+  reviewed: bool('reviewed').default(false),
+  createdAt: ts('created_at'),
+  updatedAt: ts('updated_at'),
+});
+
+export const adverseEventReportingSnapshots = sqliteTable('adverse_event_reporting_snapshots', {
+  id: id(),
+  queryDefinitionId: text('query_definition_id').notNull(),
+  entityId: text('entity_id'),
+  fetchedAt: ts('fetched_at'),
+  totalCount: integer('total_count'),
+  zeroIsNotSafe: bool('zero_is_not_safe').default(true),
+  sourceRecordVersionId: text('source_record_version_id'),
+  caveat: text('caveat').notNull(),
+  createdAt: ts('created_at'),
+});
+
+export const adverseEventTermCounts = sqliteTable('adverse_event_term_counts', {
+  id: id(),
+  snapshotId: text('snapshot_id').notNull(),
+  term: text('term').notNull(),
+  count: integer('count').notNull(),
+  createdAt: ts('created_at'),
+});
+
+export const trialInterventionEntityLinks = sqliteTable(
+  'trial_intervention_entity_links',
+  {
+    id: id(),
+    trialInterventionId: text('trial_intervention_id').notNull(),
+    trialId: text('trial_id').notNull(),
+    entityId: text('entity_id').notNull(),
+    sourceTerm: text('source_term').notNull(),
+    mappingState: text('mapping_state').notNull(),
+    ruleOrDecisionId: text('rule_or_decision_id').notNull(),
+    effectiveAt: ts('effective_at'),
+    supersededAt: tsNull('superseded_at'),
+  },
+  (t) => [index('trial_entity_links_entity').on(t.entityId)],
+);

@@ -29,6 +29,7 @@ import {
   RESOLUTION_RULESET_VERSION,
 } from '@healthspan/interventions';
 import { defaultRegulatoryCoverage } from './identity-enrichment.js';
+import { trialPortfolioForEntity } from './trial-portfolio.js';
 
 const BOOTSTRAP: Array<{
   id: string;
@@ -335,6 +336,7 @@ export function buildDossierSnapshot(
     .all()
     .filter((a) => a.entityId === entityId && a.currentState === 'current');
   const products = db.select().from(regulatedProducts).all();
+  const trialPortfolio = trialPortfolioForEntity(db, entityId);
 
   const summary = {
     entityId: entity.id,
@@ -344,6 +346,7 @@ export function buildDossierSnapshot(
     linkedContentCount: contentIds.length,
     linkedAnalysisCount: linkedAnalyses.length,
     linkedClaimCount: linkedClaims.length,
+    trialPortfolioCount: trialPortfolio.count,
     peptide: peptide
       ? {
           classification: peptide.classification,
@@ -353,6 +356,8 @@ export function buildDossierSnapshot(
         }
       : null,
     provenanceNote: 'Evidence cells link to M3 analysis/claim IDs; text is not copied into an untraceable summary.',
+    regulatoryVsEvidenceNote:
+      'Regulatory register inclusion and scientific evidence maturity are separate dimensions. Trial registration is not authorisation.',
   };
 
   const evidenceMap = {
@@ -390,8 +395,9 @@ export function buildDossierSnapshot(
   const safety = {
     spontaneousReports: {
       enabled: false,
+      daenImported: false,
       caveat:
-        'Spontaneous reports are not proof of causation, do not provide an exposure denominator, and may contain duplicates.',
+        'Spontaneous reports are not proof of causation, do not provide an exposure denominator, and may contain duplicates. TGA DAEN is not imported in M4.',
     },
     potentialSignals: {
       items: opts?.potentialSignals ?? [],
@@ -399,6 +405,7 @@ export function buildDossierSnapshot(
         'FDA AEMS potential signals / new safety information are not proven causality and are not incidence rates. Do not rank interventions by report counts.',
     },
     peptideWarnings: peptide ? [peptide.warningState] : [],
+    sourceClassesSeparated: ['label', 'regulator_notice', 'trial', 'paper', 'spontaneous_report'],
   };
 
   const inputHash = createHash('sha256')
@@ -543,6 +550,7 @@ export function getDossier(db: HealthspanDb, entityId: string) {
     evidenceMap: built.evidenceMap,
     regulatoryMatrix: built.regulatoryMatrix,
     safety: built.safety,
+    trialPortfolio: trialPortfolioForEntity(db, entityId),
     openResolutionTasks: openTasks.length,
   };
 }

@@ -226,4 +226,47 @@ describe('connectors with fixtures', () => {
     expect(result.pages[0]?.normalized.provenCausality).toBe(false);
     expect(result.pages[0]?.normalized.incidenceEstablished).toBe(false);
   });
+
+  it('Drugs@FDA ZIP rejects traversal and projects Products.txt', async () => {
+    const { buildSimpleZip, projectDrugsAtFdaZip, assertSafeZipEntryPath } = await import(
+      './index.js'
+    );
+    expect(() => assertSafeZipEntryPath('../evil.txt')).toThrow(/traversal/i);
+    const zip = buildSimpleZip({
+      'Products.txt':
+        'ApplNo\tProductNo\tForm\tStrength\tDrugName\tActiveIngredient\tMarketingStatus\n020357\t001\tTABLET\t500MG\tGLUCOPHAGE\tMETFORMIN HYDROCHLORIDE\tPrescription\n',
+    });
+    const projected = projectDrugsAtFdaZip(zip);
+    expect(projected.products[0]?.brandName).toBe('GLUCOPHAGE');
+    expect(projected.products[0]?.applicationNumber).toBe('020357');
+  });
+
+  it('openFDA event aggregates stay disabled without key and omit patient narratives', async () => {
+    const { createOpenFdaEventAggregateConnector } = await import('./openfda-events.js');
+    const disabled = await createOpenFdaEventAggregateConnector({ apiKey: null }).lookup({
+      query: 'metformin',
+    });
+    expect(disabled.matchKind).toBe('disabled');
+
+    const enabled = await createOpenFdaEventAggregateConnector({
+      enableWithoutKey: true,
+      apiKey: 'test',
+      minIntervalMs: 0,
+      transport: fixtureTransport({
+        'api.fda.gov': {
+          body: JSON.stringify({
+            results: [
+              { term: 'Nausea', count: 12 },
+              { term: 'Diarrhoea', count: 5 },
+            ],
+          }),
+          contentType: 'application/json',
+        },
+      }),
+    }).lookup({ query: 'metformin' });
+    expect(enabled.matchKind).toBe('exact');
+    expect(enabled.pages[0]?.normalized.patientLevelStored).toBe(false);
+    expect(enabled.pages[0]?.normalized.causalityInferred).toBe(false);
+    expect(String(enabled.pages[0]?.normalized.caveat)).toMatch(/not incidence/i);
+  });
 });

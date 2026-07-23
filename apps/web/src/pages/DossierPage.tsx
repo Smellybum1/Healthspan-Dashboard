@@ -126,6 +126,32 @@ export function DossierPage() {
       </section>
 
       <section>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Trial portfolio
+        </h2>
+        <p className="mb-2 text-sm text-[var(--muted)]">
+          {String((data as { trialPortfolio?: { caveat?: string; count?: number } }).trialPortfolio?.caveat ?? '')}
+        </p>
+        <ul className="space-y-1 text-sm">
+          {(
+            (
+              data as {
+                trialPortfolio?: { items?: Array<Record<string, unknown>> };
+              }
+            ).trialPortfolio?.items ?? []
+          ).map((t) => (
+            <li key={String(t.trialId)} className="rounded border border-[var(--border)] px-2 py-1">
+              <Link className="underline" to={itemPath('trial', String(t.trialId))}>
+                {String(t.nctId ?? t.trialId)}
+              </Link>
+              {' · '}
+              {String(t.overallStatus ?? 'status unknown')} · source term “{String(t.sourceTerm)}”
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">Safety</h2>
         <p className="text-sm text-[var(--muted)]">
           {String((data.safety.spontaneousReports as Record<string, unknown>).caveat)}

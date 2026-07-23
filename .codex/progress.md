@@ -1,5 +1,15 @@
 # Progress log
 
+## 2026-07-24 — Milestone 4 complete
+
+- Branch `milestone-4/interventions-peptides-regulation` finished with dossiers, identity/regulatory connectors, ZIP-safe Drugs@FDA projection, openFDA event aggregates (key-gated), AEMS, trial portfolio links, comparison, entity-resolution mutations, Today intervention watch, ADR-0009, DATA_MODEL, e2e, `dossiers:doctor`.
+- Gates: lint, typecheck, test 74, e2e 15/3 skip, build, intelligence:eval 73+16, dossiers:doctor ok.
+- Report: `docs/milestones/M4_COMPLETION_REPORT.md`. Stop before M5 until Pro authorises.
+
+### Next recommended work
+
+Ask ChatGPT Pro for Milestone 5 brief only; do not start M5 until authorised.
+
 ## 2026-07-24 — M4 packet: resolution, compare, Purple Book, AEMS
 
 - Entity-resolution accept/reject/defer/create_entity/keep_separate with append-only decisions
@@ -12,18 +22,6 @@
 
 Drugs@FDA bulk ZIP staging, openFDA event aggregates when keyed, trial↔intervention mappings, Today regulatory events, e2e, full checklist + M4_COMPLETION_REPORT. Do not start M5.
 
-## 2026-07-24 — Milestone 4 in progress (dossier + identity connectors)
-
-- Branch: `milestone-4/interventions-peptides-regulation` (base M3 `4d985d3`).
-- Landed `@healthspan/interventions`, intervention DB schema/migration `0004`, Live dossiers, entity-resolution queue.
-- Fixture-first identity/regulatory connectors: RxNorm, PubChem, GSRS, ARTG (exact/none/ambiguous/parser-break), Drugs@FDA, openFDA (key-disabled healthy).
-- Coverage cells (`not_checked` / miss ≠ unapproved) on dossier regulatory matrix; enrich-identity admin route.
-- Gates checked this packet: lint, typecheck, test (68), build green. `intelligence:eval` still 73/16.
-
-### Next recommended work
-
-Purple Book + Drugs@FDA bulk ZIP path, AEMS/FAERS caveats, comparison views, entity-resolution mutations, docs/ADRs, e2e, full M4 checklist + completion report. Do not start M5.
-
 ## 2026-07-23 — Milestone 1 complete
 
 - Built Healthspan Dashboard monorepo (apps/web, apps/api, packages/*).
@@ -31,7 +29,3 @@ Purple Book + Drugs@FDA bulk ZIP path, AEMS/FAERS caveats, comparison views, ent
 - Quality gates: lint, typecheck, test (14), test:e2e (9 pass / 1 skip), build — all green.
 - Docs + ADRs + screenshots landed under `docs/`.
 - Stopped before Milestone 2.
-
-### Next recommended work
-
-Await Milestone 2 brief: SQLite/Drizzle, adapter framework, job runner, PubMed/CTG/Crossref/TGA connectors.

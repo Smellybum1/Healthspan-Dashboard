@@ -54,7 +54,7 @@ export function TodayPage() {
         title="Today"
         description={
           isLive
-            ? 'Live primary-source scan. Evidence scores arrive in Milestone 3.'
+            ? 'Live primary-source scan with evidence intelligence, intervention dossiers, and scoped regulatory coverage.'
             : 'A ten-minute scan of what changed, what is weakly evidenced but loud, and what is quietly strong.'
         }
       />
@@ -160,21 +160,31 @@ export function TodayPage() {
         </SectionCard>
 
         <SectionCard title="Intervention Watch">
-          {isLive ? (
+          {data.interventionWatch.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">
-              Intervention resolution arrives in a later milestone. Switch to Demo mode in Settings to
-              explore the M1 showcase, or keep Live mode for primary-source papers, trials, and TGA
-              alerts.
+              {isLive
+                ? 'No non-baseline dossier changes yet. Rebuild or enrich a Live intervention dossier to populate this feed.'
+                : 'No intervention watch items in this demo snapshot.'}
             </p>
           ) : (
             <ul className="space-y-2">
               {data.interventionWatch.map((item) => (
                 <li key={item.id} className="flex items-start justify-between gap-2">
                   <div>
-                    <Link className="font-medium hover:underline" to={itemPath(item.type, item.id)}>
+                    <Link
+                      className="font-medium hover:underline"
+                      to={
+                        'href' in item && typeof item.href === 'string'
+                          ? item.href
+                          : itemPath(item.type, item.id)
+                      }
+                    >
                       {item.title}
                     </Link>
                     <p className="text-xs text-[var(--muted)]">{item.summary}</p>
+                    {isLiveBrief(item) && item.meta ? (
+                      <p className="text-[10px] uppercase text-[var(--muted)]">{item.meta}</p>
+                    ) : null}
                   </div>
                   {'unapprovedWarning' in item && item.unapprovedWarning ? (
                     <span className="shrink-0 text-[10px] uppercase text-rose-300">Unapproved</span>

@@ -25,6 +25,14 @@ export { createArtgConnector, parseArtgSearchHtml, normalizeLicenceStanding } fr
 export { createOpenFdaLabelConnector } from './openfda.js';
 export { createDrugsAtFdaConnector } from './drugs-at-fda.js';
 export type { DrugsAtFdaProduct } from './drugs-at-fda.js';
+export {
+  assertSafeZipEntryPath,
+  safeExtractZip,
+  parseDrugsAtFdaProductsTxt,
+  projectDrugsAtFdaZip,
+} from './drugs-at-fda-zip.js';
+export { buildSimpleZip } from './zip-fixture.js';
+export { createOpenFdaEventAggregateConnector, OPENFDA_EVENT_CAVEAT } from './openfda-events.js';
 export { createPurpleBookConnector, parsePurpleBookCsv } from './purple-book.js';
 export type { PurpleBookRow } from './purple-book.js';
 export { createFdaAemsConnector, parseAemsHtml } from './fda-aems.js';

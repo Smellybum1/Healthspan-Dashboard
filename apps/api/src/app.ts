@@ -20,6 +20,8 @@ import {
   intelligenceAnalyses,
   liveClaims,
   claimSourceSpans,
+  dossierChangeEvents,
+  interventionEntities,
 } from '@healthspan/db';
 import { runIngestion } from './ingest.js';
 import { assertAdminMutationAllowed, warnIfRemoteAdminEnabled } from './admin-guard.js';
@@ -56,6 +58,7 @@ import {
   type EntityResolutionAction,
 } from './entity-resolution-service.js';
 import { compareInterventions } from './comparison-service.js';
+import { linkTrialInterventionsToEntities } from './trial-portfolio.js';
 
 type DataMode = 'demo' | 'live';
 
@@ -199,7 +202,7 @@ export function createApp() {
         status: doctor.ok ? 'healthy' : 'degraded',
         integrity: doctor.integrity,
         journalMode: doctor.journalMode,
-        migrationVersion: '0004_m4_interventions',
+        migrationVersion: '0005_m4_safety_portfolio',
       },
       scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),
@@ -319,7 +322,31 @@ export function createApp() {
           t ? `${t.overallStatus}${t.nctId ? ` · ${t.nctId}` : ''}` : undefined,
         );
       }),
-      interventionWatch: [],
+      interventionWatch: (() => {
+        bootstrapInterventionCatalog(live.db);
+        const events = live.db
+          .select()
+          .from(dossierChangeEvents)
+          .orderBy(desc(dossierChangeEvents.createdAt))
+          .limit(12)
+          .all();
+        return events.map((ev) => {
+          const entity = live.db
+            .select()
+            .from(interventionEntities)
+            .where(eq(interventionEntities.id, ev.entityId))
+            .all()[0];
+          return {
+            id: ev.id,
+            type: 'intervention',
+            title: entity?.preferredName ?? ev.entityId,
+            summary: ev.changeSummary,
+            meta: 'Dossier change (non-baseline)',
+            dataOrigin: 'live' as const,
+            href: `/interventions/${ev.entityId}`,
+          };
+        });
+      })(),
       safetyEvents: safety.map((item) => {
         const r = safetyMeta.get(item.id);
         return toBrief(item, r?.category ?? r?.authority ?? undefined);
@@ -904,6 +931,18 @@ export function createApp() {
     if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as { limit?: number };
     const result = runMentionExtractionAndResolution(live.db, body.limit ?? 100);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.post('/api/interventions/link-trial-interventions', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as { limit?: number };
+    const result = linkTrialInterventionsToEntities(live.db, body.limit ?? 500);
     return c.json({ accepted: true, ...result });
   });
 

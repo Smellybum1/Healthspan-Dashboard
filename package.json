@@ -29,7 +29,11 @@
     "ingest:status": "tsx scripts/ingest-status.ts",
     "test:connectors:live": "tsx scripts/live-smoke.ts",
     "intelligence:eval": "tsx scripts/intelligence-eval.ts",
-    "intelligence:doctor": "tsx scripts/intelligence-doctor.ts"
+    "intelligence:doctor": "tsx scripts/intelligence-doctor.ts",
+    "dossiers:doctor": "tsx scripts/dossiers-doctor.ts",
+    "interventions:doctor": "tsx scripts/dossiers-doctor.ts",
+    "regulatory:doctor": "tsx scripts/dossiers-doctor.ts",
+    "safety:doctor": "tsx scripts/dossiers-doctor.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

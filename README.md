@@ -4,7 +4,7 @@ Longevity intelligence, evidence first.
 
 Local-first research intelligence dashboard for longevity and healthspan.
 
-**Current work:** Milestone 3 — Evidence & Claim Intelligence (`milestone-3/evidence-claim-intelligence`)  
+**Current work:** Milestone 4 complete on `milestone-4/interventions-peptides-regulation` — awaiting Milestone 5 brief.
 **Completed:** Milestone 1 (seeded prototype), Milestone 2 (SQLite + primary-source ingestion)
 
 ## Requirements
