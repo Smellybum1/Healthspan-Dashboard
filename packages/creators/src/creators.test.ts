@@ -12,6 +12,10 @@ describe('creator documents', () => {
     });
     expect(parsed.cueCount).toBe(1);
     expect(parsed.text).toMatch(/Metformin/);
+    expect(parsed.segments).toHaveLength(1);
+    expect(parsed.segments[0]?.segmentKind).toBe('cue');
+    expect(parsed.segments[0]?.charStart).toBe(0);
+    expect(parsed.segments[0]?.charEnd).toBe(parsed.text.length);
   });
 });
 

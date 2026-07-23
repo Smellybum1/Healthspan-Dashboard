@@ -215,7 +215,7 @@ export function createApp() {
         status: doctor.ok ? 'healthy' : 'degraded',
         integrity: doctor.integrity,
         journalMode: doctor.journalMode,
-        migrationVersion: '0006_m5_creators',
+        migrationVersion: '0007_m5_creator_schema_depth',
       },
       scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),

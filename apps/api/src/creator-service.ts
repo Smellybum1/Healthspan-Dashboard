@@ -3,8 +3,10 @@ import { desc, eq } from 'drizzle-orm';
 import {
   creatorAliases,
   creatorClaims,
+  creatorClaimSourceSpans,
   creatorDisclosures,
   creatorDocuments,
+  creatorDocumentSegments,
   creatorEntities,
   creatorPlatformAccounts,
   creatorProfileSnapshots,
@@ -136,15 +138,40 @@ export function importCreatorDocument(
       sha256,
       parsedTextExcerpt: parsed.text.slice(0, 2000),
       reviewState: 'accepted',
+      claimEligible: true,
+      rightsDeclaredAt: now,
+      lifecycleState: 'current',
+      mimeType: opts.mediaType ?? null,
       createdAt: now,
     })
     .run();
+
+  const segmentIds: string[] = [];
+  for (const seg of parsed.segments) {
+    const segId = randomUUID();
+    segmentIds.push(segId);
+    db.insert(creatorDocumentSegments)
+      .values({
+        id: segId,
+        documentId: docId,
+        segmentKind: seg.segmentKind,
+        charStart: seg.charStart,
+        charEnd: seg.charEnd,
+        text: seg.text,
+        textHash: createHash('sha256').update(seg.text).digest('hex'),
+        sourceLineOrCueIds: seg.sourceLineOrCueIds ?? null,
+        claimEligible: true,
+        createdAt: now,
+      })
+      .run();
+  }
 
   const drafts = extractCreatorClaimsFromText(parsed.text);
   let claimsCreated = 0;
   let disclosures = 0;
   for (const draft of drafts) {
     const claimId = randomUUID();
+    const fingerprint = claimRecurrenceKey(draft.claimText);
     const alignment = alignCreatorClaim({
       claimText: draft.claimText,
       assertionRole: draft.assertionRole,
@@ -152,20 +179,45 @@ export function importCreatorDocument(
       hasRegulatoryLink: false,
       hasInterventionLink: false,
     });
+    const matchingIdx = parsed.segments.findIndex((s) =>
+      s.text.includes(draft.excerpt.slice(0, Math.min(40, draft.excerpt.length))),
+    );
+    const segIdx = matchingIdx >= 0 ? matchingIdx : 0;
+    const matchingSeg = parsed.segments[segIdx];
+    const matchingSegId = segmentIds[segIdx] ?? null;
     db.insert(creatorClaims)
       .values({
         id: claimId,
         creatorId: opts.creatorId,
         documentId: docId,
+        claimFingerprint: fingerprint,
         claimText: draft.claimText,
         assertionRole: draft.assertionRole,
         excerpt: draft.excerpt,
         fieldPath: draft.fieldPath,
         confidence: draft.confidence,
-        recurrenceKey: claimRecurrenceKey(draft.claimText),
+        recurrenceKey: fingerprint,
         active: true,
+        reviewStatus: 'unreviewed',
+        lifecycleState: 'current',
         alignmentJson: JSON.stringify(alignment),
         extractionVersion: CLAIM_EXTRACT_VERSION,
+        createdAt: now,
+      })
+      .run();
+    db.insert(creatorClaimSourceSpans)
+      .values({
+        id: randomUUID(),
+        claimId,
+        documentId: docId,
+        segmentId: matchingSegId,
+        charStart: matchingSeg?.charStart ?? null,
+        charEnd: matchingSeg?.charEnd ?? null,
+        boundedExcerpt: draft.excerpt.slice(0, 240),
+        excerptWordCount: draft.excerpt.split(/\s+/).filter(Boolean).length,
+        spanHash: createHash('sha256').update(draft.excerpt).digest('hex'),
+        primarySupport: true,
+        displayEligible: true,
         createdAt: now,
       })
       .run();

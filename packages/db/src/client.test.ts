@@ -6,6 +6,14 @@ import { openDatabase, closeDatabase, databaseDoctor } from './client.js';
 import { FileRawSnapshotStore } from './raw-store.js';
 import { DEFAULT_SOURCES, seedOperationalSources } from './seed-sources.js';
 import { sources } from './schema.js';
+import {
+  claimRecurrenceSnapshots,
+  creatorClaimEvidenceLinks,
+  creatorRoles,
+  monitoredCreatorSources,
+  platformContentCurrent,
+  platformPolicyVersions,
+} from './creator-schema.js';
 
 
 describe('sqlite database', () => {
@@ -37,6 +45,25 @@ describe('sqlite database', () => {
     const second = openDatabase({ dbPath, migrateOnOpen: true });
     expect(second.db.select().from(sources).all().length).toBe(DEFAULT_SOURCES.length);
     closeDatabase(second.sqlite);
+  });
+
+  it('applies M5 creator schema depth migration tables', () => {
+    const dbPath = path.join(dir, 'healthspan-dashboard.sqlite3');
+    const { db, sqlite } = openDatabase({ dbPath, migrateOnOpen: true });
+    expect(db.select().from(creatorRoles).all()).toEqual([]);
+    expect(db.select().from(monitoredCreatorSources).all()).toEqual([]);
+    expect(db.select().from(platformPolicyVersions).all()).toEqual([]);
+    expect(db.select().from(platformContentCurrent).all()).toEqual([]);
+    expect(db.select().from(creatorClaimEvidenceLinks).all()).toEqual([]);
+    expect(db.select().from(claimRecurrenceSnapshots).all()).toEqual([]);
+    const cols = sqlite
+      .prepare(`PRAGMA table_info(creator_claims)`)
+      .all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    expect(names.has('claim_fingerprint')).toBe(true);
+    expect(names.has('lifecycle_state')).toBe(true);
+    expect(names.has('review_status')).toBe(true);
+    closeDatabase(sqlite);
   });
 
   it('stores and reuses gzipped raw snapshots', () => {

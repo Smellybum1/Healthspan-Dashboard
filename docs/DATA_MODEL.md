@@ -62,13 +62,15 @@ See ADR-0009.
 
 ## Creator / platform tables (M5)
 
-Identity: `creator_entities`, `creator_aliases`, `creator_platform_accounts`, `creator_profile_snapshots`
+Identity: `creator_entities`, `creator_aliases`, `creator_roles`, `creator_platform_accounts`, `creator_account_identity_candidates`, `creator_identity_tasks`, `creator_profile_statements`, `creator_profile_snapshots`, `creator_profile_state`
 
-Content & documents: `creator_content_items` (metadata-only platform rows), `creator_documents` (user-supplied / authorised transcripts with rights basis)
+Monitoring & platform: `monitored_creator_sources`, `creator_content_items` (metadata-only), `platform_content_current`, `platform_content_tombstones`, `platform_compliance_events`, `platform_retention_job_results`, `platform_policy_state`, `platform_policy_versions`, `platform_quota_ledgers`, `platform_price_tables`, `x_budget_ledger`
 
-Claims: `creator_claims`, `creator_claim_links`, `creator_disclosures`
+Documents: `creator_documents` (user-supplied / authorised transcripts with rights basis), `creator_document_segments`
 
-Policy: `platform_policy_state`, `x_budget_ledger`
+Claims & alignment: `creator_claims`, `creator_claim_source_spans`, `creator_claim_concepts`, `creator_claim_links` (legacy bridge), `creator_claim_evidence_links`, `creator_claim_alignment_assessments`, `creator_claim_alignment_dimensions`, `creator_claim_findings`, `creator_claim_relationships`, `creator_corrections`, `creator_disclosures`, `creator_events`, `claim_recurrence_snapshots`
+
+Schema depth migration: `0007_m5_creator_schema_depth` (ALTER existing M5 tables + CREATE §14 entities). Business logic for connectors/alignment ships in later M5 packets.
 
 YouTube API metadata is never claim evidence. X is optional, budget-capped, and never sent to external AI. No creator trust/credibility/misinformation/influence/attention/engagement/popularity scores.
 
