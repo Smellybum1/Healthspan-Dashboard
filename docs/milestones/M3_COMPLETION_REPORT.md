@@ -2,7 +2,7 @@
 
 **Branch:** `milestone-3/evidence-claim-intelligence`  
 **Base:** `milestone-2/persistent-data-backbone` @ `4a39a1c`  
-**Final commit:** `e8489c04155b6ce5ec9371a1c95866737b1d8b13`  
+**Final commit:** `b835278a6d18ac984d4f470f61ba3013245a61bc (feature complete; HEAD may include report hash fixups)`  
 **Date:** 23 July 2026  
 **Status:** Complete for Milestone 3 acceptance (stop before Milestone 4)
 
