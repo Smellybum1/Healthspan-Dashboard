@@ -58,8 +58,27 @@ const pairs = [
   },
 ] as const;
 
+type PairCase = {
+  id: string;
+  a: {
+    fingerprint: string;
+    claimText: string;
+    assertionRole: string;
+    direction: string;
+    outcomeFamily: string | null;
+  };
+  b: {
+    fingerprint: string;
+    claimText: string;
+    assertionRole: string;
+    direction: string;
+    outcomeFamily: string | null;
+  };
+  expect: string;
+};
+
 // Expand to >=16 pairs by variations
-const expanded = [...pairs];
+const expanded: PairCase[] = [...pairs];
 for (let i = 0; i < 13; i += 1) {
   expanded.push({
     id: `opposite-var-${i}`,
@@ -78,7 +97,7 @@ for (let i = 0; i < 13; i += 1) {
       outcomeFamily: 'biomarker',
     },
     expect: 'potentially_conflicts',
-  } as (typeof pairs)[number]);
+  });
 }
 
 describe('claim relationships', () => {

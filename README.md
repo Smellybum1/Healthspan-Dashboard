@@ -43,6 +43,8 @@ pnpm test
 pnpm test:e2e
 pnpm build
 pnpm db:doctor
+pnpm intelligence:eval
+pnpm intelligence:doctor
 ```
 
 Playwright browsers (once):

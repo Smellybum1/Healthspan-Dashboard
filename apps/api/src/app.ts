@@ -16,7 +16,6 @@ import {
   papers,
   trials,
   regulatoryEvents,
-  liveReviewTasks,
   contentIntelligenceState,
   intelligenceAnalyses,
   liveClaims,
@@ -32,8 +31,15 @@ import {
   stableDedupeKey,
 } from './jobs.js';
 import { createLocalScheduler } from './local-scheduler.js';
-import { liveRadarPoints, runIntelligenceAnalysis } from './intelligence-service.js';
+import { liveRadarPoints, runIntelligenceAnalysis, intelligenceStatus, listIntelligenceRuns, getIntelligenceRun, listLiveClaims, getLiveClaim } from './intelligence-service.js';
 import { listContentItems } from './content-service.js';
+import {
+  listReviewTasks,
+  listReviewDecisions,
+  resolveReviewTask,
+  REVIEW_ACTIONS,
+  type ReviewAction,
+} from './review-service.js';
 
 type DataMode = 'demo' | 'live';
 
@@ -122,6 +128,16 @@ export function createApp() {
           result && typeof result === 'object' && 'status' in result
             ? String((result as { status?: string }).status)
             : 'succeeded';
+        if (status !== 'failed') {
+          enqueueJob(live.db, {
+            kind: 'intelligence',
+            payload: { limit: 50, trigger: 'post_ingest', staleOnly: true },
+            dedupeKey: stableDedupeKey('intelligence-post-ingest', {
+              window: Math.floor(Date.now() / 60_000),
+            }),
+            priority: 30,
+          });
+        }
         return {
           status: status === 'failed' ? 'failed' : status === 'partial' ? 'partial' : 'succeeded',
           relatedRunId:
@@ -135,6 +151,10 @@ export function createApp() {
           db: live.db,
           limit: Number(job.payload.limit ?? 50),
           trigger: String(job.payload.trigger ?? 'manual'),
+          staleOnly: Boolean(job.payload.staleOnly),
+          contentItemIds: Array.isArray(job.payload.contentItemIds)
+            ? (job.payload.contentItemIds as string[])
+            : undefined,
         });
         return { status: result.status, relatedRunId: result.runId };
       }
@@ -163,7 +183,7 @@ export function createApp() {
         status: doctor.ok ? 'healthy' : 'degraded',
         integrity: doctor.integrity,
         journalMode: doctor.journalMode,
-        migrationVersion: '0002_m3_intelligence',
+        migrationVersion: '0003_m3_review_provenance',
       },
       scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),
@@ -428,11 +448,24 @@ export function createApp() {
 
   app.get('/api/search', (c) => {
     const q = c.req.query('q') ?? '';
+    const page = Math.max(1, Number(c.req.query('page') ?? 1));
+    const pageSize = Math.min(100, Math.max(1, Number(c.req.query('pageSize') ?? 25)));
     if (currentMode() === 'demo') {
-      const items = demoRepo.searchItems(q);
-      return c.json({ query: q, count: items.length, items, dataMode: 'demo', dataOrigin: 'demo' });
+      const all = demoRepo.searchItems(q);
+      const start = (page - 1) * pageSize;
+      const items = all.slice(start, start + pageSize);
+      return c.json({
+        query: q,
+        count: items.length,
+        total: all.length,
+        page,
+        pageSize,
+        items,
+        dataMode: 'demo',
+        dataOrigin: 'demo',
+      });
     }
-    const items = live.db
+    const all = live.db
       .select()
       .from(contentItems)
       .all()
@@ -440,18 +473,27 @@ export function createApp() {
         (i) =>
           i.title.toLowerCase().includes(q.toLowerCase()) ||
           (i.summary ?? '').toLowerCase().includes(q.toLowerCase()),
-      )
-      .map((i) => ({
-        id: i.id,
-        type: i.type,
-        title: i.title,
-        summary: i.summary ?? '',
-        tags: [],
-        publishedAt: i.sourcePublishedAt ? new Date(i.sourcePublishedAt).toISOString() : null,
-        updatedAt: new Date(i.updatedAt).toISOString(),
-        dataOrigin: 'live' as const,
-      }));
-    return c.json({ query: q, count: items.length, items, dataMode: 'live', dataOrigin: 'live' });
+      );
+    const items = all.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize).map((i) => ({
+      id: i.id,
+      type: i.type,
+      title: i.title,
+      summary: i.summary ?? '',
+      tags: [],
+      publishedAt: i.sourcePublishedAt ? new Date(i.sourcePublishedAt).toISOString() : null,
+      updatedAt: new Date(i.updatedAt).toISOString(),
+      dataOrigin: 'live' as const,
+    }));
+    return c.json({
+      query: q,
+      count: items.length,
+      total: all.length,
+      page,
+      pageSize,
+      items,
+      dataMode: 'live',
+      dataOrigin: 'live',
+    });
   });
 
   app.get('/api/sources', (c) => {
@@ -587,8 +629,19 @@ export function createApp() {
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
     }
-    const body = (await c.req.json().catch(() => ({}))) as { limit?: number };
-    const payload = { limit: body.limit ?? 50, trigger: 'manual' };
+    const body = (await c.req.json().catch(() => ({}))) as {
+      limit?: number;
+      maxItems?: number;
+      scope?: string;
+      itemIds?: string[];
+      staleOnly?: boolean;
+    };
+    const payload = {
+      limit: body.maxItems ?? body.limit ?? 50,
+      trigger: 'manual',
+      staleOnly: body.staleOnly || body.scope === 'stale',
+      contentItemIds: body.itemIds,
+    };
     const { job, created } = enqueueJob(live.db, {
       kind: 'intelligence',
       payload,
@@ -603,6 +656,84 @@ export function createApp() {
     );
   });
 
+  app.get('/api/intelligence/status', (c) => {
+    if (currentMode() === 'demo') {
+      return c.json({
+        dataMode: 'demo',
+        rulesetVersion: 'demo',
+        assessedCount: 0,
+        staleCount: 0,
+        openReviewTaskCount: 0,
+        recentRuns: [],
+        note: 'Demo mode uses seed assessments, not Live intelligence runs.',
+      });
+    }
+    return c.json(intelligenceStatus(live.db));
+  });
+
+  app.get('/api/intelligence/runs', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', runs: [] });
+    const runs = listIntelligenceRuns(live.db).map((r) => ({
+      id: r.id,
+      status: r.status,
+      trigger: r.trigger,
+      scope: r.scope,
+      completedCount: r.completedCount,
+      reusedCount: r.reusedCount,
+      reviewTaskCount: r.reviewTaskCount,
+      summary: r.summary,
+      startedAt: new Date(r.startedAt).toISOString(),
+      completedAt: r.completedAt ? new Date(r.completedAt).toISOString() : null,
+    }));
+    return c.json({ dataMode: 'live', runs });
+  });
+
+  app.get('/api/intelligence/runs/:id', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const run = getIntelligenceRun(live.db, c.req.param('id'));
+    if (!run) return c.json({ error: 'Not found' }, 404);
+    return c.json({
+      dataMode: 'live',
+      run: {
+        ...run,
+        startedAt: new Date(run.startedAt).toISOString(),
+        completedAt: run.completedAt ? new Date(run.completedAt).toISOString() : null,
+      },
+    });
+  });
+
+  app.get('/api/claims', (c) => {
+    if (currentMode() === 'demo') {
+      return c.json({
+        dataMode: 'demo',
+        items: [],
+        page: 1,
+        pageSize: 25,
+        total: 0,
+        totalPages: 1,
+        note: 'Live claims workspace is empty in Demo mode.',
+      });
+    }
+    return c.json({
+      dataMode: 'live',
+      ...listLiveClaims(live.db, {
+        page: Number(c.req.query('page') ?? 1),
+        pageSize: Number(c.req.query('pageSize') ?? 25),
+        claimKind: c.req.query('claimKind') ?? undefined,
+        assertionRole: c.req.query('assertionRole') ?? undefined,
+        reviewStatus: c.req.query('reviewStatus') ?? undefined,
+        q: c.req.query('q') ?? undefined,
+      }),
+    });
+  });
+
+  app.get('/api/claims/:id', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const detail = getLiveClaim(live.db, c.req.param('id'));
+    if (!detail) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', ...detail });
+  });
+
   app.get('/api/review/tasks', (c) => {
     if (currentMode() === 'demo') {
       const seed = demoRepo.getDashboardPayload();
@@ -611,12 +742,10 @@ export function createApp() {
         tasks: seed.needsReview,
       });
     }
-    const tasks = live.db
-      .select()
-      .from(liveReviewTasks)
-      .orderBy(desc(liveReviewTasks.createdAt))
-      .limit(100)
-      .all();
+    const tasks = listReviewTasks(live.db, {
+      status: c.req.query('status') ?? undefined,
+      limit: Number(c.req.query('limit') ?? 100),
+    });
     return c.json({
       dataMode: 'live',
       tasks: tasks.map((t) => ({
@@ -627,9 +756,54 @@ export function createApp() {
         confidence: t.confidence,
         contentItemId: t.contentItemId,
         claimId: t.claimId,
+        analysisId: t.analysisId,
+        expectedAnalysisId: t.expectedAnalysisId,
         createdAt: new Date(t.createdAt).toISOString(),
       })),
     });
+  });
+
+  app.get('/api/review/decisions', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', decisions: [] });
+    const decisions = listReviewDecisions(live.db).map((d) => ({
+      id: d.id,
+      taskId: d.taskId,
+      action: d.action,
+      claimId: d.claimId,
+      notes: d.notes,
+      editedClaimText: d.editedClaimText,
+      createdAt: new Date(d.createdAt).toISOString(),
+    }));
+    return c.json({ dataMode: 'live', decisions });
+  });
+
+  app.post('/api/review/tasks/:id/resolve', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') {
+      return c.json({ error: 'Review resolution is Live-only' }, 400);
+    }
+    const body = (await c.req.json().catch(() => ({}))) as {
+      action?: string;
+      notes?: string;
+      editedClaimText?: string;
+      expectedAnalysisId?: string;
+    };
+    if (!body.action || !(REVIEW_ACTIONS as readonly string[]).includes(body.action)) {
+      return c.json({ error: 'Invalid action' }, 400);
+    }
+    const result = resolveReviewTask(live.db, {
+      taskId: c.req.param('id'),
+      action: body.action as ReviewAction,
+      notes: body.notes,
+      editedClaimText: body.editedClaimText,
+      expectedAnalysisId: body.expectedAnalysisId,
+    });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json(result);
   });
 
   app.get('/api/scheduler', (c) => c.json(scheduler.getStatus()));

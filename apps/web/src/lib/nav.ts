@@ -8,6 +8,7 @@ export const NAV_ITEMS = [
   { to: '/creators', label: 'Creators' },
   { to: '/safety', label: 'Safety & Regulation' },
   { to: '/sources', label: 'Source Health' },
+  { to: '/claims', label: 'Claims' },
   { to: '/review', label: 'Review Queue' },
   { to: '/watchlists', label: 'Watchlists' },
   { to: '/methodology', label: 'Methodology' },
@@ -41,7 +42,7 @@ export function itemPath(type: string, id: string) {
     case 'regulatory_event':
       return `/safety?focus=${id}`;
     case 'claim':
-      return `/creators`;
+      return `/claims/${id}`;
     default:
       return '/discover';
   }

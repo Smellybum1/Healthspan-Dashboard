@@ -61,6 +61,7 @@ export const intelligenceAnalyses = sqliteTable(
     translationGapsJson: text('translation_gaps_json').notNull().default('[]'),
     methodologicalSignalsJson: text('methodological_signals_json').notNull().default('[]'),
     whatWouldChangeJson: text('what_would_change_json').notNull().default('[]'),
+    hallmarksJson: text('hallmarks_json').notNull().default('[]'),
     createdAt: ts('created_at'),
     supersededAt: tsNull('superseded_at'),
   },
@@ -120,6 +121,8 @@ export const liveReviewTasks = sqliteTable('live_review_tasks', {
   contentItemId: text('content_item_id'),
   claimId: text('claim_id'),
   analysisId: text('analysis_id'),
+  sourceRecordVersionId: text('source_record_version_id'),
+  expectedAnalysisId: text('expected_analysis_id'),
   title: text('title').notNull(),
   reason: text('reason').notNull(),
   status: text('status').notNull().default('open'),
@@ -128,3 +131,52 @@ export const liveReviewTasks = sqliteTable('live_review_tasks', {
   resolvedAt: tsNull('resolved_at'),
   resolutionJson: text('resolution_json'),
 });
+
+export const reviewDecisions = sqliteTable(
+  'review_decisions',
+  {
+    id: id(),
+    taskId: text('task_id'),
+    contentItemId: text('content_item_id'),
+    claimId: text('claim_id'),
+    analysisId: text('analysis_id'),
+    sourceRecordVersionId: text('source_record_version_id'),
+    action: text('action').notNull(),
+    decisionText: text('decision_text'),
+    editedClaimText: text('edited_claim_text'),
+    actor: text('actor').notNull().default('local_admin'),
+    createdAt: ts('created_at'),
+    notes: text('notes'),
+  },
+  (t) => [index('review_decisions_task').on(t.taskId), index('review_decisions_claim').on(t.claimId)],
+);
+
+export const analysisSourceDependencies = sqliteTable(
+  'analysis_source_dependencies',
+  {
+    id: id(),
+    analysisId: text('analysis_id').notNull(),
+    contentItemId: text('content_item_id').notNull(),
+    sourceRecordVersionId: text('source_record_version_id'),
+    role: text('role').notNull().default('primary'),
+    createdAt: ts('created_at'),
+  },
+  (t) => [index('analysis_deps_analysis').on(t.analysisId)],
+);
+
+export const claimRelationships = sqliteTable(
+  'claim_relationships',
+  {
+    id: id(),
+    leftClaimId: text('left_claim_id').notNull(),
+    rightClaimId: text('right_claim_id').notNull(),
+    relationship: text('relationship').notNull(),
+    comparabilityJson: text('comparability_json').notNull().default('[]'),
+    rationale: text('rationale').notNull(),
+    rulesetVersion: text('ruleset_version').notNull(),
+    createdAt: ts('created_at'),
+  },
+  (t) => [
+    uniqueIndex('claim_relationships_pair').on(t.leftClaimId, t.rightClaimId, t.relationship),
+  ],
+);

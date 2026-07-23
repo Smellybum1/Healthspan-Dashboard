@@ -78,23 +78,36 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
             <YAxis
               type="number"
               dataKey="y"
-              name="Attention"
+              name="Research activity"
               unit="%"
               domain={[0, 100]}
               tick={{ fill: 'var(--muted)', fontSize: 11 }}
-              label={{ value: 'Attention ↑', angle: -90, position: 'insideLeft', fill: 'var(--muted)' }}
+              label={{ value: 'Research activity ↑', angle: -90, position: 'insideLeft', fill: 'var(--muted)' }}
             />
             <ZAxis type="number" dataKey="z" range={[50, 240]} />
             <Tooltip
               cursor={{ strokeDasharray: '3 3' }}
               content={({ payload }) => {
-                const p = payload?.[0]?.payload as SignalRadarPoint | undefined;
+                const p = payload?.[0]?.payload as
+                  | (SignalRadarPoint & {
+                      formulaVersion?: string;
+                      researchActivityRaw?: number;
+                      stale?: boolean;
+                    })
+                  | undefined;
                 if (!p) return null;
                 return (
                   <div className="max-w-xs rounded-md border border-[var(--border)] bg-[var(--surface)] p-2 text-xs shadow">
                     <p className="font-semibold">{p.label}</p>
                     <p className="text-[var(--muted)]">{EVIDENCE_MATURITY_LABELS[p.evidenceMaturity]}</p>
-                    <p>Attention: {Math.round(p.attentionY * 100)}%</p>
+                    <p>
+                      Research activity: {Math.round(p.attentionY * 100)}% (raw{' '}
+                      {p.researchActivityRaw ?? p.attentionY})
+                    </p>
+                    <p className="text-[var(--muted)]">
+                      Formula: {p.formulaVersion ?? 'research_activity.v1'} — not social attention, truth, or efficacy
+                    </p>
+                    {p.stale ? <p className="text-amber-300">Intelligence stale — awaiting reassessment</p> : null}
                     {p.safetyConcern ? <p className="text-rose-300">Safety/regulatory concern</p> : null}
                   </div>
                 );

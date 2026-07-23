@@ -453,4 +453,7 @@ export {
   liveClaims,
   claimSourceSpans,
   liveReviewTasks,
+  reviewDecisions,
+  analysisSourceDependencies,
+  claimRelationships,
 } from './intelligence-schema.js';

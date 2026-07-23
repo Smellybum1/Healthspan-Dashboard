@@ -39,6 +39,12 @@ export type StudyProfileDraft = {
   translationGaps: string[];
   methodologicalSignals: Array<{ code: string; state: string; explanation: string }>;
   whatWouldChange: string[];
+  potentialHallmarks: Array<{
+    hallmark: string;
+    relationship: 'potential';
+    method: 'keyword_heuristic';
+    confidence: 'low';
+  }>;
 };
 
 export type ClaimDraft = {
@@ -144,19 +150,71 @@ export function classifyStudyProfile(record: NormalizedLiveRecord): StudyProfile
   const classificationConfidence: ClassificationConfidence =
     type === 'trial' || type === 'paper' || type === 'regulatory_event' ? 'medium' : 'low';
 
+  const summary = `${record.title ?? ''} ${record.summary ?? ''}`.toLowerCase();
+  let populationContext: string | null = null;
+  if (summary.includes('adult')) populationContext = 'adults';
+  else if (summary.includes('older') || summary.includes('elderly')) populationContext = 'older_adults';
+  else if (organismLevel === 'human') populationContext = 'human_unspecified';
+  else if (organismLevel === 'unknown') populationContext = null;
+  else populationContext = organismLevel;
+
+  const retractionOrCorrection = Boolean(record.retractionOrCorrection);
+
   return {
     studyDesign: String(record.studyDesign ?? record.overallStatus ?? 'unspecified'),
     evidenceAvailability,
     evidenceMaturity,
     organismLevel,
-    populationContext: null,
+    populationContext,
     resultsPresent,
-    retractionOrCorrection: false,
-    classificationConfidence,
+    retractionOrCorrection,
+    classificationConfidence: retractionOrCorrection ? 'low' : classificationConfidence,
     translationGaps,
-    methodologicalSignals,
+    methodologicalSignals: retractionOrCorrection
+      ? [
+          ...methodologicalSignals,
+          {
+            code: 'retraction_or_correction',
+            state: 'present',
+            explanation: 'Correction/retraction signal overrides ordinary presentation until reviewed.',
+          },
+        ]
+      : methodologicalSignals,
     whatWouldChange,
+    potentialHallmarks: inferPotentialHallmarks(summary),
   };
+}
+
+function inferPotentialHallmarks(text: string): Array<{
+  hallmark: string;
+  relationship: 'potential';
+  method: 'keyword_heuristic';
+  confidence: 'low';
+}> {
+  const out: Array<{
+    hallmark: string;
+    relationship: 'potential';
+    method: 'keyword_heuristic';
+    confidence: 'low';
+  }> = [];
+  const rules: Array<[string, string]> = [
+    ['telomere', 'telomere_attrition'],
+    ['senescen', 'cellular_senescence'],
+    ['mitochond', 'mitochondrial_dysfunction'],
+    ['inflam', 'chronic_inflammation'],
+    ['autophagy', 'disabled_macroautophagy'],
+  ];
+  for (const [needle, hallmark] of rules) {
+    if (text.includes(needle)) {
+      out.push({
+        hallmark,
+        relationship: 'potential',
+        method: 'keyword_heuristic',
+        confidence: 'low',
+      });
+    }
+  }
+  return out;
 }
 
 export function buildClaims(
@@ -174,10 +232,31 @@ export function buildClaims(
         ? 'regulatory_statement'
         : 'reported_finding';
 
-  const claimText =
+  const text = primary.text.toLowerCase();
+  let outcomeFamily: string | null = null;
+  if (text.includes('lifespan') || text.includes('mortality')) outcomeFamily = 'lifespan_mortality';
+  else if (text.includes('biomarker') || text.includes('hdl') || text.includes('crp')) outcomeFamily = 'biomarker';
+  else if (text.includes('function') || text.includes('gait') || text.includes('vo2')) outcomeFamily = 'function';
+  else if (text.includes('safety') || text.includes('adverse')) outcomeFamily = 'safety';
+
+  // Biomarker changes are never presented as demonstrated lifespan extension.
+  let claimText =
     record.type === 'trial' && !profile.resultsPresent
       ? `Registry protocol/plan: ${record.title ?? 'Untitled trial'} (results not posted).`
       : primary.text.slice(0, 280);
+  if (outcomeFamily === 'biomarker' && /lifespan extension|extends lifespan|prolongs life/i.test(claimText)) {
+    claimText = `${claimText.slice(0, 200)} [biomarker-only; not demonstrated lifespan extension]`;
+  }
+  if (profile.organismLevel === 'animal' || profile.organismLevel === 'cell') {
+    claimText = `${claimText} [${profile.organismLevel} evidence — not human evidence]`;
+  }
+
+  let direction = 'unspecified';
+  if (/\b(improv|increas|benefit|positiv)/i.test(text) && !/\b(worsen|decreas|reduc)/i.test(text)) {
+    direction = 'positive';
+  } else if (/\b(worsen|adverse|harm)/i.test(text)) {
+    direction = 'negative';
+  }
 
   const fingerprint = hashText(
     [record.type, role, claimText, primary.textHash, profile.evidenceMaturity].join('|'),
@@ -189,8 +268,8 @@ export function buildClaims(
       claimKind: record.type === 'regulatory_event' ? 'safety_regulatory' : 'scientific',
       assertionRole: role,
       claimText,
-      direction: 'unspecified',
-      outcomeFamily: null,
+      direction,
+      outcomeFamily,
       classificationConfidence: profile.classificationConfidence,
       primaryExcerpt: primary.text.slice(0, 240),
       fieldPath: primary.fieldPath,

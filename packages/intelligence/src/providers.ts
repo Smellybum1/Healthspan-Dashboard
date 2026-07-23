@@ -89,14 +89,62 @@ export function createOpenAIResponsesIntelligenceProvider(opts: {
 export function resolveIntelligenceProvider(): IntelligenceProvider {
   const enabled = process.env.HEALTHSPAN_AI_ENABLED === 'true';
   const provider = (process.env.HEALTHSPAN_AI_PROVIDER ?? 'disabled').toLowerCase();
-  if (!enabled || provider === 'disabled') return createDisabledIntelligenceProvider();
-  if (provider === 'fixture') return createFixtureIntelligenceProvider();
-  if (provider === 'openai') {
-    return createOpenAIResponsesIntelligenceProvider({
-      enabled: true,
-      apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.HEALTHSPAN_OPENAI_MODEL,
-    });
-  }
-  return createDisabledIntelligenceProvider();
+  const base =
+    !enabled || provider === 'disabled'
+      ? createDisabledIntelligenceProvider()
+      : provider === 'fixture'
+        ? createFixtureIntelligenceProvider()
+        : provider === 'openai'
+          ? createOpenAIResponsesIntelligenceProvider({
+              enabled: true,
+              apiKey: process.env.OPENAI_API_KEY,
+              model: process.env.HEALTHSPAN_OPENAI_MODEL,
+            })
+          : createDisabledIntelligenceProvider();
+  return withAiCaps(base);
+}
+
+/** Soft local caps — AI remains optional and cannot write persistence itself. */
+function withAiCaps(inner: IntelligenceProvider): IntelligenceProvider {
+  const dailyCap = Number(process.env.HEALTHSPAN_AI_DAILY_CAP ?? 50);
+  const concurrencyCap = Number(process.env.HEALTHSPAN_AI_CONCURRENCY_CAP ?? 1);
+  let dayKey = '';
+  let dayCount = 0;
+  let inFlight = 0;
+  return {
+    id: inner.id,
+    async analyze(request) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (dayKey !== today) {
+        dayKey = today;
+        dayCount = 0;
+      }
+      if (inner.id !== 'disabled' && dayCount >= dailyCap) {
+        return {
+          providerId: inner.id,
+          model: null,
+          used: false,
+          suggestions: null,
+          warnings: ['ai_daily_cap_reached'],
+        };
+      }
+      if (inFlight >= concurrencyCap) {
+        return {
+          providerId: inner.id,
+          model: null,
+          used: false,
+          suggestions: null,
+          warnings: ['ai_concurrency_cap_reached'],
+        };
+      }
+      inFlight += 1;
+      try {
+        const result = await inner.analyze(request);
+        if (result.used) dayCount += 1;
+        return result;
+      } finally {
+        inFlight -= 1;
+      }
+    },
+  };
 }

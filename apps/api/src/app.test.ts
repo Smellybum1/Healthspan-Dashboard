@@ -85,4 +85,38 @@ describe('API contract', () => {
     expect(body.radarUnavailableReason).toBeTruthy();
     process.env.HEALTHSPAN_DATA_MODE = 'demo';
   });
+
+  it('queues ingestion with 202 and redacts source paths', async () => {
+    process.env.HEALTHSPAN_DATA_MODE = 'live';
+    const run = await app.request('/api/ingestion/run', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sourceId: 'pubmed', recordCap: 1 }),
+    });
+    expect(run.status).toBe(202);
+    const runBody = await run.json();
+    expect(runBody.jobId).toBeTruthy();
+
+    const sources = await app.request('/api/sources');
+    expect(sources.status).toBe(200);
+    const sourceBody = await sources.json();
+    const encoded = JSON.stringify(sourceBody);
+    expect(encoded).not.toContain(process.env.HEALTHSPAN_DATA_DIR);
+    expect(sourceBody.paths).toBeUndefined();
+    process.env.HEALTHSPAN_DATA_MODE = 'demo';
+  });
+
+  it('exposes intelligence status and claims list in live mode', async () => {
+    process.env.HEALTHSPAN_DATA_MODE = 'live';
+    const status = await app.request('/api/intelligence/status');
+    expect(status.status).toBe(200);
+    const statusBody = await status.json();
+    expect(statusBody.rulesetVersion).toBeTruthy();
+
+    const claims = await app.request('/api/claims');
+    expect(claims.status).toBe(200);
+    const claimsBody = await claims.json();
+    expect(Array.isArray(claimsBody.items)).toBe(true);
+    process.env.HEALTHSPAN_DATA_MODE = 'demo';
+  });
 });

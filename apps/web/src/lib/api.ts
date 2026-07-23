@@ -70,6 +70,18 @@ export function postIntelligenceRun(body: { limit?: number } = {}) {
   return postJson<Record<string, unknown>>('/api/intelligence/run', body);
 }
 
+export function resolveReviewTask(
+  taskId: string,
+  body: {
+    action: 'accept' | 'edit' | 'reject' | 'uncertain' | 'dismiss';
+    notes?: string;
+    editedClaimText?: string;
+    expectedAnalysisId?: string;
+  },
+) {
+  return postJson<Record<string, unknown>>(`/api/review/tasks/${taskId}/resolve`, body);
+}
+
 export function fetchItems(params: Record<string, string | undefined> = {}) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

@@ -32,6 +32,7 @@ import {
   rawSnapshots,
   type HealthspanDb,
 } from '@healthspan/db';
+import { markIntelligenceStale } from './intelligence-service.js';
 
 export type IngestOptions = {
   db: HealthspanDb;
@@ -294,6 +295,11 @@ export async function runIngestion(opts: IngestOptions) {
         const upserted = upsertContentFromNormalized(opts.db, connector.id, sourceObjectId, versionId, page.normalized, childStart, isBaseline);
         contentUpserts += upserted.content;
         changeCount += upserted.events;
+        for (const contentId of upserted.contentIds) {
+          if (!isBaseline) {
+            markIntelligenceStale(opts.db, contentId, 'source_version_changed');
+          }
+        }
       }
 
       const status = result.ok ? (result.warnings?.length ? 'partial' : 'succeeded') : 'failed';
@@ -395,6 +401,7 @@ export async function runIngestion(opts: IngestOptions) {
     changeEvents: totalEvents,
     errors: totalErrors,
     summaries: childSummaries,
+    changedContent: totalContent > 0,
   };
 }
 
@@ -410,6 +417,7 @@ function upsertContentFromNormalized(
   const type = String(normalized.type ?? '');
   let content = 0;
   let events = 0;
+  const contentIds: string[] = [];
 
   if (type === 'paper' || type === 'paper_enrichment') {
     const pmid = normalized.pmid ? String(normalized.pmid) : null;
@@ -465,6 +473,7 @@ function upsertContentFromNormalized(
           .run();
       }
       content += 1;
+      contentIds.push(contentId);
       if (!isBaseline) {
         db.insert(changeEvents)
           .values({
@@ -498,6 +507,7 @@ function upsertContentFromNormalized(
         .where(eq(contentItems.id, contentId))
         .run();
       content += 1;
+      contentIds.push(contentId);
     }
 
     db.insert(contentItemSources)
@@ -624,6 +634,7 @@ function upsertContentFromNormalized(
         .run();
 
       content += 1;
+      contentIds.push(contentId);
       if (!isBaseline) {
         db.insert(changeEvents)
           .values({
@@ -696,6 +707,7 @@ function upsertContentFromNormalized(
         }
       }
       content += 1;
+      contentIds.push(contentId);
     }
 
     db.insert(contentItemSources)
@@ -754,6 +766,7 @@ function upsertContentFromNormalized(
         .values({ id: randomUUID(), contentItemId: contentId, scheme: 'tga-guid', value: guid, sourceId })
         .run();
       content += 1;
+      contentIds.push(contentId);
       if (!isBaseline && normalized.relevanceMatched) {
         db.insert(changeEvents)
           .values({
@@ -778,6 +791,7 @@ function upsertContentFromNormalized(
     } else {
       db.update(contentItems).set({ lastSeenAt: at, updatedAt: at }).where(eq(contentItems.id, contentId)).run();
       content += 1;
+      contentIds.push(contentId);
     }
 
     db.insert(contentItemSources)
@@ -792,5 +806,5 @@ function upsertContentFromNormalized(
       .run();
   }
 
-  return { content, events };
+  return { content, events, contentIds };
 }

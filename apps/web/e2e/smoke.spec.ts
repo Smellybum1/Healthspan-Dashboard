@@ -59,3 +59,25 @@ test.describe('Milestone 1 smoke', () => {
     await page.screenshot({ path: path.join(shotDir, 'mobile-methodology.png'), fullPage: true });
   });
 });
+
+test.describe('Milestone 3 Live intelligence surfaces', () => {
+  test('claims workspace and review queue are reachable', async ({ page }) => {
+    await page.goto('/claims');
+    await expect(page.getByRole('heading', { name: 'Claims workspace' })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm3-claims.png'), fullPage: true });
+
+    await page.goto('/review');
+    await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm3-review.png'), fullPage: true });
+  });
+
+  test('mobile review queue is reachable', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'mobile project only');
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('link', { name: 'Review Queue' }).click();
+    await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm3-mobile-review.png'), fullPage: true });
+  });
+});
