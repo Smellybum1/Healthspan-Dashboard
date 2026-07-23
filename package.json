@@ -33,7 +33,15 @@
     "dossiers:doctor": "tsx scripts/dossiers-doctor.ts",
     "interventions:doctor": "tsx scripts/dossiers-doctor.ts",
     "regulatory:doctor": "tsx scripts/dossiers-doctor.ts",
-    "safety:doctor": "tsx scripts/dossiers-doctor.ts"
+    "safety:doctor": "tsx scripts/dossiers-doctor.ts",
+    "creators:eval": "tsx scripts/creators-eval.ts",
+    "creators:doctor": "tsx scripts/creators-doctor.ts",
+    "creator-claims:eval": "tsx scripts/creators-eval.ts",
+    "creator-claims:doctor": "tsx scripts/creators-doctor.ts",
+    "creator-documents:doctor": "tsx scripts/creators-doctor.ts",
+    "youtube:doctor": "tsx scripts/platform-policy-doctor.ts",
+    "x:doctor": "tsx scripts/platform-policy-doctor.ts",
+    "platform-policy:doctor": "tsx scripts/platform-policy-doctor.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
@@ -41,6 +49,7 @@
     "@healthspan/db": "workspace:*",
     "@healthspan/intelligence": "workspace:*",
     "@healthspan/interventions": "workspace:*",
+    "@healthspan/creators": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.10",

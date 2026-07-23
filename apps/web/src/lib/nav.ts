@@ -6,6 +6,7 @@ export const NAV_ITEMS = [
   { to: '/interventions', label: 'Interventions' },
   { to: '/peptides', label: 'Peptides' },
   { to: '/creators', label: 'Creators' },
+  { to: '/creator-claims', label: 'Creator Claims' },
   { to: '/safety', label: 'Safety & Regulation' },
   { to: '/sources', label: 'Source Health' },
   { to: '/claims', label: 'Claims' },

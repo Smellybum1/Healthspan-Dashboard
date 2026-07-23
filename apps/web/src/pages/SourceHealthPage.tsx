@@ -48,7 +48,7 @@ export function SourceHealthPage() {
     <div className="space-y-4">
       <PageHeader
         title="Source Health"
-        description="Operational status for PubMed, ClinicalTrials.gov, Crossref, and TGA RSS. Live SQLite only — never mixed with Demo seed."
+        description="Operational status for primary sources plus FDA bulk / Purple Book due times and creator-platform connectors. Live SQLite only — never mixed with Demo seed."
       />
 
       {sources.data ? (
@@ -83,6 +83,14 @@ export function SourceHealthPage() {
                   <p className="text-xs text-[var(--muted)]">
                     Last success: {formatWhen(source.lastSuccessfulFetchAt as string | null | undefined)}
                   </p>
+                  {source.nextRunAt ? (
+                    <p className="text-xs text-[var(--muted)]">
+                      Next due: {formatWhen(source.nextRunAt as string)} ({String(source.scheduleCadence)})
+                    </p>
+                  ) : null}
+                  {source.scheduleNotes ? (
+                    <p className="text-xs text-[var(--muted)]">{String(source.scheduleNotes)}</p>
+                  ) : null}
                   {source.lastError ? (
                     <p className="text-xs text-rose-300">{String(source.lastError)}</p>
                   ) : null}

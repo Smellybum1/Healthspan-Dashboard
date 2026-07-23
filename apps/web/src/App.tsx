@@ -21,6 +21,8 @@ import { ClaimsPage } from './pages/ClaimsPage';
 import { ClaimDetailPage } from './pages/ClaimDetailPage';
 import { EntityResolutionPage } from './pages/EntityResolutionPage';
 import { ComparisonPage } from './pages/ComparisonPage';
+import { CreatorClaimsPage } from './pages/CreatorClaimsPage';
+import { CreatorProfilePage } from './pages/CreatorProfilePage';
 
 export function App() {
   return (
@@ -37,7 +39,9 @@ export function App() {
         <Route path="peptides" element={<PeptidesListPage />} />
         <Route path="peptides/:id" element={<InterventionOrDossierPage />} />
         <Route path="creators" element={<CreatorsListPage />} />
-        <Route path="creators/:id" element={<DetailPage />} />
+        <Route path="creators/:id" element={<CreatorProfilePage />} />
+        <Route path="creator-claims" element={<CreatorClaimsPage />} />
+        <Route path="creator-claims/:id" element={<CreatorClaimsPage />} />
         <Route path="safety" element={<SafetyListPage />} />
         <Route path="sources" element={<SourceHealthPage />} />
         <Route path="claims" element={<ClaimsPage />} />

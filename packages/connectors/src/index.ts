@@ -37,4 +37,6 @@ export { createPurpleBookConnector, parsePurpleBookCsv } from './purple-book.js'
 export type { PurpleBookRow } from './purple-book.js';
 export { createFdaAemsConnector, parseAemsHtml } from './fda-aems.js';
 export type { AemsSignal } from './fda-aems.js';
+export { createYoutubeConnector } from './youtube.js';
+export { createXConnector } from './x.js';
 export { plannedConnectors, DisabledConnector } from './legacy.js';

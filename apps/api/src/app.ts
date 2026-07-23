@@ -59,6 +59,19 @@ import {
 } from './entity-resolution-service.js';
 import { compareInterventions } from './comparison-service.js';
 import { linkTrialInterventionsToEntities } from './trial-portfolio.js';
+import {
+  bootstrapCreatorCatalog,
+  creatorWatchItems,
+  importCreatorDocument,
+  listCreatorClaims,
+  listCreators,
+  ensureXBudgetRow,
+  getCreatorDetail,
+  addYoutubeAccount,
+  addXAccount,
+  createManualCreatorClaim,
+} from './creator-service.js';
+import { fdaBulkSourceSchedules, scheduleForSource } from './source-schedule.js';
 
 type DataMode = 'demo' | 'live';
 
@@ -202,7 +215,7 @@ export function createApp() {
         status: doctor.ok ? 'healthy' : 'degraded',
         integrity: doctor.integrity,
         journalMode: doctor.journalMode,
-        migrationVersion: '0005_m4_safety_portfolio',
+        migrationVersion: '0006_m5_creators',
       },
       scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),
@@ -358,7 +371,7 @@ export function createApp() {
           [p?.journal, p?.pmid ? `PMID ${p.pmid}` : null].filter(Boolean).join(' · ') || undefined,
         );
       }),
-      creatorClaims: [],
+      creatorClaims: creatorWatchItems(live.db, 8),
       needsReview: [],
     });
   });
@@ -393,6 +406,28 @@ export function createApp() {
           title: e.preferredName,
           summary: e.shortDescription ?? '',
           tags: [e.entityType, e.identityConfidence],
+          updatedAt: new Date().toISOString(),
+          dataOrigin: 'live' as const,
+        })),
+      });
+    }
+    if (type === 'creator') {
+      bootstrapCreatorCatalog(live.db);
+      const listed = listCreators(live.db, {
+        page: Number(c.req.query('page') ?? 1),
+        pageSize: Number(c.req.query('pageSize') ?? 25),
+        q: c.req.query('q') ?? undefined,
+      });
+      return c.json({
+        dataMode: 'live',
+        dataOrigin: 'live',
+        count: listed.items.length,
+        items: listed.items.map((e) => ({
+          id: e.id,
+          type: 'creator' as const,
+          title: e.preferredName,
+          summary: e.neutralDescription ?? '',
+          tags: [e.creatorKind, e.identityConfidence],
           updatedAt: new Date().toISOString(),
           dataOrigin: 'live' as const,
         })),
@@ -583,7 +618,11 @@ export function createApp() {
         baselineCompletedAt: s.baselineCompletedAt
           ? new Date(s.baselineCompletedAt).toISOString()
           : null,
+        nextRunAt: scheduleForSource(s.id)?.nextRunAt ?? null,
+        scheduleCadence: scheduleForSource(s.id)?.cadence ?? null,
+        scheduleNotes: scheduleForSource(s.id)?.notes ?? null,
       })),
+      fdaBulkSchedules: fdaBulkSourceSchedules(),
       feeds: feeds.map((f) => ({
         id: f.id,
         sourceId: f.sourceId,
@@ -910,6 +949,174 @@ export function createApp() {
         updatedAt: new Date().toISOString(),
         dataOrigin: 'live' as const,
       })),
+    });
+  });
+
+  app.get('/api/creators', (c) => {
+    if (currentMode() === 'demo') {
+      const items = demoRepo.filterItems({ type: 'creator' });
+      return c.json({ dataMode: 'demo', dataOrigin: 'demo', count: items.length, items });
+    }
+    bootstrapCreatorCatalog(live.db);
+    const listed = listCreators(live.db, {
+      page: Number(c.req.query('page') ?? 1),
+      pageSize: Number(c.req.query('pageSize') ?? 50),
+      q: c.req.query('q') ?? undefined,
+    });
+    return c.json({
+      dataMode: 'live',
+      dataOrigin: 'live',
+      count: listed.items.length,
+      page: listed.page,
+      pageSize: listed.pageSize,
+      total: listed.total,
+      totalPages: listed.totalPages,
+      items: listed.items.map((e) => ({
+        id: e.id,
+        type: 'creator',
+        title: e.preferredName,
+        summary: e.neutralDescription ?? '',
+        tags: [e.creatorKind, e.identityConfidence],
+        updatedAt: new Date().toISOString(),
+        dataOrigin: 'live' as const,
+      })),
+    });
+  });
+
+  app.get('/api/creators/:id', (c) => {
+    if (currentMode() === 'demo') {
+      const found = demoRepo.getItemById(c.req.param('id'));
+      if (!found || found.item.type !== 'creator') return c.json({ error: 'Not found' }, 404);
+      return c.json({ ...found.item, assessment: found.assessment, dataMode: 'demo', dataOrigin: 'demo' });
+    }
+    const detail = getCreatorDetail(live.db, c.req.param('id'));
+    if (!detail) return c.json({ error: 'Not found' }, 404);
+    return c.json({
+      dataMode: 'live',
+      dataOrigin: 'live',
+      type: 'creator',
+      title: detail.preferredName,
+      summary: detail.neutralDescription ?? '',
+      ...detail,
+    });
+  });
+
+  app.post('/api/creators/:id/youtube-accounts', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as { channelRef?: string };
+    if (!body.channelRef) return c.json({ error: 'channelRef required' }, 400);
+    const result = addYoutubeAccount(live.db, {
+      creatorId: c.req.param('id'),
+      channelRef: body.channelRef,
+    });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({
+      accepted: true,
+      ...result,
+      note: 'YouTube API metadata is never claim evidence. No unofficial captions, media download, or STT.',
+    });
+  });
+
+  app.post('/api/creators/:id/x-accounts', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as { username?: string };
+    if (!body.username) return c.json({ error: 'username required' }, 400);
+    const result = addXAccount(live.db, { creatorId: c.req.param('id'), username: body.username });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.post('/api/creators/:id/claims', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      claimText?: string;
+      sourceUrl?: string;
+      timestampOrPostId?: string;
+      assertionRole?: string;
+    };
+    if (!body.claimText) return c.json({ error: 'claimText required' }, 400);
+    const result = createManualCreatorClaim(live.db, {
+      creatorId: c.req.param('id'),
+      claimText: body.claimText,
+      sourceUrl: body.sourceUrl,
+      timestampOrPostId: body.timestampOrPostId,
+      assertionRole: body.assertionRole,
+    });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.get('/api/creator-claims', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', claims: [] });
+    const claims = listCreatorClaims(live.db, {
+      creatorId: c.req.query('creatorId') ?? undefined,
+      limit: Number(c.req.query('limit') ?? 50),
+    });
+    return c.json({ dataMode: 'live', claims });
+  });
+
+  app.post('/api/creators/:id/documents', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      filename?: string;
+      contentBase64?: string;
+      rightsBasis?: string;
+      mediaType?: string;
+    };
+    if (!body.filename || !body.contentBase64 || !body.rightsBasis) {
+      return c.json({ error: 'filename, contentBase64, and rightsBasis are required' }, 400);
+    }
+    const bytes = Buffer.from(body.contentBase64, 'base64');
+    const result = importCreatorDocument(live.db, {
+      creatorId: c.req.param('id'),
+      filename: body.filename,
+      bytes,
+      rightsBasis: body.rightsBasis as
+        | 'user_owned'
+        | 'authorised_caption_export'
+        | 'public_domain_or_licence'
+        | 'fair_dealing_research_notes'
+        | 'other_declared',
+      mediaType: body.mediaType,
+    });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.get('/api/platform-policy', (c) => {
+    ensureXBudgetRow(live.db);
+    return c.json({
+      dataMode: currentMode(),
+      youtube: {
+        metadataIsClaimEvidence: false,
+        unofficialCaptionsAllowed: false,
+        mediaDownloadAllowed: false,
+      },
+      x: {
+        enabledByDefault: false,
+        externalAiAllowed: false,
+        automaticRecharge: false,
+      },
     });
   });
 

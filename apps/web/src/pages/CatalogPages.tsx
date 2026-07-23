@@ -205,10 +205,10 @@ export function CreatorsListPage() {
   return (
     <CatalogPage
       title="Creators"
-      description="Score claims, not personalities. Creator profiles for watched channels and newsletters."
+      description="Curated Live creator profiles. Claims are assessed — never trust, credibility, misinformation, influence, attention, engagement, or popularity scores."
       type="creator"
       pathPrefix="/creators"
-      liveEmptyHint="Creator monitoring is not part of Milestone 2. Switch to Demo mode in Settings for the M1 showcase."
+      liveEmptyHint="No Live creator profiles yet. Bootstrap catalog creates a starter profile; import an authorised transcript/document to extract claims."
     />
   );
 }

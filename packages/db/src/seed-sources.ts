@@ -77,6 +77,18 @@ export const DEFAULT_SOURCES = [
     kind: 'regulator',
     officialBaseUrl: 'https://www.fda.gov/drugs/questions-and-answers-fdas-adverse-event-reporting-system-faers/',
   },
+  {
+    id: 'youtube',
+    displayName: 'YouTube Data API',
+    kind: 'creator_platform',
+    officialBaseUrl: 'https://www.googleapis.com/youtube/v3/',
+  },
+  {
+    id: 'x',
+    displayName: 'X API (optional)',
+    kind: 'creator_platform',
+    officialBaseUrl: 'https://api.x.com/',
+  },
 ] as const;
 
 export const DEFAULT_TGA_FEEDS = [

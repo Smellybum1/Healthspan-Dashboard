@@ -108,3 +108,29 @@ test.describe('Milestone 4 intervention surfaces', () => {
     await page.screenshot({ path: path.join(shotDir, 'm4-mobile-compare.png'), fullPage: true });
   });
 });
+
+test.describe('Milestone 5 creator surfaces', () => {
+  test('creators list, claims workspace, and methodology are reachable', async ({ page }) => {
+    await page.goto('/creators');
+    await expect(page.getByRole('heading', { name: 'Creators' })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm5-creators.png'), fullPage: true });
+
+    await page.goto('/creator-claims');
+    await expect(page.getByRole('heading', { name: 'Creator Claims' })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm5-creator-claims.png'), fullPage: true });
+
+    await page.goto('/methodology');
+    await expect(page.getByText(/Creator claims, not creator worth/i)).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm5-methodology.png'), fullPage: true });
+  });
+
+  test('mobile creator claims is reachable', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'mobile project only');
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('link', { name: 'Creator Claims' }).click();
+    await expect(page.getByRole('heading', { name: 'Creator Claims' })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm5-mobile-creator-claims.png'), fullPage: true });
+  });
+});

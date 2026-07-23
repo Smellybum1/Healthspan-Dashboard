@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { inflateRawSync } from 'node:zlib';
 
 export type ZipEntry = { path: string; bytes: Buffer };
@@ -131,17 +132,18 @@ export function projectDrugsAtFdaZip(buffer: Buffer) {
   const productsEntry = entries.find((e) => /(^|\/)Products\.txt$/i.test(e.path));
   if (!productsEntry) throw new Error('Drugs@FDA ZIP missing Products.txt');
   const products = parseDrugsAtFdaProductsTxt(productsEntry.bytes.toString('utf8'));
+  const contentFingerprint = createHash('sha256')
+    .update(
+      entries
+        .map((e) => `${e.path}:${createHash('sha256').update(e.bytes).digest('hex')}`)
+        .sort()
+        .join('|'),
+    )
+    .digest('hex');
   return {
     entryCount: entries.length,
     entryPaths: entries.map((e) => e.path),
     products,
-    releaseFingerprint: Buffer.from(
-      entries
-        .map((e) => `${e.path}:${e.bytes.length}`)
-        .sort()
-        .join('|'),
-    )
-      .toString('base64url')
-      .slice(0, 32),
+    releaseFingerprint: contentFingerprint,
   };
 }

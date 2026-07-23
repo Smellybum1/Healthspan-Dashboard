@@ -14,6 +14,9 @@ importers:
       '@healthspan/connectors':
         specifier: workspace:*
         version: link:packages/connectors
+      '@healthspan/creators':
+        specifier: workspace:*
+        version: link:packages/creators
       '@healthspan/db':
         specifier: workspace:*
         version: link:packages/db
@@ -89,6 +92,9 @@ importers:
       '@healthspan/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@healthspan/creators':
+        specifier: workspace:*
+        version: link:../../packages/creators
       '@healthspan/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -205,6 +211,19 @@ importers:
     dependencies:
       zod:
         specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  packages/creators:
+    dependencies:
+      '@healthspan/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.25.76
         version: 3.25.76
     devDependencies:
       typescript:

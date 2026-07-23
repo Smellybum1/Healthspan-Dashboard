@@ -5,10 +5,13 @@ import {
   createCrossrefConnector,
   createPubmedConnector,
   createTgaConnector,
+  createYoutubeConnector,
+  createXConnector,
   type ConnectorId,
   type FetchTransport,
   type SourceConnector,
 } from '@healthspan/connectors';
+import { listMonitoredAccounts } from './creator-service.js';
 import {
   FileRawSnapshotStore,
   changeEvents,
@@ -58,7 +61,13 @@ function parseMaybeDate(value: unknown): number | null {
 
 function buildConnectors(opts: IngestOptions): SourceConnector[] {
   const transport = opts.transport;
-  const all: SourceConnector[] = [
+  const youtubeChannels = listMonitoredAccounts(opts.db)
+    .filter((a) => a.platform === 'youtube' && a.externalAccountId.startsWith('UC'))
+    .map((a) => a.externalAccountId);
+  const xUserIds = listMonitoredAccounts(opts.db)
+    .filter((a) => a.platform === 'x')
+    .map((a) => a.externalAccountId);
+  const primary: SourceConnector[] = [
     createPubmedConnector({
       transport,
       tool: process.env.NCBI_TOOL,
@@ -73,8 +82,24 @@ function buildConnectors(opts: IngestOptions): SourceConnector[] {
     }),
     createTgaConnector({ transport }),
   ];
-  if (opts.sourceId === 'all') return all;
-  return all.filter((c) => c.id === opts.sourceId);
+  const platform: SourceConnector[] = [
+    createYoutubeConnector({
+      transport,
+      apiKey: process.env.YOUTUBE_API_KEY,
+      channelIds: youtubeChannels,
+    }),
+    createXConnector({
+      bearerToken: process.env.X_BEARER_TOKEN,
+      monitoredUserIds: xUserIds,
+    }),
+  ];
+  // Platform connectors are opt-in on Sync all only when explicitly requested,
+  // or when the operator targets youtube/x — keeps M2 Sync all unchanged by default.
+  if (opts.sourceId === 'youtube' || opts.sourceId === 'x') {
+    return platform.filter((c) => c.id === opts.sourceId);
+  }
+  if (opts.sourceId === 'all') return primary;
+  return primary.filter((c) => c.id === opts.sourceId);
 }
 
 export async function runIngestion(opts: IngestOptions) {

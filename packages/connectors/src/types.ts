@@ -13,6 +13,8 @@ export const ConnectorIdSchema = z.enum([
   'drugs-at-fda',
   'purple-book',
   'fda-aems',
+  'youtube',
+  'x',
 ]);
 export type ConnectorId = z.infer<typeof ConnectorIdSchema>;
 

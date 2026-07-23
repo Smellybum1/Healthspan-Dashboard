@@ -56,6 +56,10 @@ const SECTIONS = [
     body: 'Users may compare 2–4 interventions side-by-side across independent dimensions. There is no winner styling, recommendation, stacking suggestion, or safety ranking from spontaneous-report counts. Incomparable type/variant cells are flagged explicitly.',
   },
   {
+    title: 'Creator claims, not creator worth',
+    body: 'YouTube Data API metadata is operational context only and is never claim evidence. Claims come from user-supplied or authorised transcripts/documents with an explicit rights basis — never unofficial caption scrape, media download, or speech-to-text. X monitoring is optional, budget-capped, acknowledgement-gated, with no automatic recharge; X content is never sent to external AI. Alignment is multi-dimensional and claim-scoped. The product never computes trust, credibility, misinformation, influence, attention, engagement, or popularity scores for people or organisations.',
+  },
+  {
     title: 'AI-generated fields and provenance',
     body: 'Live intelligence is deterministic-first. Optional AI providers are disabled by default, must be schema-constrained, cannot write directly to the database, and cannot invent uncited claims. AI-assisted fields store provider/model/prompt/version and remain unreviewed until human confirmation.',
   },

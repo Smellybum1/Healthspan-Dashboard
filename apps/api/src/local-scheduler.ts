@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { schedulerState, type HealthspanDb } from '@healthspan/db';
 import type { IngestionScheduler } from './scheduler.js';
 import { enqueueJob, stableDedupeKey } from './jobs.js';
+import { fdaBulkSourceSchedules } from './source-schedule.js';
 
 /** Next 06:00 Australia/Brisbane as UTC ms. */
 export function nextBrisbaneSixAm(fromMs = Date.now()): number {
@@ -64,6 +65,7 @@ export function createLocalScheduler(opts: {
       lastCompletedAt: row.lastCompletedAt ? new Date(row.lastCompletedAt).toISOString() : null,
       nextRunAt: row.nextRunAt ? new Date(row.nextRunAt).toISOString() : null,
       lastCatchupReason: row.lastCatchupReason,
+      fdaBulkSchedules: fdaBulkSourceSchedules(),
     };
   }
 

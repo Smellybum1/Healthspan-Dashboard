@@ -257,19 +257,36 @@ export function TodayPage() {
         </SectionCard>
 
         <SectionCard title="Creator Claims">
-          {isLive ? (
+          {data.creatorClaims.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">
-              Creator monitoring is not part of Milestone 2. Demo mode retains the M1 claim showcase.
+              {isLive
+                ? 'No Live creator claims yet. Import an authorised transcript/document for a curated creator.'
+                : 'No creator claims in this demo snapshot.'}
             </p>
           ) : (
             <ul className="space-y-2">
               {data.creatorClaims.map((claim) => (
                 <li key={claim.id}>
-                  <p className="font-medium">{claim.title}</p>
-                  <p className="text-sm text-[var(--muted)]">{claim.claimText}</p>
-                  <p className="text-xs text-[var(--muted)]">
-                    Divergence: {claim.evidenceAttentionDivergence.replaceAll('_', ' ')}
-                  </p>
+                  <Link
+                    className="font-medium hover:underline"
+                    to={'href' in claim && typeof claim.href === 'string' ? claim.href : itemPath('claim', claim.id)}
+                  >
+                    {claim.title}
+                  </Link>
+                  {isLiveBrief(claim) ? (
+                    <p className="text-xs text-[var(--muted)]">{claim.summary ?? claim.meta}</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-[var(--muted)]">
+                        {'claimText' in claim ? String(claim.claimText) : ''}
+                      </p>
+                      {'evidenceAttentionDivergence' in claim ? (
+                        <p className="text-xs text-[var(--muted)]">
+                          Divergence: {String(claim.evidenceAttentionDivergence).replaceAll('_', ' ')}
+                        </p>
+                      ) : null}
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
