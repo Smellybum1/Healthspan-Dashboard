@@ -76,10 +76,9 @@ Do **not** rewrite history hashes in M2–M4 completion reports; append gap-clos
 | --- | --- | --- |
 | No person scores; YT metadata ≠ claims; X optional; no X→AI | DONE | Policy correct |
 | Schema §14 (~31 groups) | PARTIAL | Migration `0007_m5_creator_schema_depth` + Drizzle tables landed; import now writes segments + claim source spans; many tables still unused by services/UI |
-| Document import | PARTIAL | API persists segments/spans/fingerprint/review_status; document import UI still thin |
+| Document import | PARTIAL | Segments/spans + profile UI import/manual claim; delete/lifecycle UI still thin |
 | YouTube | PARTIAL | `channels.list` only — no playlist/video/quota/refresh |
 | X | PARTIAL | Disabled stub; no timeline/compliance purge |
-| Document import | PARTIAL | Parser + API; no UI; no segments/delete |
 | Alignment §11 | MISSING/PARTIAL | 4 dims vs 17; no M3/M4 deep checks |
 | Doctors/evals | PARTIAL | Thin aliases; no corpora |
 | Screenshots | PARTIAL | Report claims; PNGs not committed |

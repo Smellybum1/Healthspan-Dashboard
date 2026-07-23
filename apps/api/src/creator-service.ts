@@ -314,6 +314,7 @@ export function getCreatorDetail(db: HealthspanDb, id: string) {
       filename: d.filename,
       documentKind: d.documentKind,
       rightsBasis: d.rightsBasis,
+      claimEligible: Boolean(d.claimEligible),
       createdAt: new Date(d.createdAt).toISOString(),
     }));
   const recurrence = Object.entries(
