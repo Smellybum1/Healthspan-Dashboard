@@ -76,6 +76,11 @@ import {
   syncYoutubeMonitoredAccounts,
   applyYoutubeRetentionHold,
 } from './youtube-sync-service.js';
+import {
+  getXBudgetStatus,
+  syncXMonitoredAccounts,
+  applyXComplianceBatch,
+} from './x-sync-service.js';
 import { fdaBulkSourceSchedules, scheduleForSource } from './source-schedule.js';
 
 type DataMode = 'demo' | 'live';
@@ -1069,6 +1074,44 @@ export function createApp() {
     return c.json({ accepted: true, ...result });
   });
 
+  app.post('/api/creators/:id/x-sync', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as { baseline?: boolean; lookbackDays?: number };
+    const result = await syncXMonitoredAccounts(live.db, {
+      creatorId: c.req.param('id'),
+      baseline: body.baseline,
+      lookbackDays: body.lookbackDays,
+    });
+    const status =
+      result.status === 'budget_blocked' ? 402 : result.ok === false ? 400 : 200;
+    return c.json(result, status);
+  });
+
+  app.get('/api/platforms/x/budget', (c) => {
+    ensureXBudgetRow(live.db);
+    return c.json({ dataMode: currentMode(), ...getXBudgetStatus(live.db) });
+  });
+
+  app.post('/api/platforms/x/compliance', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      actions?: Array<{ postId: string; action: 'delete' | 'withhold' | 'edit' | 'account_unavailable'; reason: string }>;
+    };
+    if (!body.actions?.length) return c.json({ error: 'actions required' }, 400);
+    const result = applyXComplianceBatch(live.db, body.actions);
+    return c.json({ accepted: true, ...result, externalAiAllowed: false });
+  });
+
   app.post('/api/creators/:id/claims', async (c) => {
     try {
       assertAdminMutationAllowed();
@@ -1151,6 +1194,7 @@ export function createApp() {
         enabledByDefault: false,
         externalAiAllowed: false,
         automaticRecharge: false,
+        budget: getXBudgetStatus(live.db),
       },
     });
   });

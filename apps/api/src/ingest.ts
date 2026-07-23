@@ -13,6 +13,7 @@ import {
 } from '@healthspan/connectors';
 import { listMonitoredAccounts } from './creator-service.js';
 import { getYoutubeQuotaLedger, syncYoutubeMonitoredAccounts } from './youtube-sync-service.js';
+import { syncXMonitoredAccounts } from './x-sync-service.js';
 import {
   FileRawSnapshotStore,
   changeEvents,
@@ -175,6 +176,50 @@ export async function runIngestion(opts: IngestOptions) {
       totalEvents += sync.newVideos;
       if (!sync.ok) totalErrors += 1;
       childSummaries.push(String(sync.error ?? `youtube ${sync.videosUpserted} videos`));
+      continue;
+    }
+
+    if (connector.id === 'x') {
+      const childId = randomUUID();
+      const childStart = now();
+      opts.db
+        .insert(ingestionRuns)
+        .values({
+          id: childId,
+          sourceId: connector.id,
+          parentRunId,
+          trigger: opts.trigger,
+          status: 'running',
+          startedAt: childStart,
+        })
+        .run();
+      const sync = await syncXMonitoredAccounts(opts.db, {
+        transport: opts.transport,
+        lookbackDays: lookbackDays || 90,
+        baseline: opts.isBaseline,
+      });
+      const status = sync.ok ? (sync.warnings?.length ? 'partial' : 'succeeded') : 'failed';
+      opts.db
+        .update(ingestionRuns)
+        .set({
+          status,
+          completedAt: now(),
+          remoteRecordCount: sync.postsUpserted,
+          rawSnapshotCount: 0,
+          contentUpsertCount: sync.postsUpserted,
+          changeEventCount: sync.newPosts,
+          warningCount: sync.warnings?.length ?? 0,
+          errorCount: sync.ok ? 0 : 1,
+          summary:
+            sync.error ??
+            `x: ${sync.accountsSynced} accounts, ${sync.postsUpserted} posts, spent=${sync.spentMicrosThisJob ?? 0}`,
+        })
+        .where(eq(ingestionRuns.id, childId))
+        .run();
+      totalContent += sync.postsUpserted;
+      totalEvents += sync.newPosts;
+      if (!sync.ok) totalErrors += 1;
+      childSummaries.push(String(sync.error ?? `x ${sync.postsUpserted} posts`));
       continue;
     }
 

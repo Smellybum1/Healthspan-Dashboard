@@ -58,5 +58,22 @@ export type {
   YoutubeQuotaEvent,
   YoutubeVideoMetadata,
 } from './youtube.js';
-export { createXConnector } from './x.js';
+export { createXConnector, createXClient, gateXBudget, estimateXTimelineJobMicros, applyXComplianceActionsLocally } from './x.js';
+export {
+  X_DEFAULT_LOOKBACK_DAYS,
+  X_DEFAULT_POST_READ_MICROS,
+  X_DEFAULT_USER_LOOKUP_MICROS,
+  X_DISPLAY_MAX_AGE_DAYS,
+  X_MAX_POSTS_PER_ACCOUNT,
+  X_PRICE_TABLE_VERSION,
+  X_REFRESH_WITHIN_DAYS,
+} from './x.js';
+export type {
+  XBudgetGate,
+  XClient,
+  XComplianceAction,
+  XPostMetadata,
+  XSyncResult,
+  XUserResolved,
+} from './x.js';
 export { plannedConnectors, DisabledConnector } from './legacy.js';
