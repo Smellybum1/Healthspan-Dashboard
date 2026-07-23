@@ -1,5 +1,10 @@
-import { closeDatabase, openDatabase, liveClaims, claimSourceSpans, contentIntelligenceState } from '@healthspan/db';
-import { eq } from 'drizzle-orm';
+import {
+  closeDatabase,
+  openDatabase,
+  liveClaims,
+  claimSourceSpans,
+  contentIntelligenceState,
+} from '@healthspan/db';
 
 const { db, sqlite } = openDatabase({
   allowRelativeOverride: process.env.HEALTHSPAN_ALLOW_RELATIVE_DATA_DIR === '1',
@@ -7,13 +12,9 @@ const { db, sqlite } = openDatabase({
 });
 
 const claims = db.select().from(liveClaims).all();
-const orphans: string[] = [];
-for (const claim of claims) {
-  const spans = db.select().from(claimSourceSpans).where(eq(claimSourceSpans.claimId, claim.id)).all();
-  if (!spans.some((s) => s.primarySupport)) {
-    orphans.push(claim.id);
-  }
-}
+const spans = db.select().from(claimSourceSpans).all();
+const spanClaimIds = new Set(spans.filter((s) => s.primarySupport).map((s) => s.claimId));
+const orphans = claims.filter((c) => !spanClaimIds.has(c.id)).map((c) => c.id);
 
 const states = db.select().from(contentIntelligenceState).all();
 const stalePointers = states.filter((s) => s.currentAnalysisId == null && !s.stale);
