@@ -11,6 +11,7 @@ import {
   TrialsListPage,
 } from './pages/CatalogPages';
 import { DetailPage } from './pages/DetailPage';
+import { InterventionOrDossierPage } from './pages/InterventionOrDossierPage';
 import { WatchlistsPage } from './pages/WatchlistsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MethodologyPage } from './pages/MethodologyPage';
@@ -18,6 +19,7 @@ import { SourceHealthPage } from './pages/SourceHealthPage';
 import { ReviewQueuePage } from './pages/ReviewQueuePage';
 import { ClaimsPage } from './pages/ClaimsPage';
 import { ClaimDetailPage } from './pages/ClaimDetailPage';
+import { EntityResolutionPage } from './pages/EntityResolutionPage';
 
 export function App() {
   return (
@@ -30,9 +32,9 @@ export function App() {
         <Route path="trials" element={<TrialsListPage />} />
         <Route path="trials/:id" element={<DetailPage />} />
         <Route path="interventions" element={<InterventionsListPage />} />
-        <Route path="interventions/:id" element={<DetailPage />} />
+        <Route path="interventions/:id" element={<InterventionOrDossierPage />} />
         <Route path="peptides" element={<PeptidesListPage />} />
-        <Route path="peptides/:id" element={<DetailPage />} />
+        <Route path="peptides/:id" element={<InterventionOrDossierPage />} />
         <Route path="creators" element={<CreatorsListPage />} />
         <Route path="creators/:id" element={<DetailPage />} />
         <Route path="safety" element={<SafetyListPage />} />
@@ -40,6 +42,7 @@ export function App() {
         <Route path="claims" element={<ClaimsPage />} />
         <Route path="claims/:id" element={<ClaimDetailPage />} />
         <Route path="review" element={<ReviewQueuePage />} />
+        <Route path="entity-resolution" element={<EntityResolutionPage />} />
         <Route path="watchlists" element={<WatchlistsPage />} />
         <Route path="methodology" element={<MethodologyPage />} />
         <Route path="settings" element={<SettingsPage />} />

@@ -184,7 +184,7 @@ export function InterventionsListPage() {
       description="Dossiers spanning approved drugs, lifestyle, and investigational ideas."
       type="intervention"
       pathPrefix="/interventions"
-      liveEmptyHint="Intervention resolution is not part of Milestone 2. Switch to Demo mode in Settings to explore the M1 showcase."
+      liveEmptyHint="No Live intervention entities yet. Bootstrap catalog loads with the API; run mention resolution after ingestion."
     />
   );
 }
@@ -196,7 +196,7 @@ export function PeptidesListPage() {
       description="Investigational/unapproved peptide examples with stronger safety warnings."
       type="peptide"
       pathPrefix="/peptides"
-      liveEmptyHint="Peptide dossiers are not part of Milestone 2 Live mode. Switch to Demo mode in Settings for the M1 showcase."
+      liveEmptyHint="No Live peptide entities yet. Peptide dossiers never invent sequences from marketing names."
     />
   );
 }

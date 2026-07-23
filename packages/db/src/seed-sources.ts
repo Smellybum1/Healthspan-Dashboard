@@ -29,6 +29,42 @@ export const DEFAULT_SOURCES = [
     kind: 'regulator',
     officialBaseUrl: 'https://www.tga.gov.au/',
   },
+  {
+    id: 'rxnorm',
+    displayName: 'RxNorm (NLM)',
+    kind: 'identity',
+    officialBaseUrl: 'https://rxnav.nlm.nih.gov/',
+  },
+  {
+    id: 'pubchem',
+    displayName: 'PubChem',
+    kind: 'identity',
+    officialBaseUrl: 'https://pubchem.ncbi.nlm.nih.gov/',
+  },
+  {
+    id: 'gsrs',
+    displayName: 'GSRS / UNII',
+    kind: 'identity',
+    officialBaseUrl: 'https://gsrs.ncats.nih.gov/',
+  },
+  {
+    id: 'artg',
+    displayName: 'TGA ARTG',
+    kind: 'regulator',
+    officialBaseUrl: 'https://www.tga.gov.au/',
+  },
+  {
+    id: 'openfda',
+    displayName: 'openFDA',
+    kind: 'regulator',
+    officialBaseUrl: 'https://open.fda.gov/',
+  },
+  {
+    id: 'drugs-at-fda',
+    displayName: 'Drugs@FDA',
+    kind: 'regulator',
+    officialBaseUrl: 'https://www.accessdata.fda.gov/scripts/cder/daf/',
+  },
 ] as const;
 
 export const DEFAULT_TGA_FEEDS = [

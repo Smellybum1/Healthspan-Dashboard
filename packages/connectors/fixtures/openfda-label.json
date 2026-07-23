@@ -1,0 +1,21 @@
+{
+  "meta": { "results": { "total": 1 } },
+  "results": [
+    {
+      "id": "label-1",
+      "set_id": "set-metformin",
+      "effective_time": "20240101",
+      "openfda": {
+        "brand_name": ["GLUCOPHAGE"],
+        "generic_name": ["METFORMIN HYDROCHLORIDE"],
+        "application_number": ["NDA020357"],
+        "substance_name": ["METFORMIN HYDROCHLORIDE"]
+      },
+      "indications_and_usage": ["Indicated as an adjunct to diet and exercise..."],
+      "warnings": ["Lactic acidosis risk..."],
+      "contraindications": ["Severe renal impairment..."],
+      "adverse_reactions": ["Diarrhea, nausea..."],
+      "dosage_and_administration": ["DO NOT INGEST THIS SECTION IN M4"]
+    }
+  ]
+}

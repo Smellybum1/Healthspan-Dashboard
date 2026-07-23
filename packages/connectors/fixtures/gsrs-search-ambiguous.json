@@ -1,0 +1,17 @@
+{
+  "total": 2,
+  "content": [
+    {
+      "unii": "9100L32L2N",
+      "uuid": "a",
+      "substanceClass": "chemical",
+      "names": [{ "name": "METFORMIN", "preferred": true }]
+    },
+    {
+      "unii": "ABCDEFGHIJ",
+      "uuid": "b",
+      "substanceClass": "chemical",
+      "names": [{ "name": "METFORMIN HYDROCHLORIDE", "preferred": true }]
+    }
+  ]
+}

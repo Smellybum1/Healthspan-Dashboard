@@ -457,3 +457,23 @@ export {
   analysisSourceDependencies,
   claimRelationships,
 } from './intelligence-schema.js';
+
+export {
+  interventionEntities,
+  interventionAliases,
+  interventionIdentifiers,
+  interventionVariants,
+  interventionMentions,
+  interventionMappingCandidates,
+  interventionMentionMappings,
+  entityResolutionTasks,
+  entityResolutionDecisions,
+  peptideProfiles,
+  peptideSequences,
+  regulatedProducts,
+  regulatoryAssertions,
+  dossierSnapshots,
+  dossierSourceDependencies,
+  interventionDossierState,
+  dossierChangeEvents,
+} from './intervention-schema.js';

@@ -1,6 +1,7 @@
 export * from './paths.js';
 export * from './schema.js';
 export * from './intelligence-schema.js';
+export * from './intervention-schema.js';
 export * from './client.js';
 export * from './raw-store.js';
 export * from './seed-sources.js';

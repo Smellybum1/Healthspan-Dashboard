@@ -17,7 +17,8 @@
     "drizzle-orm": "^0.45.2",
     "hono": "^4.7.4",
     "zod": "^3.24.2",
-    "@healthspan/intelligence": "workspace:*"
+    "@healthspan/intelligence": "workspace:*",
+    "@healthspan/interventions": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

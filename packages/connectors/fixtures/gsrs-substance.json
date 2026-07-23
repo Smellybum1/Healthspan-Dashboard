@@ -1,0 +1,7 @@
+{
+  "unii": "9100L32L2N",
+  "uuid": "fixture-metformin-uuid",
+  "substanceClass": "chemical",
+  "names": [{ "name": "METFORMIN", "preferred": true }],
+  "structure": { "formula": "C4H11N5", "molWeight": 129.1636 }
+}

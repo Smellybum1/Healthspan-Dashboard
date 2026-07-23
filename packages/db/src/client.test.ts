@@ -4,8 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { openDatabase, closeDatabase, databaseDoctor } from './client.js';
 import { FileRawSnapshotStore } from './raw-store.js';
-import { seedOperationalSources } from './seed-sources.js';
+import { DEFAULT_SOURCES, seedOperationalSources } from './seed-sources.js';
 import { sources } from './schema.js';
+
 
 describe('sqlite database', () => {
   let dir: string;
@@ -15,7 +16,11 @@ describe('sqlite database', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(dir, { recursive: true, force: true });
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // Windows may briefly lock WAL companions after close.
+    }
   });
 
   it('migrates, seeds sources, and survives reopen', () => {
@@ -23,14 +28,14 @@ describe('sqlite database', () => {
     const first = openDatabase({ dbPath, migrateOnOpen: true });
     seedOperationalSources(first.db);
     const count = first.db.select().from(sources).all().length;
-    expect(count).toBe(4);
+    expect(count).toBe(DEFAULT_SOURCES.length);
     const doctor = databaseDoctor(first.sqlite);
     expect(doctor.ok).toBe(true);
     expect(doctor.journalMode.toLowerCase()).toBe('wal');
     closeDatabase(first.sqlite);
 
     const second = openDatabase({ dbPath, migrateOnOpen: true });
-    expect(second.db.select().from(sources).all().length).toBe(4);
+    expect(second.db.select().from(sources).all().length).toBe(DEFAULT_SOURCES.length);
     closeDatabase(second.sqlite);
   });
 

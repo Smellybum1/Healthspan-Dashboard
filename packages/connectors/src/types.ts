@@ -5,6 +5,12 @@ export const ConnectorIdSchema = z.enum([
   'clinicaltrials-gov',
   'crossref',
   'tga',
+  'rxnorm',
+  'pubchem',
+  'gsrs',
+  'artg',
+  'openfda',
+  'drugs-at-fda',
 ]);
 export type ConnectorId = z.infer<typeof ConnectorIdSchema>;
 

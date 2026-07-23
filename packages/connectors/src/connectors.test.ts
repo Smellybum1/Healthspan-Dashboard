@@ -3,6 +3,12 @@ import { createPubmedConnector } from './pubmed.js';
 import { createClinicalTrialsConnector } from './clinicaltrials.js';
 import { createCrossrefConnector } from './crossref.js';
 import { createTgaConnector } from './tga.js';
+import { createRxNormConnector } from './rxnorm.js';
+import { createPubChemConnector } from './pubchem.js';
+import { createGsrsConnector } from './gsrs.js';
+import { createArtgConnector } from './artg.js';
+import { createOpenFdaLabelConnector } from './openfda.js';
+import { createDrugsAtFdaConnector } from './drugs-at-fda.js';
 import type { FetchTransport } from './types.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,6 +29,10 @@ function fixtureTransport(map: Record<string, { body: string; contentType: strin
       headers: { 'content-type': hit.contentType },
     });
   };
+}
+
+function readFixture(name: string) {
+  return fs.readFileSync(path.join(fixturesDir, name), 'utf8');
 }
 
 describe('connectors with fixtures', () => {
@@ -75,5 +85,122 @@ describe('connectors with fixtures', () => {
     const result = await connector.fetchWindow({ cursor: {}, lookbackDays: 30, recordCap: 10 });
     expect(result.ok).toBe(true);
     expect(result.pages.length).toBeGreaterThan(0);
+  });
+
+  it('RxNorm exact-first lookup never infers approval', async () => {
+    const transport = fixtureTransport({
+      'rxcui.json': { body: readFixture('rxnorm-rxcui.json'), contentType: 'application/json' },
+      properties: { body: readFixture('rxnorm-properties.json'), contentType: 'application/json' },
+    });
+    const result = await createRxNormConnector({ transport, minIntervalMs: 0 }).lookup({
+      query: 'metformin',
+      mode: 'exact_name',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.matchKind).toBe('exact');
+    expect(result.approvalNeverInferred).toBe(true);
+    expect(result.pages[0]?.normalized.rxcui).toBe('6809');
+    expect(result.pages[0]?.normalized.approvalInferred).toBe(false);
+  });
+
+  it('PubChem enriches CID without treating presence as approval', async () => {
+    const transport = fixtureTransport({
+      '/cids/JSON': { body: readFixture('pubchem-cids.json'), contentType: 'application/json' },
+      '/property/': { body: readFixture('pubchem-properties.json'), contentType: 'application/json' },
+    });
+    const result = await createPubChemConnector({ transport, minIntervalMs: 0 }).lookup({
+      query: 'metformin',
+    });
+    expect(result.matchKind).toBe('exact');
+    expect(result.pages[0]?.normalized.cid).toBe(4091);
+    expect(result.pages[0]?.normalized.approvalInferred).toBe(false);
+  });
+
+  it('GSRS name search stays ambiguous when multiple substances return', async () => {
+    const transport = fixtureTransport({
+      '/search': {
+        body: readFixture('gsrs-search-ambiguous.json'),
+        contentType: 'application/json',
+      },
+    });
+    const result = await createGsrsConnector({ transport, minIntervalMs: 0 }).lookup({
+      query: 'metformin',
+    });
+    expect(result.matchKind).toBe('ambiguous');
+    expect(result.pages).toHaveLength(2);
+  });
+
+  it('ARTG exact / none / ambiguous / parser-break semantics', async () => {
+    const exact = await createArtgConnector({
+      minIntervalMs: 0,
+      transport: fixtureTransport({
+        'artg': { body: readFixture('artg-search-exact.html'), contentType: 'text/html' },
+      }),
+    }).lookup({ query: 'metformin' });
+    expect(exact.matchKind).toBe('exact');
+    expect(exact.pages[0]?.normalized.artgId).toBe('180628');
+    expect(exact.pages[0]?.normalized.licenceStandingNormalized).toBe('included_or_authorised');
+
+    const none = await createArtgConnector({
+      minIntervalMs: 0,
+      transport: fixtureTransport({
+        artg: { body: readFixture('artg-search-none.html'), contentType: 'text/html' },
+      }),
+    }).lookup({ query: 'zzznomatch' });
+    expect(none.matchKind).toBe('no_exact_match_found');
+    expect(none.warnings?.[0]).toMatch(/not unapproved/i);
+
+    const ambiguous = await createArtgConnector({
+      minIntervalMs: 0,
+      transport: fixtureTransport({
+        artg: { body: readFixture('artg-search-ambiguous.html'), contentType: 'text/html' },
+      }),
+    }).lookup({ query: 'metformin' });
+    expect(ambiguous.matchKind).toBe('ambiguous');
+
+    const broken = await createArtgConnector({
+      minIntervalMs: 0,
+      transport: fixtureTransport({
+        artg: { body: readFixture('artg-parser-break.html'), contentType: 'text/html' },
+      }),
+    }).lookup({ query: 'metformin' });
+    expect(broken.matchKind).toBe('parser_contract_failure');
+    expect(broken.ok).toBe(false);
+  });
+
+  it('openFDA is healthy when key-disabled and omits dosage ingestion when enabled', async () => {
+    const disabled = await createOpenFdaLabelConnector({ apiKey: null }).lookup({ query: 'metformin' });
+    expect(disabled.matchKind).toBe('disabled');
+    expect(disabled.ok).toBe(true);
+
+    const enabled = await createOpenFdaLabelConnector({
+      apiKey: 'test-key',
+      minIntervalMs: 0,
+      transport: fixtureTransport({
+        'api.fda.gov': { body: readFixture('openfda-label.json'), contentType: 'application/json' },
+      }),
+    }).lookup({ query: 'metformin' });
+    expect(enabled.matchKind).toBe('exact');
+    expect(enabled.pages[0]?.normalized.dosageAndAdministrationIngested).toBe(false);
+    expect(enabled.pages[0]?.normalized.approvalInferred).toBe(false);
+    expect(JSON.stringify(enabled.pages[0]?.payload)).not.toMatch(/dosage_and_administration/i);
+  });
+
+  it('Drugs@FDA reports not_checked until catalog loaded, then exact hits', async () => {
+    const empty = await createDrugsAtFdaConnector({ products: [] }).lookup({ query: 'metformin' });
+    expect(empty.matchKind).toBe('not_checked');
+
+    const products = JSON.parse(readFixture('drugs-at-fda-products.json')) as Array<{
+      applicationNumber: string;
+      productNumber?: string;
+      brandName: string;
+      activeIngredient: string;
+      form?: string;
+      strength?: string;
+      marketingStatus?: string;
+    }>;
+    const hit = await createDrugsAtFdaConnector({ products }).lookup({ query: 'metformin' });
+    expect(hit.matchKind).toBe('exact');
+    expect(hit.pages[0]?.normalized.applicationNumber).toBe('NDA020357');
   });
 });

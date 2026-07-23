@@ -10,6 +10,7 @@ export const NAV_ITEMS = [
   { to: '/sources', label: 'Source Health' },
   { to: '/claims', label: 'Claims' },
   { to: '/review', label: 'Review Queue' },
+  { to: '/entity-resolution', label: 'Entity Resolution' },
   { to: '/watchlists', label: 'Watchlists' },
   { to: '/methodology', label: 'Methodology' },
   { to: '/settings', label: 'Settings' },

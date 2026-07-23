@@ -36,6 +36,7 @@
     "@healthspan/connectors": "workspace:*",
     "@healthspan/db": "workspace:*",
     "@healthspan/intelligence": "workspace:*",
+    "@healthspan/interventions": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.10",

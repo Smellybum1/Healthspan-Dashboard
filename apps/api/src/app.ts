@@ -41,6 +41,15 @@ import {
   type ReviewAction,
 } from './review-service.js';
 import { getAssessment, listAssessments } from './assessment-service.js';
+import {
+  bootstrapInterventionCatalog,
+  buildDossierSnapshot,
+  getDossier,
+  listEntityResolutionTasks,
+  listInterventionEntities,
+  runMentionExtractionAndResolution,
+} from './dossier-service.js';
+import { enrichEntityIdentity } from './identity-enrich-runner.js';
 
 type DataMode = 'demo' | 'live';
 
@@ -184,7 +193,7 @@ export function createApp() {
         status: doctor.ok ? 'healthy' : 'degraded',
         integrity: doctor.integrity,
         journalMode: doctor.journalMode,
-        migrationVersion: '0003_m3_review_provenance',
+        migrationVersion: '0004_m4_interventions',
       },
       scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),
@@ -333,6 +342,30 @@ export function createApp() {
     }
 
     const type = c.req.query('type');
+    if (type === 'intervention' || type === 'peptide') {
+      bootstrapInterventionCatalog(live.db);
+      const listed = listInterventionEntities(live.db, {
+        entityType: type === 'peptide' ? 'peptide' : 'intervention',
+        page: Number(c.req.query('page') ?? 1),
+        pageSize: Number(c.req.query('pageSize') ?? 25),
+        q: c.req.query('q') ?? undefined,
+      });
+      return c.json({
+        dataMode: 'live',
+        dataOrigin: 'live',
+        count: listed.items.length,
+        items: listed.items.map((e) => ({
+          id: e.id,
+          type: type === 'peptide' ? 'peptide' : 'intervention',
+          title: e.preferredName,
+          summary: e.shortDescription ?? '',
+          tags: [e.entityType, e.identityConfidence],
+          updatedAt: new Date().toISOString(),
+          dataOrigin: 'live' as const,
+        })),
+      });
+    }
+
     const q = c.req.query('q') ?? undefined;
     const page = Number(c.req.query('page') ?? 1);
     const pageSize = Number(c.req.query('pageSize') ?? 25);
@@ -767,6 +800,134 @@ export function createApp() {
     const detail = getAssessment(live.db, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...detail });
+  });
+
+  app.get('/api/interventions', (c) => {
+    if (currentMode() === 'demo') {
+      const items = demoRepo.filterItems({ type: 'intervention' });
+      return c.json({ dataMode: 'demo', dataOrigin: 'demo', count: items.length, items });
+    }
+    bootstrapInterventionCatalog(live.db);
+    const listed = listInterventionEntities(live.db, {
+      entityType: c.req.query('entityType') ?? 'intervention',
+      page: Number(c.req.query('page') ?? 1),
+      pageSize: Number(c.req.query('pageSize') ?? 50),
+      q: c.req.query('q') ?? undefined,
+    });
+    return c.json({
+      dataMode: 'live',
+      dataOrigin: 'live',
+      count: listed.items.length,
+      page: listed.page,
+      pageSize: listed.pageSize,
+      total: listed.total,
+      totalPages: listed.totalPages,
+      items: listed.items.map((e) => ({
+        id: e.id,
+        type: e.entityType === 'peptide' ? 'peptide' : 'intervention',
+        title: e.preferredName,
+        summary: e.shortDescription ?? '',
+        tags: [e.entityType, e.identityConfidence],
+        updatedAt: new Date().toISOString(),
+        dataOrigin: 'live' as const,
+      })),
+    });
+  });
+
+  app.get('/api/peptides', (c) => {
+    if (currentMode() === 'demo') {
+      const items = demoRepo.filterItems({ type: 'peptide' });
+      return c.json({ dataMode: 'demo', dataOrigin: 'demo', count: items.length, items });
+    }
+    const listed = listInterventionEntities(live.db, {
+      entityType: 'peptide',
+      page: Number(c.req.query('page') ?? 1),
+      pageSize: Number(c.req.query('pageSize') ?? 50),
+      q: c.req.query('q') ?? undefined,
+    });
+    return c.json({
+      dataMode: 'live',
+      dataOrigin: 'live',
+      count: listed.items.length,
+      page: listed.page,
+      pageSize: listed.pageSize,
+      total: listed.total,
+      totalPages: listed.totalPages,
+      items: listed.items.map((e) => ({
+        id: e.id,
+        type: 'peptide',
+        title: e.preferredName,
+        summary: e.shortDescription ?? '',
+        tags: [e.entityType, e.identityConfidence],
+        updatedAt: new Date().toISOString(),
+        dataOrigin: 'live' as const,
+      })),
+    });
+  });
+
+  app.get('/api/interventions/:id/dossier', (c) => {
+    if (currentMode() === 'demo') {
+      return c.json({ error: 'Live dossiers are Live-only; use Demo detail pages for seed dossiers.' }, 400);
+    }
+    const dossier = getDossier(live.db, c.req.param('id'));
+    if (!dossier) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', ...dossier });
+  });
+
+  app.post('/api/interventions/resolve-mentions', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as { limit?: number };
+    const result = runMentionExtractionAndResolution(live.db, body.limit ?? 100);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.post('/api/interventions/:id/rebuild-dossier', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const built = buildDossierSnapshot(live.db, c.req.param('id'));
+    if (!built) return c.json({ error: 'Not found' }, 404);
+    return c.json({ ok: true, ...built });
+  });
+
+  app.post('/api/interventions/:id/enrich-identity', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      useNetwork?: boolean;
+      query?: string;
+    };
+    const result = await enrichEntityIdentity(live.db, c.req.param('id'), body);
+    if (!result) return c.json({ error: 'Not found' }, 404);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.get('/api/entity-resolution/tasks', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', tasks: [] });
+    const tasks = listEntityResolutionTasks(live.db).map((t) => ({
+      id: t.id,
+      title: t.title,
+      reason: t.reason,
+      status: t.status,
+      priority: t.priority,
+      mentionId: t.mentionId,
+      proposedEntityId: t.proposedEntityId,
+      stale: t.stale,
+      createdAt: new Date(t.createdAt).toISOString(),
+    }));
+    return c.json({ dataMode: 'live', tasks });
   });
 
   app.get('/api/review/tasks', (c) => {
