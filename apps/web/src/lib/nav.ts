@@ -11,6 +11,7 @@ export const NAV_ITEMS = [
   { to: '/claims', label: 'Claims' },
   { to: '/review', label: 'Review Queue' },
   { to: '/entity-resolution', label: 'Entity Resolution' },
+  { to: '/compare', label: 'Compare' },
   { to: '/watchlists', label: 'Watchlists' },
   { to: '/methodology', label: 'Methodology' },
   { to: '/settings', label: 'Settings' },

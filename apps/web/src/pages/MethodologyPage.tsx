@@ -37,7 +37,23 @@ const SECTIONS = [
   },
   {
     title: 'Adverse-event-report limitations',
-    body: 'Spontaneous adverse-event systems (and demo stand-ins) are hypothesis-generating. They are not incidence rates and must not be presented as validated clinical conclusions.',
+    body: 'Spontaneous adverse-event systems (and demo stand-ins) are hypothesis-generating. They are not incidence rates and must not be presented as validated clinical conclusions. FDA AEMS “potential signals” are regulator-identified potential signals / new safety information — never proven causality.',
+  },
+  {
+    title: 'Intervention identity and aliases',
+    body: 'Canonical entities preserve salts, formulations, analogues, fragments, and combinations as distinct when warranted. Exact trusted identifiers or unique exact aliases may auto-map; ambiguous names go to the Entity Resolution queue. Presence in RxNorm/PubChem/GSRS is vocabulary identity only — not approval.',
+  },
+  {
+    title: 'Regulatory scope',
+    body: 'ARTG, Drugs@FDA, and Purple Book facts are product-, formulation-, route-, jurisdiction-, and indication-scoped when known. Register inclusion is not longevity evidence. A search miss is no_exact_match_found / not_checked — never silently “unapproved”.',
+  },
+  {
+    title: 'Peptide identity limits',
+    body: 'Peptide dossiers never invent amino-acid sequences from marketing names. Sequence is stored only when a recognized identity source supplies it. The product does not provide dosing, reconstitution, vendors, stacking, or treatment advice.',
+  },
+  {
+    title: 'Comparison without ranking',
+    body: 'Users may compare 2–4 interventions side-by-side across independent dimensions. There is no winner styling, recommendation, stacking suggestion, or safety ranking from spontaneous-report counts. Incomparable type/variant cells are flagged explicitly.',
   },
   {
     title: 'AI-generated fields and provenance',

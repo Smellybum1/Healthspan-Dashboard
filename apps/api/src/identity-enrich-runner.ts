@@ -4,9 +4,11 @@ import { fileURLToPath } from 'node:url';
 import {
   createArtgConnector,
   createDrugsAtFdaConnector,
+  createFdaAemsConnector,
   createGsrsConnector,
   createOpenFdaLabelConnector,
   createPubChemConnector,
+  createPurpleBookConnector,
   createRxNormConnector,
   type FetchTransport,
   type IdentityLookupResult,
@@ -84,6 +86,9 @@ export async function enrichEntityIdentity(
     const artgTransport = fixtureTransport({
       artg: { body: readFixture('artg-search-exact.html'), contentType: 'text/html' },
     });
+    const aemsTransport = fixtureTransport({
+      'fda.gov': { body: readFixture('fda-aems-quarter.html'), contentType: 'text/html' },
+    });
 
     results.push(
       await createRxNormConnector({ transport: rxTransport, minIntervalMs: 0 }).lookup({
@@ -99,6 +104,8 @@ export async function enrichEntityIdentity(
       await createDrugsAtFdaConnector({
         products: JSON.parse(readFixture('drugs-at-fda-products.json')),
       }).lookup({ query }),
+      await createPurpleBookConnector({ csvText: readFixture('purple-book.csv') }).lookup({ query }),
+      await createFdaAemsConnector({ transport: aemsTransport, minIntervalMs: 0 }).lookup({ query }),
       await createOpenFdaLabelConnector({ apiKey: null }).lookup({ query }),
     );
   } else {
@@ -108,6 +115,8 @@ export async function enrichEntityIdentity(
       await createGsrsConnector({ minIntervalMs: 1000 }).lookup({ query }),
       await createArtgConnector({ minIntervalMs: 2000 }).lookup({ query }),
       await createDrugsAtFdaConnector({ products: [] }).lookup({ query }),
+      await createPurpleBookConnector({ rows: [] }).lookup({ query }),
+      await createFdaAemsConnector({ minIntervalMs: 2000 }).lookup({ query }),
       await createOpenFdaLabelConnector().lookup({ query }),
     );
   }
@@ -117,8 +126,20 @@ export async function enrichEntityIdentity(
     applied.push({ sourceId: result.connectorId, ...stats });
   }
 
+  const potentialSignals = results
+    .filter((r) => r.connectorId === 'fda-aems')
+    .flatMap((r) =>
+      r.pages.map((p) => ({
+        quarter: p.normalized.quarter,
+        productOrClass: p.normalized.productOrClass,
+        signalText: p.normalized.signalText,
+        provenCausality: false,
+        incidenceEstablished: false,
+      })),
+    );
+
   const coverage = mergeCoverage(results.map(coverageFromLookup));
-  const dossier = buildDossierSnapshot(db, entityId, { coverage });
+  const dossier = buildDossierSnapshot(db, entityId, { coverage, potentialSignals });
   return {
     entityId,
     query,

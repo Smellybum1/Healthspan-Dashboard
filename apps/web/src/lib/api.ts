@@ -82,6 +82,19 @@ export function resolveReviewTask(
   return postJson<Record<string, unknown>>(`/api/review/tasks/${taskId}/resolve`, body);
 }
 
+export function resolveEntityResolutionTask(
+  taskId: string,
+  body: {
+    action: 'accept' | 'reject' | 'defer' | 'link_other' | 'create_entity' | 'keep_separate';
+    entityId?: string;
+    notes?: string;
+    newEntityName?: string;
+    newEntityType?: string;
+  },
+) {
+  return postJson<Record<string, unknown>>(`/api/entity-resolution/tasks/${taskId}/resolve`, body);
+}
+
 export function fetchItems(params: Record<string, string | undefined> = {}) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

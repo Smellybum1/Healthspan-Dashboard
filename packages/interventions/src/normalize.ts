@@ -22,7 +22,7 @@ export function normalizeIdentifierValue(scheme: string, value: string): string 
     return trimmed.replace(/^0+/, '') || '0';
   }
   if (scheme === 'artg_id') return trimmed.replace(/\s+/g, '');
-  if (scheme === 'fda_application_number' || scheme === 'spl_set_id') {
+  if (scheme === 'fda_application_number' || scheme === 'spl_set_id' || scheme === 'bla_number') {
     return trimmed.toUpperCase().replace(/\s+/g, '');
   }
   return normalizeForMatch(trimmed);

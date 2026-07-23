@@ -50,6 +50,12 @@ import {
   runMentionExtractionAndResolution,
 } from './dossier-service.js';
 import { enrichEntityIdentity } from './identity-enrich-runner.js';
+import {
+  ENTITY_RESOLUTION_ACTIONS,
+  resolveEntityResolutionTask,
+  type EntityResolutionAction,
+} from './entity-resolution-service.js';
+import { compareInterventions } from './comparison-service.js';
 
 type DataMode = 'demo' | 'live';
 
@@ -834,6 +840,21 @@ export function createApp() {
     });
   });
 
+  app.get('/api/interventions/compare', (c) => {
+    if (currentMode() === 'demo') {
+      return c.json({
+        error: 'Live comparison uses Live dossiers; switch to Live mode.',
+      }, 400);
+    }
+    const ids = (c.req.query('ids') ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const result = compareInterventions(live.db, ids);
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ dataMode: 'live', ...result });
+  });
+
   app.get('/api/peptides', (c) => {
     if (currentMode() === 'demo') {
       const items = demoRepo.filterItems({ type: 'peptide' });
@@ -928,6 +949,35 @@ export function createApp() {
       createdAt: new Date(t.createdAt).toISOString(),
     }));
     return c.json({ dataMode: 'live', tasks });
+  });
+
+  app.post('/api/entity-resolution/tasks/:id/resolve', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      action?: EntityResolutionAction;
+      entityId?: string;
+      notes?: string;
+      newEntityName?: string;
+      newEntityType?: string;
+    };
+    if (!body.action || !(ENTITY_RESOLUTION_ACTIONS as readonly string[]).includes(body.action)) {
+      return c.json({ error: `action must be one of: ${ENTITY_RESOLUTION_ACTIONS.join(', ')}` }, 400);
+    }
+    const result = resolveEntityResolutionTask(live.db, {
+      taskId: c.req.param('id'),
+      action: body.action,
+      entityId: body.entityId,
+      notes: body.notes,
+      newEntityName: body.newEntityName,
+      newEntityType: body.newEntityType,
+    });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
   });
 
   app.get('/api/review/tasks', (c) => {

@@ -1,5 +1,17 @@
 # Progress log
 
+## 2026-07-24 — M4 packet: resolution, compare, Purple Book, AEMS
+
+- Entity-resolution accept/reject/defer/create_entity/keep_separate with append-only decisions
+- Live comparison screen (2–4 entities, no winner/rank/spontaneous-report ranking)
+- Purple Book CSV + FDA AEMS potential-signal connectors (fixture-first)
+- ADR-0009 identity/regulatory scope; methodology sections expanded
+- Gates: lint, typecheck, test (72), build
+
+### Next recommended work
+
+Drugs@FDA bulk ZIP staging, openFDA event aggregates when keyed, trial↔intervention mappings, Today regulatory events, e2e, full checklist + M4_COMPLETION_REPORT. Do not start M5.
+
 ## 2026-07-24 — Milestone 4 in progress (dossier + identity connectors)
 
 - Branch: `milestone-4/interventions-peptides-regulation` (base M3 `4d985d3`).

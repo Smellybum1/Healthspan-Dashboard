@@ -130,6 +130,25 @@ export function DossierPage() {
         <p className="text-sm text-[var(--muted)]">
           {String((data.safety.spontaneousReports as Record<string, unknown>).caveat)}
         </p>
+        {data.safety.potentialSignals ? (
+          <div className="mt-2 space-y-2 text-sm">
+            <p className="text-xs text-[var(--muted)]">
+              {String((data.safety.potentialSignals as Record<string, unknown>).caveat)}
+            </p>
+            <ul className="space-y-1">
+              {(
+                ((data.safety.potentialSignals as Record<string, unknown>).items as
+                  | Array<Record<string, unknown>>
+                  | undefined) ?? []
+              ).map((s, i) => (
+                <li key={i} className="rounded border border-[var(--border)] px-2 py-1">
+                  {String(s.quarter)} · {String(s.productOrClass)} · {String(s.signalText)}
+                  <span className="block text-xs text-amber-300">Not proven causality · not incidence</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       {data.openResolutionTasks > 0 ? (

@@ -203,4 +203,27 @@ describe('connectors with fixtures', () => {
     expect(hit.matchKind).toBe('exact');
     expect(hit.pages[0]?.normalized.applicationNumber).toBe('NDA020357');
   });
+
+  it('Purple Book CSV parse never infers interchangeability or peptide identity', async () => {
+    const { createPurpleBookConnector, parsePurpleBookCsv } = await import('./purple-book.js');
+    const rows = parsePurpleBookCsv(readFixture('purple-book.csv'));
+    expect(rows[0]?.blaNumber).toBe('BLA125118');
+    const result = await createPurpleBookConnector({ rows }).lookup({ query: 'metformin' });
+    expect(result.matchKind).toBe('exact');
+    expect(result.pages[0]?.normalized.interchangeableInferred).toBe(false);
+    expect(result.pages[0]?.normalized.peptideIdentityInferred).toBe(false);
+  });
+
+  it('AEMS potential signals are never marked causal', async () => {
+    const { createFdaAemsConnector } = await import('./fda-aems.js');
+    const result = await createFdaAemsConnector({
+      minIntervalMs: 0,
+      transport: fixtureTransport({
+        'fda.gov': { body: readFixture('fda-aems-quarter.html'), contentType: 'text/html' },
+      }),
+    }).lookup({ query: 'metformin' });
+    expect(result.matchKind).toBe('exact');
+    expect(result.pages[0]?.normalized.provenCausality).toBe(false);
+    expect(result.pages[0]?.normalized.incidenceEstablished).toBe(false);
+  });
 });

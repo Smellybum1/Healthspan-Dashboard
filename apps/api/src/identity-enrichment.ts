@@ -63,6 +63,18 @@ export function defaultRegulatoryCoverage(): CoverageCell[] {
       state: 'disabled',
       note: 'openFDA label/event enrichment waits for OPENFDA_API_KEY (healthy disabled state).',
     },
+    {
+      sourceId: 'purple-book',
+      jurisdiction: 'US',
+      state: 'not_checked',
+      note: 'Purple Book biologic licence catalog not checked for this entity.',
+    },
+    {
+      sourceId: 'fda-aems',
+      jurisdiction: 'US',
+      state: 'not_checked',
+      note: 'FDA AEMS potential-signal pages not checked. Potential signals are not proven causality.',
+    },
   ];
 }
 
@@ -78,7 +90,10 @@ export function coverageFromLookup(result: IdentityLookupResult): CoverageCell {
     jurisdiction:
       result.connectorId === 'artg'
         ? 'AU'
-        : result.connectorId === 'openfda' || result.connectorId === 'drugs-at-fda'
+        : result.connectorId === 'openfda' ||
+            result.connectorId === 'drugs-at-fda' ||
+            result.connectorId === 'purple-book' ||
+            result.connectorId === 'fda-aems'
           ? 'US'
           : undefined,
     state,
@@ -116,7 +131,14 @@ export function applyIdentityLookupToEntity(
     const n = page.normalized;
     const scheme = String(n.scheme ?? '');
     const value = String(
-      n.rxcui ?? n.cid ?? n.unii ?? n.artgId ?? n.applicationNumber ?? n.setId ?? page.externalId,
+      n.rxcui ??
+        n.cid ??
+        n.unii ??
+        n.artgId ??
+        n.applicationNumber ??
+        n.blaNumber ??
+        n.setId ??
+        page.externalId,
     );
     if (scheme && value) {
       const normalizedValue = normalizeIdentifierValue(scheme, value);

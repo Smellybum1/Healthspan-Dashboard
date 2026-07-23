@@ -65,6 +65,18 @@ export const DEFAULT_SOURCES = [
     kind: 'regulator',
     officialBaseUrl: 'https://www.accessdata.fda.gov/scripts/cder/daf/',
   },
+  {
+    id: 'purple-book',
+    displayName: 'FDA Purple Book',
+    kind: 'regulator',
+    officialBaseUrl: 'https://purplebooksearch.fda.gov/',
+  },
+  {
+    id: 'fda-aems',
+    displayName: 'FDA AEMS Potential Signals',
+    kind: 'regulator',
+    officialBaseUrl: 'https://www.fda.gov/drugs/questions-and-answers-fdas-adverse-event-reporting-system-faers/',
+  },
 ] as const;
 
 export const DEFAULT_TGA_FEEDS = [

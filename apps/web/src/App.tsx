@@ -20,6 +20,7 @@ import { ReviewQueuePage } from './pages/ReviewQueuePage';
 import { ClaimsPage } from './pages/ClaimsPage';
 import { ClaimDetailPage } from './pages/ClaimDetailPage';
 import { EntityResolutionPage } from './pages/EntityResolutionPage';
+import { ComparisonPage } from './pages/ComparisonPage';
 
 export function App() {
   return (
@@ -43,6 +44,7 @@ export function App() {
         <Route path="claims/:id" element={<ClaimDetailPage />} />
         <Route path="review" element={<ReviewQueuePage />} />
         <Route path="entity-resolution" element={<EntityResolutionPage />} />
+        <Route path="compare" element={<ComparisonPage />} />
         <Route path="watchlists" element={<WatchlistsPage />} />
         <Route path="methodology" element={<MethodologyPage />} />
         <Route path="settings" element={<SettingsPage />} />

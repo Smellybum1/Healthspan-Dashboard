@@ -244,7 +244,7 @@ export function listInterventionEntities(
     rows = rows.filter((e) => e.entityType === 'peptide');
   } else if (opts?.entityType === 'intervention') {
     rows = rows.filter((e) => e.entityType !== 'peptide');
-  } else if (opts?.entityType) {
+  } else if (opts?.entityType && opts.entityType !== 'all') {
     rows = rows.filter((e) => e.entityType === opts.entityType);
   }
   if (opts?.q) {
@@ -266,7 +266,10 @@ export function listInterventionEntities(
 export function buildDossierSnapshot(
   db: HealthspanDb,
   entityId: string,
-  opts?: { coverage?: ReturnType<typeof defaultRegulatoryCoverage> },
+  opts?: {
+    coverage?: ReturnType<typeof defaultRegulatoryCoverage>;
+    potentialSignals?: Array<Record<string, unknown>>;
+  },
 ) {
   bootstrapInterventionCatalog(db);
   const entity = db.select().from(interventionEntities).where(eq(interventionEntities.id, entityId)).all()[0];
@@ -389,6 +392,11 @@ export function buildDossierSnapshot(
       enabled: false,
       caveat:
         'Spontaneous reports are not proof of causation, do not provide an exposure denominator, and may contain duplicates.',
+    },
+    potentialSignals: {
+      items: opts?.potentialSignals ?? [],
+      caveat:
+        'FDA AEMS potential signals / new safety information are not proven causality and are not incidence rates. Do not rank interventions by report counts.',
     },
     peptideWarnings: peptide ? [peptide.warningState] : [],
   };

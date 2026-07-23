@@ -25,4 +25,8 @@ export { createArtgConnector, parseArtgSearchHtml, normalizeLicenceStanding } fr
 export { createOpenFdaLabelConnector } from './openfda.js';
 export { createDrugsAtFdaConnector } from './drugs-at-fda.js';
 export type { DrugsAtFdaProduct } from './drugs-at-fda.js';
+export { createPurpleBookConnector, parsePurpleBookCsv } from './purple-book.js';
+export type { PurpleBookRow } from './purple-book.js';
+export { createFdaAemsConnector, parseAemsHtml } from './fda-aems.js';
+export type { AemsSignal } from './fda-aems.js';
 export { plannedConnectors, DisabledConnector } from './legacy.js';
