@@ -13,12 +13,14 @@ export function CatalogPage({
   type,
   pathPrefix,
   extraFilters,
+  liveEmptyHint,
 }: {
   title: string;
   description: string;
   type?: string;
   pathPrefix?: string;
   extraFilters?: Array<{ key: string; label: string; options: Array<{ value: string; label: string }> }>;
+  liveEmptyHint?: string;
 }) {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
@@ -56,7 +58,11 @@ export function CatalogPage({
   return (
     <div className="space-y-4">
       <PageHeader title={title} description={description} />
-      <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} />
+      {data?.dataOrigin === 'demo' || (!data && !loading) ? (
+        <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} />
+      ) : data?.dataOrigin === 'live' ? (
+        <p className="text-xs text-[var(--muted)]">Showing Live primary-source records only.</p>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <input
@@ -102,6 +108,10 @@ export function CatalogPage({
         </div>
       ) : error ? (
         <p className="text-rose-300">{error}</p>
+      ) : items.length === 0 && data?.dataOrigin === 'live' && liveEmptyHint ? (
+        <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-sm text-[var(--muted)]">
+          {liveEmptyHint}
+        </div>
       ) : (
         <ItemList
           items={items}
@@ -174,6 +184,7 @@ export function InterventionsListPage() {
       description="Dossiers spanning approved drugs, lifestyle, and investigational ideas."
       type="intervention"
       pathPrefix="/interventions"
+      liveEmptyHint="Intervention resolution is not part of Milestone 2. Switch to Demo mode in Settings to explore the M1 showcase."
     />
   );
 }
@@ -185,6 +196,7 @@ export function PeptidesListPage() {
       description="Investigational/unapproved peptide examples with stronger safety warnings."
       type="peptide"
       pathPrefix="/peptides"
+      liveEmptyHint="Peptide dossiers are not part of Milestone 2 Live mode. Switch to Demo mode in Settings for the M1 showcase."
     />
   );
 }
@@ -196,6 +208,7 @@ export function CreatorsListPage() {
       description="Score claims, not personalities. Creator profiles for watched channels and newsletters."
       type="creator"
       pathPrefix="/creators"
+      liveEmptyHint="Creator monitoring is not part of Milestone 2. Switch to Demo mode in Settings for the M1 showcase."
     />
   );
 }
@@ -204,7 +217,7 @@ export function SafetyListPage() {
   return (
     <CatalogPage
       title="Safety & Regulation"
-      description="TGA/FDA-style demo alerts, recalls, label changes, and status notes."
+      description="TGA RSS alerts and related regulatory notices from Live ingestion, or Demo stand-ins."
       type="regulatory_event"
       pathPrefix="/safety"
       extraFilters={[
@@ -221,3 +234,4 @@ export function SafetyListPage() {
     />
   );
 }
+

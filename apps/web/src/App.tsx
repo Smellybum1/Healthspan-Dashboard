@@ -14,6 +14,7 @@ import { DetailPage } from './pages/DetailPage';
 import { WatchlistsPage } from './pages/WatchlistsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MethodologyPage } from './pages/MethodologyPage';
+import { SourceHealthPage } from './pages/SourceHealthPage';
 
 export function App() {
   return (
@@ -32,6 +33,7 @@ export function App() {
         <Route path="creators" element={<CreatorsListPage />} />
         <Route path="creators/:id" element={<DetailPage />} />
         <Route path="safety" element={<SafetyListPage />} />
+        <Route path="sources" element={<SourceHealthPage />} />
         <Route path="watchlists" element={<WatchlistsPage />} />
         <Route path="methodology" element={<MethodologyPage />} />
         <Route path="settings" element={<SettingsPage />} />

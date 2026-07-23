@@ -1,54 +1,14 @@
-import { z } from 'zod';
-
-/**
- * Source adapter contracts for Milestone 2+.
- * Milestone 1 ships contracts only — no live external calls.
- */
-export const ConnectorHealthSchema = z.enum(['healthy', 'degraded', 'error', 'disabled', 'unknown']);
-export type ConnectorHealth = z.infer<typeof ConnectorHealthSchema>;
-
-export const ConnectorFetchResultSchema = z.object({
-  connectorId: z.string(),
-  fetchedAt: z.string().datetime(),
-  ok: z.boolean(),
-  itemCount: z.number().int().nonnegative(),
-  errorMessage: z.string().optional(),
-  rawHash: z.string().optional(),
-});
-export type ConnectorFetchResult = z.infer<typeof ConnectorFetchResultSchema>;
-
-export interface SourceConnector {
-  readonly id: string;
-  readonly name: string;
-  readonly enabled: boolean;
-  health(): Promise<ConnectorHealth>;
-  fetchSince(sinceIso: string | null): Promise<ConnectorFetchResult>;
-}
-
-export const plannedConnectors = [
-  'pubmed',
-  'clinicaltrials_gov',
-  'crossref',
-  'tga_rss',
-  'anzctr_enrichment',
-] as const;
-
-export class DisabledConnector implements SourceConnector {
-  constructor(
-    readonly id: string,
-    readonly name: string,
-  ) {}
-  readonly enabled = false;
-  async health(): Promise<ConnectorHealth> {
-    return 'disabled';
-  }
-  async fetchSince(_sinceIso: string | null): Promise<ConnectorFetchResult> {
-    return {
-      connectorId: this.id,
-      fetchedAt: new Date().toISOString(),
-      ok: false,
-      itemCount: 0,
-      errorMessage: 'Connector disabled until Milestone 2.',
-    };
-  }
-}
+export type {
+  ConnectorId,
+  ConnectorPage,
+  ConnectorFetchResult,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
+export { ConnectorIdSchema } from './types.js';
+export { createHttpClient } from './http.js';
+export { createPubmedConnector } from './pubmed.js';
+export { createClinicalTrialsConnector } from './clinicaltrials.js';
+export { createCrossrefConnector } from './crossref.js';
+export { createTgaConnector, TGA_FEEDS, RELEVANCE_TERMS } from './tga.js';
+export { plannedConnectors, DisabledConnector } from './legacy.js';

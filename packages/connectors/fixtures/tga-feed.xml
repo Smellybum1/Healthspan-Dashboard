@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<rss version="2.0"><channel><title>TGA Safety Alerts</title>
+<item><title>Example safety alert about metformin</title><link>https://www.tga.gov.au/example</link><guid>tga-example-1</guid><pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate><description>Alert mentioning longevity and aging research context.</description></item>
+<item><title>Unrelated veterinary notice</title><link>https://www.tga.gov.au/other</link><guid>tga-example-2</guid><pubDate>Mon, 02 Jan 2024 00:00:00 GMT</pubDate><description>No match terms.</description></item>
+</channel></rss>

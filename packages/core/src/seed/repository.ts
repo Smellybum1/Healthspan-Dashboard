@@ -20,11 +20,14 @@ export function getDashboardPayload(): DashboardPayload {
 
   return {
     asOf: seedMeta.asOf,
+    dataMode: 'demo',
+    dataOrigin: 'demo',
     demoNotice: seed.demoNotice,
     lastVisitAt: seedMeta.lastVisitAt,
     sources: seed.sources,
     changes: seed.changeEvents,
     radar: seed.radar,
+    radarUnavailableReason: null,
     trialPulse: seed.trials.filter((t) =>
       ['recruiting', 'terminated', 'withdrawn', 'completed'].includes(t.status),
     ),

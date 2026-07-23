@@ -1,0 +1,97 @@
+import { eq } from 'drizzle-orm';
+import type { HealthspanDb } from './client.js';
+import { sourceFeeds, sources } from './schema.js';
+
+const now = () => Date.now();
+
+export const DEFAULT_SOURCES = [
+  {
+    id: 'pubmed',
+    displayName: 'PubMed / NCBI E-utilities',
+    kind: 'publication_index',
+    officialBaseUrl: 'https://eutils.ncbi.nlm.nih.gov/',
+  },
+  {
+    id: 'clinicaltrials-gov',
+    displayName: 'ClinicalTrials.gov',
+    kind: 'registry',
+    officialBaseUrl: 'https://clinicaltrials.gov/',
+  },
+  {
+    id: 'crossref',
+    displayName: 'Crossref',
+    kind: 'publication_index',
+    officialBaseUrl: 'https://api.crossref.org/',
+  },
+  {
+    id: 'tga',
+    displayName: 'TGA RSS',
+    kind: 'regulator',
+    officialBaseUrl: 'https://www.tga.gov.au/',
+  },
+] as const;
+
+export const DEFAULT_TGA_FEEDS = [
+  {
+    id: 'tga-safety-alerts',
+    feedKey: 'safety-alerts',
+    category: 'safety_alerts',
+    url: 'https://www.tga.gov.au/news/safety-alerts/rss.xml',
+  },
+  {
+    id: 'tga-market-actions',
+    feedKey: 'market-actions',
+    category: 'market_actions',
+    url: 'https://www.tga.gov.au/news/safety-alerts/market-actions/rss.xml',
+  },
+  {
+    id: 'tga-safety-updates',
+    feedKey: 'safety-updates',
+    category: 'safety_updates',
+    url: 'https://www.tga.gov.au/news/safety-updates/rss.xml',
+  },
+  {
+    id: 'tga-media-releases',
+    feedKey: 'media-releases',
+    category: 'media_releases',
+    url: 'https://www.tga.gov.au/news/media-releases/rss.xml',
+  },
+] as const;
+
+export function seedOperationalSources(db: HealthspanDb) {
+  const t = now();
+  for (const source of DEFAULT_SOURCES) {
+    const existing = db.select().from(sources).where(eq(sources.id, source.id)).all();
+    if (existing.length === 0) {
+      db.insert(sources)
+        .values({
+          id: source.id,
+          displayName: source.displayName,
+          kind: source.kind,
+          officialBaseUrl: source.officialBaseUrl,
+          enabled: true,
+          healthState: 'never_run',
+          consecutiveFailures: 0,
+          createdAt: t,
+          updatedAt: t,
+        })
+        .run();
+    }
+  }
+
+  for (const feed of DEFAULT_TGA_FEEDS) {
+    const existing = db.select().from(sourceFeeds).where(eq(sourceFeeds.id, feed.id)).all();
+    if (existing.length === 0) {
+      db.insert(sourceFeeds)
+        .values({
+          id: feed.id,
+          sourceId: 'tga',
+          feedKey: feed.feedKey,
+          url: feed.url,
+          category: feed.category,
+          enabled: true,
+        })
+        .run();
+    }
+  }
+}

@@ -62,8 +62,10 @@ export function DetailPage() {
         description={item.summary}
         actions={<FollowButton id={item.id} />}
       />
-      <DemoBanner notice={demoNotice} />
-
+      {demoNotice ? <DemoBanner notice={demoNotice} /> : null}
+      {data.assessmentStatus ? (
+        <p className="text-sm text-[var(--muted)]">{data.assessmentStatus}</p>
+      ) : null}
       {isPeptide ? (
         <div
           role="alert"

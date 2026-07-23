@@ -34,7 +34,7 @@ export const seedBundle = {
     "health": "healthy",
     "lastSuccessfulFetchAt": "2026-07-20T10:00:00.000Z",
     "lastError": null,
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "src-pubmed-stub",
@@ -44,7 +44,7 @@ export const seedBundle = {
     "health": "unknown",
     "lastSuccessfulFetchAt": null,
     "lastError": "Not connected in Milestone 1",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "src-ctg-stub",
@@ -54,7 +54,7 @@ export const seedBundle = {
     "health": "unknown",
     "lastSuccessfulFetchAt": null,
     "lastError": "Not connected in Milestone 1",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "src-tga-stub",
@@ -64,7 +64,7 @@ export const seedBundle = {
     "health": "degraded",
     "lastSuccessfulFetchAt": "2026-07-19T02:00:00.000Z",
     "lastError": "Demo degraded state for UI",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "src-crossref-stub",
@@ -74,7 +74,7 @@ export const seedBundle = {
     "health": "unknown",
     "lastSuccessfulFetchAt": null,
     "lastError": "Not connected in Milestone 1",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "src-anzctr-stub",
@@ -84,7 +84,7 @@ export const seedBundle = {
     "health": "unknown",
     "lastSuccessfulFetchAt": null,
     "lastError": "Not connected in Milestone 1",
-    "demo": true
+    "dataOrigin": "demo"
   }
 ],
   sourceRecords: [
@@ -95,7 +95,7 @@ export const seedBundle = {
     "fetchedAt": "2026-07-20T10:00:00.000Z",
     "rawHash": "hash-demo-1",
     "url": "https://example.invalid/demo",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "srec-2",
@@ -104,7 +104,7 @@ export const seedBundle = {
     "fetchedAt": "2026-07-20T10:00:00.000Z",
     "rawHash": "hash-demo-2",
     "url": "https://pubmed.ncbi.nlm.nih.gov/",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "srec-3",
@@ -113,7 +113,7 @@ export const seedBundle = {
     "fetchedAt": "2026-07-20T10:00:00.000Z",
     "rawHash": "hash-demo-3",
     "url": "https://clinicaltrials.gov/",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "srec-4",
@@ -122,7 +122,7 @@ export const seedBundle = {
     "fetchedAt": "2026-07-20T10:00:00.000Z",
     "rawHash": "hash-demo-4",
     "url": "https://www.tga.gov.au/",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "srec-5",
@@ -131,7 +131,7 @@ export const seedBundle = {
     "fetchedAt": "2026-07-20T10:00:00.000Z",
     "rawHash": "hash-demo-5",
     "url": "https://www.crossref.org/",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "srec-6",
@@ -140,7 +140,7 @@ export const seedBundle = {
     "fetchedAt": "2026-07-20T10:00:00.000Z",
     "rawHash": "hash-demo-6",
     "url": "https://www.anzctr.org.au/",
-    "demo": true
+    "dataOrigin": "demo"
   }
 ],
   assessments: [
@@ -195,7 +195,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-rapamycin",
@@ -249,7 +249,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-exercise",
@@ -287,7 +287,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-nmn",
@@ -334,7 +334,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-senolytic",
@@ -376,7 +376,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-pep-bpc157",
@@ -427,7 +427,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-pep-epitalon",
@@ -470,7 +470,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-pep-gen-1",
@@ -487,7 +487,7 @@ export const seedBundle = {
     "translationGaps": [
       "cell_to_organism"
     ],
-    "attentionScore": 0.5577848143341599,
+    "attentionScore": 0.538584266370983,
     "attentionRationale": [
       "Demo attention derived from seeded mention velocity."
     ],
@@ -512,7 +512,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-pep-gen-2",
@@ -529,7 +529,7 @@ export const seedBundle = {
     "translationGaps": [
       "cell_to_organism"
     ],
-    "attentionScore": 0.5228260568211858,
+    "attentionScore": 0.5115812151506023,
     "attentionRationale": [
       "Demo attention derived from seeded mention velocity."
     ],
@@ -554,7 +554,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-pep-gen-3",
@@ -571,7 +571,7 @@ export const seedBundle = {
     "translationGaps": [
       "cell_to_organism"
     ],
-    "attentionScore": 0.5866299325729512,
+    "attentionScore": 0.41042910096323904,
     "attentionRationale": [
       "Demo attention derived from seeded mention velocity."
     ],
@@ -596,7 +596,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-pep-gen-4",
@@ -613,7 +613,7 @@ export const seedBundle = {
     "translationGaps": [
       "cell_to_organism"
     ],
-    "attentionScore": 0.40361095585768136,
+    "attentionScore": 0.544737511387327,
     "attentionRationale": [
       "Demo attention derived from seeded mention velocity."
     ],
@@ -638,7 +638,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-gen-1",
@@ -676,7 +676,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-gen-2",
@@ -714,7 +714,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-gen-3",
@@ -752,7 +752,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-gen-4",
@@ -790,7 +790,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-gen-5",
@@ -828,7 +828,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-gen-6",
@@ -866,7 +866,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-int-gen-7",
@@ -904,7 +904,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-metformin-rct",
@@ -937,7 +937,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-metformin-obs",
@@ -972,7 +972,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-rapamycin-animal",
@@ -1007,7 +1007,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-rapamycin-early",
@@ -1040,7 +1040,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-exercise-synthesis",
@@ -1073,7 +1073,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-nmn-early",
@@ -1106,7 +1106,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-nmn-invitro",
@@ -1141,7 +1141,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-senolytic-animal",
@@ -1176,7 +1176,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-bpc-animal",
@@ -1211,7 +1211,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-epitalon-invitro",
@@ -1246,7 +1246,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-retraction",
@@ -1281,7 +1281,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-null",
@@ -1314,7 +1314,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-1",
@@ -1349,7 +1349,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-2",
@@ -1384,7 +1384,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-3",
@@ -1419,7 +1419,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-4",
@@ -1454,7 +1454,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-5",
@@ -1489,7 +1489,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-6",
@@ -1524,7 +1524,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-7",
@@ -1559,7 +1559,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-8",
@@ -1594,7 +1594,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-9",
@@ -1629,7 +1629,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-paper-gen-10",
@@ -1664,7 +1664,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-metformin",
@@ -1702,7 +1702,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-rapamycin",
@@ -1740,7 +1740,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-nmn",
@@ -1778,7 +1778,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-senolytic",
@@ -1818,7 +1818,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-exercise",
@@ -1856,7 +1856,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-bpc",
@@ -1896,7 +1896,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-gen-1",
@@ -1934,7 +1934,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-gen-2",
@@ -1972,7 +1972,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-gen-3",
@@ -2010,7 +2010,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-gen-4",
@@ -2048,7 +2048,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-gen-5",
@@ -2086,7 +2086,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-trial-gen-6",
@@ -2124,7 +2124,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-creator-evidence",
@@ -2157,7 +2157,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-creator-hype",
@@ -2190,7 +2190,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-creator-clinician",
@@ -2223,7 +2223,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-creator-gen-1",
@@ -2256,7 +2256,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-creator-gen-2",
@@ -2289,7 +2289,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-creator-gen-3",
@@ -2322,7 +2322,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-creator-gen-4",
@@ -2355,7 +2355,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-claim-senolytic",
@@ -2388,7 +2388,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-claim-bpc",
@@ -2421,7 +2421,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-claim-exercise",
@@ -2454,7 +2454,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-claim-tga",
@@ -2487,7 +2487,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-claim-gen-1",
@@ -2520,7 +2520,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-claim-gen-2",
@@ -2553,7 +2553,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-claim-gen-3",
@@ -2586,7 +2586,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-claim-gen-4",
@@ -2619,7 +2619,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-reg-tga-peptide",
@@ -2659,7 +2659,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-reg-tga-recall",
@@ -2699,7 +2699,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-reg-fda-label",
@@ -2739,7 +2739,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-reg-wada",
@@ -2779,7 +2779,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-reg-gen-1",
@@ -2819,7 +2819,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-reg-gen-2",
@@ -2859,7 +2859,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "ea-reg-gen-3",
@@ -2899,7 +2899,7 @@ export const seedBundle = {
       ],
       "notes": "Seeded demonstration provenance."
     },
-    "demo": true
+    "dataOrigin": "demo"
   }
 ],
   papers: [
@@ -2915,7 +2915,7 @@ export const seedBundle = {
     "publishedAt": "2023-05-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-metformin-rct",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "A. Demo",
       "B. Example"
@@ -2954,7 +2954,7 @@ export const seedBundle = {
     "publishedAt": "2022-03-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-metformin-obs",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "C. Cohort"
     ],
@@ -2991,7 +2991,7 @@ export const seedBundle = {
     "publishedAt": "2021-08-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-rapamycin-animal",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "D. Murine"
     ],
@@ -3029,7 +3029,7 @@ export const seedBundle = {
     "publishedAt": "2024-01-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-rapamycin-early",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "E. Early"
     ],
@@ -3066,7 +3066,7 @@ export const seedBundle = {
     "publishedAt": "2020-11-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-exercise-synthesis",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "F. Synthesis"
     ],
@@ -3103,7 +3103,7 @@ export const seedBundle = {
     "publishedAt": "2025-09-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-nmn-early",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "G. Preprint"
     ],
@@ -3140,7 +3140,7 @@ export const seedBundle = {
     "publishedAt": "2019-04-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-nmn-invitro",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "H. Dish"
     ],
@@ -3177,7 +3177,7 @@ export const seedBundle = {
     "publishedAt": "2023-02-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-senolytic-animal",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "I. Frailty"
     ],
@@ -3214,7 +3214,7 @@ export const seedBundle = {
     "publishedAt": "2017-06-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-bpc-animal",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "J. Peptide"
     ],
@@ -3251,7 +3251,7 @@ export const seedBundle = {
     "publishedAt": "2016-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-epitalon-invitro",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "K. Telomere"
     ],
@@ -3288,7 +3288,7 @@ export const seedBundle = {
     "publishedAt": "2022-01-01T00:00:00.000Z",
     "updatedAt": "2024-06-01T00:00:00.000Z",
     "assessmentId": "ea-paper-retraction",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "L. Retracted"
     ],
@@ -3328,7 +3328,7 @@ export const seedBundle = {
     "publishedAt": "2024-07-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-null",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "M. Null"
     ],
@@ -3365,7 +3365,7 @@ export const seedBundle = {
     "publishedAt": "2021-02-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-1",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 1"
     ],
@@ -3402,7 +3402,7 @@ export const seedBundle = {
     "publishedAt": "2022-03-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-2",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 2"
     ],
@@ -3439,7 +3439,7 @@ export const seedBundle = {
     "publishedAt": "2023-04-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-3",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 3"
     ],
@@ -3476,7 +3476,7 @@ export const seedBundle = {
     "publishedAt": "2024-05-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-4",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 4"
     ],
@@ -3513,7 +3513,7 @@ export const seedBundle = {
     "publishedAt": "2025-06-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-5",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 5"
     ],
@@ -3550,7 +3550,7 @@ export const seedBundle = {
     "publishedAt": "2020-07-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-6",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 6"
     ],
@@ -3587,7 +3587,7 @@ export const seedBundle = {
     "publishedAt": "2021-08-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-7",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 7"
     ],
@@ -3624,7 +3624,7 @@ export const seedBundle = {
     "publishedAt": "2022-09-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-8",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 8"
     ],
@@ -3661,7 +3661,7 @@ export const seedBundle = {
     "publishedAt": "2023-01-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-9",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 9"
     ],
@@ -3698,7 +3698,7 @@ export const seedBundle = {
     "publishedAt": "2024-02-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-paper-gen-10",
-    "demo": true,
+    "dataOrigin": "demo",
     "authors": [
       "Author 10"
     ],
@@ -3737,7 +3737,7 @@ export const seedBundle = {
     "publishedAt": "2019-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-metformin",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-0001",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-0001",
     "status": "not_yet_recruiting",
@@ -3801,7 +3801,7 @@ export const seedBundle = {
     "publishedAt": "2023-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-rapamycin",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-0002",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-0002",
     "status": "active_not_recruiting",
@@ -3864,7 +3864,7 @@ export const seedBundle = {
     "publishedAt": "2026-06-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-nmn",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-0003",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-0003",
     "status": "recruiting",
@@ -3928,7 +3928,7 @@ export const seedBundle = {
     "publishedAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2025-02-01T00:00:00.000Z",
     "assessmentId": "ea-trial-senolytic",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-0004",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-0004",
     "status": "withdrawn",
@@ -3990,7 +3990,7 @@ export const seedBundle = {
     "publishedAt": "2018-01-01T00:00:00.000Z",
     "updatedAt": "2022-01-01T00:00:00.000Z",
     "assessmentId": "ea-trial-exercise",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-ACTRN-0005",
     "registryUrl": "https://example.invalid/trials/DEMO-ACTRN-0005",
     "status": "completed",
@@ -4059,7 +4059,7 @@ export const seedBundle = {
     "publishedAt": "2022-05-01T00:00:00.000Z",
     "updatedAt": "2023-09-01T00:00:00.000Z",
     "assessmentId": "ea-trial-bpc",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-0006",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-0006",
     "status": "terminated",
@@ -4120,7 +4120,7 @@ export const seedBundle = {
     "publishedAt": "2021-03-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-gen-1",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-11",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-11",
     "status": "completed",
@@ -4177,7 +4177,7 @@ export const seedBundle = {
     "publishedAt": "2022-03-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-gen-2",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-12",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-12",
     "status": "active_not_recruiting",
@@ -4233,7 +4233,7 @@ export const seedBundle = {
     "publishedAt": "2023-03-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-gen-3",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-13",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-13",
     "status": "recruiting",
@@ -4290,7 +4290,7 @@ export const seedBundle = {
     "publishedAt": "2024-03-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-gen-4",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-14",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-14",
     "status": "completed",
@@ -4346,7 +4346,7 @@ export const seedBundle = {
     "publishedAt": "2020-03-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-gen-5",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-15",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-15",
     "status": "active_not_recruiting",
@@ -4403,7 +4403,7 @@ export const seedBundle = {
     "publishedAt": "2021-03-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-trial-gen-6",
-    "demo": true,
+    "dataOrigin": "demo",
     "registryId": "DEMO-CT-16",
     "registryUrl": "https://example.invalid/trials/DEMO-CT-16",
     "status": "recruiting",
@@ -4462,7 +4462,7 @@ export const seedBundle = {
     "publishedAt": "1957-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-metformin",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Metformin",
     "aliases": [
       "Glucophage"
@@ -4512,7 +4512,7 @@ export const seedBundle = {
     "publishedAt": "1975-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-rapamycin",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Rapamycin",
     "aliases": [
       "Sirolimus"
@@ -4561,7 +4561,7 @@ export const seedBundle = {
     "publishedAt": "1990-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-exercise",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Structured exercise",
     "aliases": [
       "Aerobic training",
@@ -4613,7 +4613,7 @@ export const seedBundle = {
     "publishedAt": "2016-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-nmn",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "NMN",
     "aliases": [
       "Nicotinamide mononucleotide"
@@ -4659,7 +4659,7 @@ export const seedBundle = {
     "publishedAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-senolytic",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo-Senol-X",
     "aliases": [
       "Fictional dasatinib+quercetin analogue"
@@ -4703,7 +4703,7 @@ export const seedBundle = {
     "publishedAt": "2020-02-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-gen-1",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Intervention 1",
     "aliases": [
       "DI-1"
@@ -4743,7 +4743,7 @@ export const seedBundle = {
     "publishedAt": "2020-03-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-gen-2",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Intervention 2",
     "aliases": [
       "DI-2"
@@ -4783,7 +4783,7 @@ export const seedBundle = {
     "publishedAt": "2020-04-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-gen-3",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Intervention 3",
     "aliases": [
       "DI-3"
@@ -4823,7 +4823,7 @@ export const seedBundle = {
     "publishedAt": "2020-05-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-gen-4",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Intervention 4",
     "aliases": [
       "DI-4"
@@ -4863,7 +4863,7 @@ export const seedBundle = {
     "publishedAt": "2020-06-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-gen-5",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Intervention 5",
     "aliases": [
       "DI-5"
@@ -4905,7 +4905,7 @@ export const seedBundle = {
     "publishedAt": "2020-07-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-gen-6",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Intervention 6",
     "aliases": [
       "DI-6"
@@ -4947,7 +4947,7 @@ export const seedBundle = {
     "publishedAt": "2020-08-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-int-gen-7",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Intervention 7",
     "aliases": [
       "DI-7"
@@ -4991,7 +4991,7 @@ export const seedBundle = {
     "publishedAt": "2018-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-pep-bpc157",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "BPC-157",
     "aliases": [
       "Body Protection Compound-157"
@@ -5037,7 +5037,7 @@ export const seedBundle = {
     "publishedAt": "2015-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-pep-epitalon",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Epitalon",
     "aliases": [
       "Epithalon"
@@ -5079,7 +5079,7 @@ export const seedBundle = {
     "publishedAt": "2021-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-pep-gen-1",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Peptide 1",
     "aliases": [
       "DP-1"
@@ -5119,7 +5119,7 @@ export const seedBundle = {
     "publishedAt": "2021-02-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-pep-gen-2",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Peptide 2",
     "aliases": [
       "DP-2"
@@ -5159,7 +5159,7 @@ export const seedBundle = {
     "publishedAt": "2021-03-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-pep-gen-3",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Peptide 3",
     "aliases": [
       "DP-3"
@@ -5199,7 +5199,7 @@ export const seedBundle = {
     "publishedAt": "2021-04-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-pep-gen-4",
-    "demo": true,
+    "dataOrigin": "demo",
     "canonicalName": "Demo Peptide 4",
     "aliases": [
       "DP-4"
@@ -5241,7 +5241,7 @@ export const seedBundle = {
     "publishedAt": "2020-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-creator-evidence",
-    "demo": true,
+    "dataOrigin": "demo",
     "handle": "@evidencehours-demo",
     "creatorType": "podcast",
     "platform": "Podcast RSS (demo)",
@@ -5278,7 +5278,7 @@ export const seedBundle = {
     "publishedAt": "2021-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-creator-hype",
-    "demo": true,
+    "dataOrigin": "demo",
     "handle": "@longevityflash-demo",
     "creatorType": "influencer",
     "platform": "YouTube (demo)",
@@ -5316,7 +5316,7 @@ export const seedBundle = {
     "publishedAt": "2019-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-creator-clinician",
-    "demo": true,
+    "dataOrigin": "demo",
     "handle": "clinicnotes-au-demo",
     "creatorType": "newsletter",
     "platform": "Email/RSS (demo)",
@@ -5352,7 +5352,7 @@ export const seedBundle = {
     "publishedAt": "2022-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-creator-gen-1",
-    "demo": true,
+    "dataOrigin": "demo",
     "handle": "@demo-creator-1",
     "creatorType": "other",
     "platform": "X (demo)",
@@ -5382,7 +5382,7 @@ export const seedBundle = {
     "publishedAt": "2022-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-creator-gen-2",
-    "demo": true,
+    "dataOrigin": "demo",
     "handle": "@demo-creator-2",
     "creatorType": "other",
     "platform": "X (demo)",
@@ -5412,7 +5412,7 @@ export const seedBundle = {
     "publishedAt": "2022-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-creator-gen-3",
-    "demo": true,
+    "dataOrigin": "demo",
     "handle": "@demo-creator-3",
     "creatorType": "other",
     "platform": "X (demo)",
@@ -5442,7 +5442,7 @@ export const seedBundle = {
     "publishedAt": "2022-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-creator-gen-4",
-    "demo": true,
+    "dataOrigin": "demo",
     "handle": "@demo-creator-4",
     "creatorType": "other",
     "platform": "X (demo)",
@@ -5474,7 +5474,7 @@ export const seedBundle = {
     "publishedAt": "2026-07-10T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-claim-senolytic",
-    "demo": true,
+    "dataOrigin": "demo",
     "creatorId": "creator-hype-yt",
     "claimText": "Demo-Senol-X reverses biological ageing in weeks — animal papers prove it works in people.",
     "relatedInterventionIds": [
@@ -5506,7 +5506,7 @@ export const seedBundle = {
     "publishedAt": "2026-07-12T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-claim-bpc",
-    "demo": true,
+    "dataOrigin": "demo",
     "creatorId": "creator-hype-yt",
     "claimText": "BPC-157 is clinic-ready for tendon repair with negligible risk.",
     "relatedInterventionIds": [
@@ -5537,7 +5537,7 @@ export const seedBundle = {
     "publishedAt": "2026-07-08T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-claim-exercise",
-    "demo": true,
+    "dataOrigin": "demo",
     "creatorId": "creator-evidence-pod",
     "claimText": "Structured training still has stronger functional evidence than most longevity supplements in the feed.",
     "relatedInterventionIds": [
@@ -5568,7 +5568,7 @@ export const seedBundle = {
     "publishedAt": "2026-07-15T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-claim-tga",
-    "demo": true,
+    "dataOrigin": "demo",
     "creatorId": "creator-clinician-nl",
     "claimText": "Australian clinicians should read the latest TGA demo safety communication on compounded peptides.",
     "relatedInterventionIds": [
@@ -5597,7 +5597,7 @@ export const seedBundle = {
     "publishedAt": "2026-06-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-claim-gen-1",
-    "demo": true,
+    "dataOrigin": "demo",
     "creatorId": "creator-hype-yt",
     "claimText": "Demo claim text 1",
     "relatedInterventionIds": [
@@ -5626,7 +5626,7 @@ export const seedBundle = {
     "publishedAt": "2026-06-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-claim-gen-2",
-    "demo": true,
+    "dataOrigin": "demo",
     "creatorId": "creator-clinician-nl",
     "claimText": "Demo claim text 2",
     "relatedInterventionIds": [
@@ -5655,7 +5655,7 @@ export const seedBundle = {
     "publishedAt": "2026-06-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-claim-gen-3",
-    "demo": true,
+    "dataOrigin": "demo",
     "creatorId": "creator-gen-1",
     "claimText": "Demo claim text 3",
     "relatedInterventionIds": [
@@ -5684,7 +5684,7 @@ export const seedBundle = {
     "publishedAt": "2026-06-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-claim-gen-4",
-    "demo": true,
+    "dataOrigin": "demo",
     "creatorId": "creator-gen-2",
     "claimText": "Demo claim text 4",
     "relatedInterventionIds": [
@@ -5716,7 +5716,7 @@ export const seedBundle = {
     "publishedAt": "2026-07-14T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-reg-tga-peptide",
-    "demo": true,
+    "dataOrigin": "demo",
     "jurisdiction": "AU",
     "authority": "TGA (demo)",
     "severity": "high",
@@ -5747,7 +5747,7 @@ export const seedBundle = {
     "publishedAt": "2026-06-20T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-reg-tga-recall",
-    "demo": true,
+    "dataOrigin": "demo",
     "jurisdiction": "AU",
     "authority": "TGA (demo)",
     "severity": "critical",
@@ -5777,7 +5777,7 @@ export const seedBundle = {
     "publishedAt": "2025-12-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-reg-fda-label",
-    "demo": true,
+    "dataOrigin": "demo",
     "jurisdiction": "US",
     "authority": "FDA (demo)",
     "severity": "moderate",
@@ -5806,7 +5806,7 @@ export const seedBundle = {
     "publishedAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-reg-wada",
-    "demo": true,
+    "dataOrigin": "demo",
     "jurisdiction": "global",
     "authority": "WADA (demo reference)",
     "severity": "info",
@@ -5834,7 +5834,7 @@ export const seedBundle = {
     "publishedAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-reg-gen-1",
-    "demo": true,
+    "dataOrigin": "demo",
     "jurisdiction": "AU",
     "authority": "Demo Authority",
     "severity": "low",
@@ -5862,7 +5862,7 @@ export const seedBundle = {
     "publishedAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-reg-gen-2",
-    "demo": true,
+    "dataOrigin": "demo",
     "jurisdiction": "US",
     "authority": "Demo Authority",
     "severity": "low",
@@ -5890,7 +5890,7 @@ export const seedBundle = {
     "publishedAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2026-07-20T10:00:00.000Z",
     "assessmentId": "ea-reg-gen-3",
-    "demo": true,
+    "dataOrigin": "demo",
     "jurisdiction": "US",
     "authority": "Demo Authority",
     "severity": "low",
@@ -5920,7 +5920,7 @@ export const seedBundle = {
     ],
     "publishedAt": null,
     "updatedAt": "2026-07-20T10:00:00.000Z",
-    "demo": true,
+    "dataOrigin": "demo",
     "organisationKind": "regulator",
     "country": "Australia",
     "homepageUrl": "https://www.tga.gov.au/",
@@ -5943,7 +5943,7 @@ export const seedBundle = {
     ],
     "publishedAt": null,
     "updatedAt": "2026-07-20T10:00:00.000Z",
-    "demo": true,
+    "dataOrigin": "demo",
     "organisationKind": "registry",
     "country": "United States",
     "homepageUrl": "https://clinicaltrials.gov/",
@@ -5967,7 +5967,7 @@ export const seedBundle = {
     ],
     "publishedAt": null,
     "updatedAt": "2026-07-20T10:00:00.000Z",
-    "demo": true,
+    "dataOrigin": "demo",
     "organisationKind": "registry",
     "country": "Australia",
     "homepageUrl": "https://www.anzctr.org.au/",
@@ -5990,7 +5990,7 @@ export const seedBundle = {
     ],
     "publishedAt": null,
     "updatedAt": "2026-07-20T10:00:00.000Z",
-    "demo": true,
+    "dataOrigin": "demo",
     "organisationKind": "university",
     "country": "Australia",
     "homepageUrl": "https://example.invalid/uni",
@@ -6024,7 +6024,7 @@ export const seedBundle = {
       "exercise"
     ],
     "updatedAt": "2026-07-20T10:00:00.000Z",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "wl-au-safety",
@@ -6041,7 +6041,7 @@ export const seedBundle = {
       "Australia"
     ],
     "updatedAt": "2026-07-20T10:00:00.000Z",
-    "demo": true
+    "dataOrigin": "demo"
   }
 ],
   changeEvents: [
@@ -6055,7 +6055,7 @@ export const seedBundle = {
       "reg-tga-peptide"
     ],
     "importance": "high",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "chg-2",
@@ -6067,7 +6067,7 @@ export const seedBundle = {
       "trial-nmn-recruiting"
     ],
     "importance": "medium",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "chg-3",
@@ -6079,7 +6079,7 @@ export const seedBundle = {
       "paper-nmn-early"
     ],
     "importance": "medium",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "chg-4",
@@ -6091,7 +6091,7 @@ export const seedBundle = {
       "claim-senolytic-overclaim"
     ],
     "importance": "high",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "chg-5",
@@ -6103,7 +6103,7 @@ export const seedBundle = {
       "paper-retraction-demo"
     ],
     "importance": "high",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "chg-6",
@@ -6115,7 +6115,7 @@ export const seedBundle = {
       "trial-senolytic-withdrawn"
     ],
     "importance": "medium",
-    "demo": true
+    "dataOrigin": "demo"
   }
 ],
   reviewTasks: [
@@ -6129,7 +6129,7 @@ export const seedBundle = {
     ],
     "confidence": 0.32,
     "createdAt": "2026-07-16T00:00:00.000Z",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "rev-2",
@@ -6141,7 +6141,7 @@ export const seedBundle = {
     ],
     "confidence": 0.4,
     "createdAt": "2026-07-17T00:00:00.000Z",
-    "demo": true
+    "dataOrigin": "demo"
   },
   {
     "id": "rev-3",
@@ -6154,7 +6154,7 @@ export const seedBundle = {
     ],
     "confidence": 0.28,
     "createdAt": "2026-07-18T00:00:00.000Z",
-    "demo": true
+    "dataOrigin": "demo"
   }
 ],
   radar: [
@@ -6333,8 +6333,8 @@ export const seedBundle = {
     "itemType": "peptide",
     "evidenceMaturity": "mechanistic_hypothesis",
     "evidenceX": 0.15,
-    "attentionY": 0.5577848143341599,
-    "bubbleSize": 0.683113925733664,
+    "attentionY": 0.538584266370983,
+    "bubbleSize": 0.6754337065483932,
     "safetyConcern": true,
     "shape": "intervention"
   },
@@ -6345,8 +6345,8 @@ export const seedBundle = {
     "itemType": "peptide",
     "evidenceMaturity": "mechanistic_hypothesis",
     "evidenceX": 0.15,
-    "attentionY": 0.5228260568211858,
-    "bubbleSize": 0.6691304227284743,
+    "attentionY": 0.5115812151506023,
+    "bubbleSize": 0.664632486060241,
     "safetyConcern": true,
     "shape": "intervention"
   },
@@ -6357,8 +6357,8 @@ export const seedBundle = {
     "itemType": "peptide",
     "evidenceMaturity": "mechanistic_hypothesis",
     "evidenceX": 0.15,
-    "attentionY": 0.5866299325729512,
-    "bubbleSize": 0.6946519730291805,
+    "attentionY": 0.41042910096323904,
+    "bubbleSize": 0.6241716403852957,
     "safetyConcern": true,
     "shape": "intervention"
   },
@@ -6369,8 +6369,8 @@ export const seedBundle = {
     "itemType": "peptide",
     "evidenceMaturity": "mechanistic_hypothesis",
     "evidenceX": 0.15,
-    "attentionY": 0.40361095585768136,
-    "bubbleSize": 0.6214443823430726,
+    "attentionY": 0.544737511387327,
+    "bubbleSize": 0.6778950045549308,
     "safetyConcern": true,
     "shape": "intervention"
   },

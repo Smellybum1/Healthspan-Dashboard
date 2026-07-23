@@ -25,9 +25,10 @@ export function AppShell() {
   const sourceHealth = useMemo(() => {
     const sources = dash.data?.sources ?? [];
     if (!sources.length) return 'unknown';
-    if (sources.some((s) => s.health === 'error')) return 'error';
-    if (sources.some((s) => s.health === 'degraded')) return 'degraded';
-    if (sources.every((s) => s.health === 'unknown')) return 'unknown';
+    if (sources.some((s) => s.health === 'error' || s.health === 'failed')) return 'error';
+    if (sources.some((s) => s.health === 'degraded' || s.health === 'running')) return 'degraded';
+    if (sources.every((s) => s.health === 'unknown' || s.health === 'never_run' || s.health === 'disabled'))
+      return 'unknown';
     return 'healthy';
   }, [dash.data]);
 
@@ -117,10 +118,11 @@ export function AppShell() {
             </span>
             <span
               className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1"
-              title="Source health (demo stubs)"
+              title="Source health"
             >
               <Activity size={14} />
               {sourceHealth}
+              {dash.data?.dataMode ? ` · ${dash.data.dataMode}` : ''}
             </span>
             <button
               type="button"

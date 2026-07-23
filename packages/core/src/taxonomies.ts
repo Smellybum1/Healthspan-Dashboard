@@ -150,8 +150,10 @@ export type ReviewTaskStatus = z.infer<typeof ReviewTaskStatusSchema>;
 
 export const ChangeKindSchema = z.enum([
   'new_paper',
+  'paper_updated',
   'new_trial',
   'trial_status_change',
+  'trial_material_change',
   'results_posted',
   'safety_alert',
   'regulatory_update',

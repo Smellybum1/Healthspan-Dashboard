@@ -22,6 +22,12 @@ export default defineConfig({
       url: 'http://127.0.0.1:8787/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+      env: {
+        ...process.env,
+        HEALTHSPAN_DATA_MODE: 'demo',
+        HEALTHSPAN_DATA_DIR: path.resolve(__dirname, '../../.local-data/e2e'),
+        HEALTHSPAN_ALLOW_RELATIVE_DATA_DIR: '1',
+      },
     },
     {
       command: 'npx vite --host 127.0.0.1 --port 5173',

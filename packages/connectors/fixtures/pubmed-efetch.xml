@@ -1,0 +1,17 @@
+<PubmedArticleSet>
+  <PubmedArticle>
+    <MedlineCitation>
+      <PMID>12345678</PMID>
+      <Article>
+        <Journal><Title>Aging Cell</Title></Journal>
+        <ArticleTitle>Example longevity paper</ArticleTitle>
+        <Abstract><AbstractText>Abstract text.</AbstractText></Abstract>
+      </Article>
+    </MedlineCitation>
+    <PubmedData>
+      <ArticleIdList>
+        <ArticleId IdType="doi">10.1234/example.doi</ArticleId>
+      </ArticleIdList>
+    </PubmedData>
+  </PubmedArticle>
+</PubmedArticleSet>

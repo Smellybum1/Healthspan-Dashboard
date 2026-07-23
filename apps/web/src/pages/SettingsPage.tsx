@@ -1,13 +1,18 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { DemoBanner } from '@healthspan/ui';
 import { DEMO_SNAPSHOT_NOTICE } from '@healthspan/core';
 import { PageHeader } from '../components/Common';
 import { usePreferences } from '../state/PreferencesContext';
+import { fetchMode, runIngestion, setMode } from '../lib/api';
+import { useAsync } from '../hooks/useAsync';
 
 export function SettingsPage() {
   const { prefs, setTheme, updatePrefs, exportJson, importJson } = usePreferences();
   const [importText, setImportText] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const modeState = useAsync(() => fetchMode(), []);
 
   function onExport() {
     const blob = new Blob([exportJson()], { type: 'application/json' });
@@ -30,13 +35,74 @@ export function SettingsPage() {
     }
   }
 
+  async function switchMode(next: 'demo' | 'live') {
+    await setMode(next);
+    modeState.reload();
+    setMessage(`Switched to ${next} mode. Reload other pages to refresh payloads.`);
+  }
+
+  async function firstSync() {
+    setSyncing(true);
+    setMessage('Running first sync (capped). This may take a minute…');
+    try {
+      await setMode('live');
+      const result = await runIngestion({ sourceId: 'all', recordCap: 25 });
+      setMessage(`First sync finished: ${JSON.stringify(result).slice(0, 240)}…`);
+      modeState.reload();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const dataMode = modeState.data?.dataMode ?? 'live';
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Settings"
         description="Prototype preferences only. Do not store diagnoses, labs, medications, or other sensitive health data here."
       />
-      <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} />
+      {dataMode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
+
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Data mode</h2>
+        <p className="text-sm text-[var(--muted)]">
+          Live uses SQLite-ingested primary sources. Demo preserves the Milestone 1 showcase. Modes never
+          mix in the same response.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
+            aria-pressed={dataMode === 'live'}
+            onClick={() => void switchMode('live')}
+          >
+            Live
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
+            aria-pressed={dataMode === 'demo'}
+            onClick={() => void switchMode('demo')}
+          >
+            Demo
+          </button>
+        </div>
+        <p className="text-xs text-[var(--muted)]">Current: {dataMode}</p>
+        <button
+          type="button"
+          disabled={syncing}
+          onClick={() => void firstSync()}
+          className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-50"
+        >
+          {syncing ? 'Syncing…' : 'Run first sync (Live)'}
+        </button>
+        <p className="text-xs text-[var(--muted)]">
+          See also <Link className="underline" to="/sources">Source Health</Link>.
+        </p>
+      </section>
 
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
         <h2 className="text-sm font-semibold">Appearance</h2>

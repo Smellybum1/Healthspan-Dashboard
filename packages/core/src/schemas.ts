@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataModeSchema, DataOriginSchema } from './origin.js';
 import {
   AgeingHallmarkSchema,
   ChangeKindSchema,
@@ -29,12 +30,33 @@ export const SourceSchema = z.object({
     'other',
   ]),
   homepageUrl: z.string().url().optional(),
-  health: z.enum(['healthy', 'degraded', 'error', 'unknown']),
+  health: z.enum([
+    'healthy',
+    'degraded',
+    'error',
+    'unknown',
+    'never_run',
+    'failed',
+    'disabled',
+    'running',
+  ]),
   lastSuccessfulFetchAt: z.string().datetime().nullable(),
   lastError: z.string().nullable(),
-  demo: z.literal(true),
+  dataOrigin: DataOriginSchema,
 });
 export type Source = z.infer<typeof SourceSchema>;
+
+/** Lightweight live-list card used when full domain scoring is not yet available. */
+export const LiveBriefItemSchema = z.object({
+  id: z.string(),
+  type: ContentTypeSchema,
+  title: z.string(),
+  summary: z.string().optional().default(''),
+  meta: z.string().optional(),
+  officialUrl: z.string().url().optional(),
+  dataOrigin: z.literal('live'),
+});
+export type LiveBriefItem = z.infer<typeof LiveBriefItemSchema>;
 
 export const SourceRecordSchema = z.object({
   id: z.string(),
@@ -43,7 +65,7 @@ export const SourceRecordSchema = z.object({
   fetchedAt: z.string().datetime(),
   rawHash: z.string(),
   url: z.string().url().optional(),
-  demo: z.literal(true),
+  dataOrigin: DataOriginSchema,
 });
 export type SourceRecord = z.infer<typeof SourceRecordSchema>;
 
@@ -76,7 +98,7 @@ export const EvidenceAssessmentSchema = z.object({
   ),
   whatWouldChangeAssessment: z.array(z.string()),
   provenance: ProvenanceSchema,
-  demo: z.literal(true),
+  dataOrigin: DataOriginSchema,
 });
 export type EvidenceAssessment = z.infer<typeof EvidenceAssessmentSchema>;
 
@@ -89,7 +111,7 @@ export const ContentItemSchema = z.object({
   publishedAt: z.string().datetime().nullable(),
   updatedAt: z.string().datetime(),
   assessmentId: z.string().optional(),
-  demo: z.literal(true),
+  dataOrigin: DataOriginSchema,
 });
 export type ContentItem = z.infer<typeof ContentItemSchema>;
 
@@ -238,7 +260,7 @@ export const WatchlistSchema = z.object({
   itemIds: z.array(z.string()),
   topics: z.array(z.string()),
   updatedAt: z.string().datetime(),
-  demo: z.literal(true),
+  dataOrigin: DataOriginSchema,
 });
 export type Watchlist = z.infer<typeof WatchlistSchema>;
 
@@ -250,7 +272,7 @@ export const ChangeEventSchema = z.object({
   occurredAt: z.string().datetime(),
   relatedItemIds: z.array(z.string()),
   importance: z.enum(['low', 'medium', 'high']),
-  demo: z.literal(true),
+  dataOrigin: DataOriginSchema,
 });
 export type ChangeEvent = z.infer<typeof ChangeEventSchema>;
 
@@ -262,7 +284,7 @@ export const ReviewTaskSchema = z.object({
   relatedItemIds: z.array(z.string()),
   confidence: z.number().min(0).max(1),
   createdAt: z.string().datetime(),
-  demo: z.literal(true),
+  dataOrigin: DataOriginSchema,
 });
 export type ReviewTask = z.infer<typeof ReviewTaskSchema>;
 
@@ -282,17 +304,24 @@ export type SignalRadarPoint = z.infer<typeof SignalRadarPointSchema>;
 
 export const DashboardPayloadSchema = z.object({
   asOf: z.string().datetime(),
-  demoNotice: z.string(),
-  lastVisitAt: z.string().datetime(),
+  dataMode: DataModeSchema,
+  dataOrigin: DataOriginSchema,
+  demoNotice: z.string().nullable(),
+  lastVisitAt: z.string().datetime().nullable(),
   sources: z.array(SourceSchema),
   changes: z.array(ChangeEventSchema),
   radar: z.array(SignalRadarPointSchema),
-  trialPulse: z.array(TrialSchema),
-  interventionWatch: z.array(z.union([InterventionSchema, PeptideSchema])),
-  safetyEvents: z.array(RegulatoryEventSchema),
-  researchBrief: z.array(PaperSchema),
+  radarUnavailableReason: z.string().nullable().optional(),
+  trialPulse: z.union([z.array(TrialSchema), z.array(LiveBriefItemSchema)]),
+  interventionWatch: z.array(z.union([InterventionSchema, PeptideSchema, LiveBriefItemSchema])),
+  safetyEvents: z.union([z.array(RegulatoryEventSchema), z.array(LiveBriefItemSchema)]),
+  researchBrief: z.union([z.array(PaperSchema), z.array(LiveBriefItemSchema)]),
   creatorClaims: z.array(ClaimSchema),
   needsReview: z.array(ReviewTaskSchema),
+  firstSyncRequired: z.boolean().optional(),
+  liveEmptySections: z
+    .array(z.enum(['interventions', 'peptides', 'creators', 'radar', 'needs_review']))
+    .optional(),
 });
 export type DashboardPayload = z.infer<typeof DashboardPayloadSchema>;
 

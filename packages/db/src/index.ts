@@ -1,28 +1,7 @@
-/**
- * Milestone 1 persistence boundary.
- * SQLite/Drizzle arrives in Milestone 2. For now repositories read seeded demo data.
- */
-import {
-  filterItems,
-  getDashboardPayload,
-  getItemById,
-  getSeedBundle,
-  listAllItems,
-  searchItems,
-} from '@healthspan/core';
-
-export const persistenceMode = 'seeded-memory' as const;
-
-export function createSeedRepository() {
-  return {
-    mode: persistenceMode,
-    getSeedBundle,
-    getDashboardPayload,
-    listAllItems,
-    getItemById,
-    searchItems,
-    filterItems,
-  };
-}
-
-export type SeedRepository = ReturnType<typeof createSeedRepository>;
+export * from './paths.js';
+export * from './schema.js';
+export * from './client.js';
+export * from './raw-store.js';
+export * from './seed-sources.js';
+export { createSeedRepository, persistenceMode } from './demo-repository.js';
+export type { SeedRepository } from './demo-repository.js';
