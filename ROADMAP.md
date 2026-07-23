@@ -6,9 +6,9 @@
 - Milestone 2 — Persistent data backbone and primary-source ingestion (`4a39a1c`)
 - Milestone 3 — Evidence and claim intelligence (`milestone-3/evidence-claim-intelligence`)
 
-## Next (awaiting authorisation)
+## In progress
 
-- Milestone 4 — Trials, interventions, peptides, regulation
+- Milestone 4 — Intervention, peptide, regulatory & safety intelligence
 
 ## Later
 
