@@ -27,12 +27,15 @@
     "ingest:all": "tsx scripts/ingest.ts --source all",
     "ingest": "tsx scripts/ingest.ts",
     "ingest:status": "tsx scripts/ingest-status.ts",
-    "test:connectors:live": "tsx scripts/live-smoke.ts"
+    "test:connectors:live": "tsx scripts/live-smoke.ts",
+    "intelligence:eval": "tsx scripts/intelligence-eval.ts",
+    "intelligence:doctor": "tsx scripts/db-doctor.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
     "@healthspan/connectors": "workspace:*",
     "@healthspan/db": "workspace:*",
+    "@healthspan/intelligence": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.10",

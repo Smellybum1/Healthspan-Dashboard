@@ -15,6 +15,7 @@ import { WatchlistsPage } from './pages/WatchlistsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MethodologyPage } from './pages/MethodologyPage';
 import { SourceHealthPage } from './pages/SourceHealthPage';
+import { ReviewQueuePage } from './pages/ReviewQueuePage';
 
 export function App() {
   return (
@@ -34,6 +35,7 @@ export function App() {
         <Route path="creators/:id" element={<DetailPage />} />
         <Route path="safety" element={<SafetyListPage />} />
         <Route path="sources" element={<SourceHealthPage />} />
+        <Route path="review" element={<ReviewQueuePage />} />
         <Route path="watchlists" element={<WatchlistsPage />} />
         <Route path="methodology" element={<MethodologyPage />} />
         <Route path="settings" element={<SettingsPage />} />

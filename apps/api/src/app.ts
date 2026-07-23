@@ -16,6 +16,7 @@ import {
   papers,
   trials,
   regulatoryEvents,
+  liveReviewTasks,
 } from '@healthspan/db';
 import { runIngestion } from './ingest.js';
 import { assertAdminMutationAllowed, warnIfRemoteAdminEnabled } from './admin-guard.js';
@@ -27,6 +28,8 @@ import {
   stableDedupeKey,
 } from './jobs.js';
 import { createLocalScheduler } from './local-scheduler.js';
+import { liveRadarPoints, runIntelligenceAnalysis } from './intelligence-service.js';
+import { listContentItems } from './content-service.js';
 
 type DataMode = 'demo' | 'live';
 
@@ -123,6 +126,14 @@ export function createApp() {
               : undefined,
         };
       }
+      if (job.kind === 'intelligence') {
+        const result = await runIntelligenceAnalysis({
+          db: live.db,
+          limit: Number(job.payload.limit ?? 50),
+          trigger: String(job.payload.trigger ?? 'manual'),
+        });
+        return { status: result.status, relatedRunId: result.runId };
+      }
       return { status: 'failed', error: `unsupported job kind: ${job.kind}` };
     },
   });
@@ -148,7 +159,7 @@ export function createApp() {
         status: doctor.ok ? 'healthy' : 'degraded',
         integrity: doctor.integrity,
         journalMode: doctor.journalMode,
-        migrationVersion: '0001_m3_closure',
+        migrationVersion: '0002_m3_intelligence',
       },
       scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),
@@ -175,6 +186,7 @@ export function createApp() {
     if (currentMode() === 'demo') return c.json(demoRepo.getDashboardPayload());
 
     const contentCount = live.db.select().from(contentItems).all().length;
+    const radar = liveRadarPoints(live.db, 40);
     const recentChanges = live.db
       .select()
       .from(changeEvents)
@@ -255,9 +267,11 @@ export function createApp() {
         importance: (ch.importance as 'low' | 'medium' | 'high') ?? 'medium',
         dataOrigin: 'live',
       })),
-      radar: [],
+      radar,
       radarUnavailableReason:
-        'Evidence classification arrives in Milestone 3. Live Signal Radar is unavailable to avoid implying scientific strength.',
+        radar.length === 0
+          ? 'No Live evidence analyses yet. Run intelligence analysis after ingestion. Research-activity Signal Radar uses deterministic evidence dimensions — never a composite longevity score.'
+          : null,
       trialPulse: recentTrials.map((item) => {
         const t = trialMeta.get(item.id);
         return toBrief(
@@ -294,27 +308,16 @@ export function createApp() {
     }
 
     const type = c.req.query('type');
-    const q = (c.req.query('q') ?? '').toLowerCase();
-    let items = live.db.select().from(contentItems).all();
-    if (type) items = items.filter((i) => i.type === type);
-    if (q) {
-      items = items.filter(
-        (i) => i.title.toLowerCase().includes(q) || (i.summary ?? '').toLowerCase().includes(q),
-      );
-    }
+    const q = c.req.query('q') ?? undefined;
+    const page = Number(c.req.query('page') ?? 1);
+    const pageSize = Number(c.req.query('pageSize') ?? 25);
+    const sort = (c.req.query('sort') as 'updated' | 'title' | 'published' | undefined) ?? 'updated';
+    const result = listContentItems(live.db, { type, q, page, pageSize, sort });
     return c.json({
-      count: items.length,
-      items: items.map((i) => ({
-        id: i.id,
-        type: i.type,
-        title: i.title,
-        summary: i.summary ?? '',
-        tags: [],
-        publishedAt: i.sourcePublishedAt ? new Date(i.sourcePublishedAt).toISOString() : null,
-        updatedAt: new Date(i.updatedAt).toISOString(),
-        officialUrl: i.canonicalUrl ?? undefined,
-        dataOrigin: 'live',
-      })),
+      count: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      items: result.items,
       dataMode: 'live',
       dataOrigin: 'live',
     });
@@ -513,6 +516,57 @@ export function createApp() {
       createdAt: new Date(job.createdAt).toISOString(),
       startedAt: job.startedAt ? new Date(job.startedAt).toISOString() : null,
       completedAt: job.completedAt ? new Date(job.completedAt).toISOString() : null,
+    });
+  });
+
+  app.post('/api/intelligence/run', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    const body = (await c.req.json().catch(() => ({}))) as { limit?: number };
+    const payload = { limit: body.limit ?? 50, trigger: 'manual' };
+    const { job, created } = enqueueJob(live.db, {
+      kind: 'intelligence',
+      payload,
+      dedupeKey: stableDedupeKey('intelligence-manual', {
+        window: Math.floor(Date.now() / 30_000),
+      }),
+      priority: 20,
+    });
+    return c.json(
+      { accepted: true, created, jobId: job.id, status: job.status, kind: job.kind },
+      202,
+    );
+  });
+
+  app.get('/api/review/tasks', (c) => {
+    if (currentMode() === 'demo') {
+      const seed = demoRepo.getDashboardPayload();
+      return c.json({
+        dataMode: 'demo',
+        tasks: seed.needsReview,
+      });
+    }
+    const tasks = live.db
+      .select()
+      .from(liveReviewTasks)
+      .orderBy(desc(liveReviewTasks.createdAt))
+      .limit(100)
+      .all();
+    return c.json({
+      dataMode: 'live',
+      tasks: tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        reason: t.reason,
+        status: t.status,
+        confidence: t.confidence,
+        contentItemId: t.contentItemId,
+        claimId: t.claimId,
+        createdAt: new Date(t.createdAt).toISOString(),
+      })),
     });
   });
 

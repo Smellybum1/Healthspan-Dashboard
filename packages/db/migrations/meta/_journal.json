@@ -15,6 +15,13 @@
       "when": 1784814000000,
       "tag": "0001_m3_closure",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784815000000,
+      "tag": "0002_m3_intelligence",
+      "breakpoints": true
     }
   ]
 }

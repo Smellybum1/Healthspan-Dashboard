@@ -125,10 +125,10 @@ export function TodayPage() {
             : 'X = evidence maturity · Y = attention momentum · outline/red = safety concern'
         }
       >
-        {isLive || data.radarUnavailableReason ? (
+        {isLive && data.radar.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
             {data.radarUnavailableReason ??
-              'Live Signal Radar is unavailable. Evidence classification arrives in Milestone 3.'}
+              'No Live evidence analyses yet. Run intelligence analysis after ingestion.'}
           </div>
         ) : (
           <SignalRadar points={data.radar} />

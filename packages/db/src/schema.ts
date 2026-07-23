@@ -445,3 +445,12 @@ export const schedulerState = sqliteTable('scheduler_state', {
   lastCatchupReason: text('last_catchup_reason'),
   updatedAt: ts('updated_at'),
 });
+
+export {
+  intelligenceRuns,
+  intelligenceAnalyses,
+  contentIntelligenceState,
+  liveClaims,
+  claimSourceSpans,
+  liveReviewTasks,
+} from './intelligence-schema.js';
