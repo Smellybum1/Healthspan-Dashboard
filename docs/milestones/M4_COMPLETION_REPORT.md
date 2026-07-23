@@ -2,7 +2,7 @@
 
 **Branch:** `milestone-4/interventions-peptides-regulation`  
 **Base:** `milestone-3/evidence-claim-intelligence` @ `4d985d3c8e9208fadc01e529270bcf5f37f1503d`  
-**Final commit:** `ed308eea92e7edcc1a273928a8d19b7d397fb724`  
+**Final commit:** `553701bb30628cdb7d18eaa56baff58170307c1f` (report hash fixup on `ed308ee` feature complete)  
 **Date:** 24 July 2026  
 **Status:** Complete for Milestone 4 acceptance (stop before Milestone 5 until Pro authorises)
 
