@@ -1,4 +1,3 @@
-import { describeAssessment, quadrantFor } from './legacy.js';
 export { describeAssessment, quadrantFor } from './legacy.js';
 export * from './versions.js';
 export * from './deterministic.js';

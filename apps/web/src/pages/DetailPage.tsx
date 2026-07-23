@@ -66,6 +66,64 @@ export function DetailPage() {
       {data.assessmentStatus ? (
         <p className="text-sm text-[var(--muted)]">{data.assessmentStatus}</p>
       ) : null}
+      {'liveAnalysis' in data && data.liveAnalysis ? (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
+          <h2 className="text-sm font-semibold">Live evidence profile</h2>
+          <p className="text-xs text-[var(--muted)]">
+            Deterministic dimensions only — no composite longevity score.
+          </p>
+          <dl className="grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-[var(--muted)]">Evidence maturity</dt>
+              <dd>{String((data.liveAnalysis as { evidenceMaturity: string }).evidenceMaturity)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[var(--muted)]">Evidence availability</dt>
+              <dd>
+                {String((data.liveAnalysis as { evidenceAvailability: string }).evidenceAvailability)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[var(--muted)]">Classification confidence</dt>
+              <dd>
+                {String(
+                  (data.liveAnalysis as { classificationConfidence: string }).classificationConfidence,
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[var(--muted)]">Research activity</dt>
+              <dd>{String((data.liveAnalysis as { researchActivity: number }).researchActivity)}</dd>
+            </div>
+          </dl>
+          <div>
+            <p className="text-xs text-[var(--muted)]">What would change this assessment</p>
+            <ul className="mt-1 list-disc pl-5 text-sm text-[var(--muted)]">
+              {((data.liveAnalysis as { whatWouldChange?: string[] }).whatWouldChange ?? []).map(
+                (line) => (
+                  <li key={line}>{line}</li>
+                ),
+              )}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+      {'liveClaims' in data && Array.isArray(data.liveClaims) && data.liveClaims.length > 0 ? (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
+          <h2 className="text-sm font-semibold">Live claims</h2>
+          <ul className="space-y-2">
+            {(data.liveClaims as Array<Record<string, unknown>>).map((claim) => (
+              <li key={String(claim.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+                <p className="text-sm font-medium">{String(claim.claimText)}</p>
+                <p className="text-xs text-[var(--muted)]">
+                  {String(claim.assertionRole)} · {String(claim.classificationConfidence)} ·{' '}
+                  {String(claim.reviewStatus)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {isPeptide ? (
         <div
           role="alert"

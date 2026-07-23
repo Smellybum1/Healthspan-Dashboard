@@ -17,6 +17,10 @@ import {
   trials,
   regulatoryEvents,
   liveReviewTasks,
+  contentIntelligenceState,
+  intelligenceAnalyses,
+  liveClaims,
+  claimSourceSpans,
 } from '@healthspan/db';
 import { runIngestion } from './ingest.js';
 import { assertAdminMutationAllowed, warnIfRemoteAdminEnabled } from './admin-guard.js';
@@ -339,6 +343,29 @@ export function createApp() {
       .from(regulatoryEvents)
       .where(eq(regulatoryEvents.contentItemId, id))
       .all()[0];
+    const state = live.db
+      .select()
+      .from(contentIntelligenceState)
+      .where(eq(contentIntelligenceState.contentItemId, id))
+      .all()[0];
+    const analysis = state?.currentAnalysisId
+      ? live.db
+          .select()
+          .from(intelligenceAnalyses)
+          .where(eq(intelligenceAnalyses.id, state.currentAnalysisId))
+          .all()[0]
+      : null;
+    const claims = analysis
+      ? live.db.select().from(liveClaims).where(eq(liveClaims.analysisId, analysis.id)).all()
+      : [];
+    const spans = claims.flatMap((claim) =>
+      live.db
+        .select()
+        .from(claimSourceSpans)
+        .where(eq(claimSourceSpans.claimId, claim.id))
+        .all()
+        .map((span) => ({ ...span, claimId: claim.id })),
+    );
     return c.json({
       item: {
         id: item.id,
@@ -357,7 +384,42 @@ export function createApp() {
         regulatory,
       },
       assessment: null,
-      assessmentStatus: 'Not yet assessed',
+      liveAnalysis: analysis
+        ? {
+            id: analysis.id,
+            evidenceMaturity: analysis.evidenceMaturity,
+            evidenceAvailability: analysis.evidenceAvailability,
+            classificationConfidence: analysis.classificationConfidence,
+            assessmentCompleteness: analysis.assessmentCompleteness,
+            studyDesign: analysis.studyDesign,
+            organismLevel: analysis.organismLevel,
+            resultsPresent: analysis.resultsPresent,
+            researchActivity: analysis.researchActivity,
+            translationGaps: JSON.parse(analysis.translationGapsJson),
+            methodologicalSignals: JSON.parse(analysis.methodologicalSignalsJson),
+            whatWouldChange: JSON.parse(analysis.whatWouldChangeJson),
+            rulesetVersion: analysis.rulesetVersion,
+          }
+        : null,
+      liveClaims: claims.map((claim) => ({
+        id: claim.id,
+        claimText: claim.claimText,
+        assertionRole: claim.assertionRole,
+        claimKind: claim.claimKind,
+        direction: claim.direction,
+        classificationConfidence: claim.classificationConfidence,
+        reviewStatus: claim.reviewStatus,
+        spans: spans
+          .filter((s) => s.claimId === claim.id)
+          .map((s) => ({
+            fieldPath: s.fieldPath,
+            excerpt: s.excerpt,
+            primarySupport: s.primarySupport,
+          })),
+      })),
+      assessmentStatus: analysis
+        ? `Live deterministic analysis (${analysis.rulesetVersion})`
+        : 'Not yet assessed',
       demoNotice: null,
       dataMode: 'live',
       dataOrigin: 'live',

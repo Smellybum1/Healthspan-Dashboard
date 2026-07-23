@@ -1,6 +1,6 @@
 # Architecture
 
-## Stack (Milestone 2)
+## Stack (Milestone 3 in progress)
 
 - TypeScript strict mode, pnpm workspace
 - React + Vite + React Router
@@ -10,6 +10,7 @@
 - Zod validation in `@healthspan/core`
 - SQLite + Drizzle + better-sqlite3 in `@healthspan/db`
 - Primary-source connectors in `@healthspan/connectors`
+- Deterministic-first Live intelligence in `@healthspan/intelligence`
 - Vitest + React Testing Library + Playwright
 - ESLint + Prettier
 
@@ -22,35 +23,27 @@ Browser (apps/web)
        ├─ dataMode=demo -> seed repository (@healthspan/core)
        └─ dataMode=live -> SQLite (@healthspan/db)
                           + connectors (@healthspan/connectors)
+                          + jobs worker + Brisbane scheduler
+                          + deterministic intelligence (@healthspan/intelligence)
                           + raw/sha256 store
-                          + ingestion orchestration (apps/api)
 ```
 
-Local preferences/watchlists remain in `localStorage`, namespaced by data mode where applicable.
-
-Application data (not in git):
-
-`<os-app-data>/Healthspan Dashboard/healthspan-dashboard.sqlite3`
-`<os-app-data>/Healthspan Dashboard/raw/sha256/...`
+Exact filesystem paths are terminal-only (`pnpm data:path`); browser health/source APIs return redacted diagnostics.
 
 ## Package responsibilities
 
 | Package | Role |
 | --- | --- |
 | `@healthspan/core` | Domain types, `dataOrigin`/`dataMode`, taxonomies, seed showcase |
-| `@healthspan/db` | Path resolution, Drizzle schema/migrations, raw store, operational sources |
+| `@healthspan/db` | Path resolution, Drizzle schema/migrations, raw store, operational sources, intelligence tables |
 | `@healthspan/connectors` | PubMed, ClinicalTrials.gov, Crossref (DOI), TGA RSS |
-| `@healthspan/intelligence` | Rule-based assessment descriptors (Demo); Live scoring deferred to M3 |
+| `@healthspan/intelligence` | Deterministic study profiles, claims, relationships, optional AI providers |
 | `@healthspan/ui` | Shared badges, banners, section cards |
-| `@healthspan/api` | HTTP + ingestion orchestration + Live/Demo routing |
-| `@healthspan/web` | Product UI including Source Health and mode controls |
+| `@healthspan/api` | HTTP + ingestion/intelligence orchestration + jobs/scheduler |
+| `@healthspan/web` | Product UI including Source Health, Review Queue, Live radar |
 
-## Pipeline (M2 implemented core)
+## Pipeline
 
-Source connector → raw snapshot (gzip, content-addressed) → normalised version → content upsert → change events (baseline vs non-baseline) → API/UI.
+Source connector → raw snapshot → normalised version → content upsert → change events → deterministic intelligence analysis → claims + provenance spans → research-activity Signal Radar / Review Queue.
 
-Evidence classification / Signal Radar scoring for Live remains Milestone 3.
-
-## Hosted future (M7)
-
-D1/R2/Sites are intentionally out of scope for M2. Schema and interfaces stay portable (text UUIDs, integer UTC ms, RawSnapshotStore, no local-only SQL features as domain requirements).
+Optional AI remains disabled by default (ADR-0008). Hosted D1/R2/Sites remain Milestone 7.

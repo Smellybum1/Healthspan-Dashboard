@@ -88,6 +88,8 @@ export function fetchItem(id: string) {
     demoNotice: string | null;
     dataMode?: 'demo' | 'live';
     dataOrigin?: 'demo' | 'live';
+    liveAnalysis?: Record<string, unknown> | null;
+    liveClaims?: Array<Record<string, unknown>>;
   }>(`/api/items/${id}`);
 }
 
