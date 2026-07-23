@@ -79,7 +79,7 @@ Do **not** rewrite history hashes in M2–M4 completion reports; append gap-clos
 | Document import | PARTIAL | Segments/spans + profile UI import/manual claim; delete/lifecycle UI still thin |
 | YouTube | PARTIAL | Playlist/video sync + quota ledger + retention hold + profile UI; search onboarding UI and full fixture corpus still thin |
 | X | PARTIAL | Timeline sync + budget gate + compliance purge APIs; stream/reconciliation depth and UI still thin |
-| Alignment §11 | MISSING/PARTIAL | 4 dims vs 17; no M3/M4 deep checks |
+| Alignment §11 | PARTIAL | All 15 dimensions + candidate findings persisted; deep M3/M4 evidence pairing and 72-case corpus still thin |
 | Doctors/evals | PARTIAL | Thin aliases; no corpora |
 | Screenshots | PARTIAL | Report claims; PNGs not committed |
 

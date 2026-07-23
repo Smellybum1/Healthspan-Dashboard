@@ -29,15 +29,17 @@ describe('creator claims', () => {
     expect(drafts.some((d) => d.assertionRole === 'disclosure')).toBe(true);
   });
 
-  it('alignment never invents trust scores', () => {
+  it('alignment never invents trust scores and covers all §11 dimensions', () => {
     const aligned = alignCreatorClaim({
-      claimText: 'x',
+      claimText: 'Metformin causes dramatic lifespan extension in mice and is FDA approved for aging.',
       assertionRole: 'assertion',
       linkedEvidenceCount: 0,
       hasRegulatoryLink: false,
       hasInterventionLink: false,
     });
+    expect(aligned.dimensions).toHaveLength(15);
     expect(aligned.overallLabel).toMatch(/No creator trust/i);
+    expect(aligned.findings.length).toBeGreaterThan(0);
     expect(CREATOR_PROHIBITED_SCORES).toContain('trust_score');
     expect(normalizeCreatorName('  Dr. Example  ')).toBe('dr. example');
   });

@@ -42,6 +42,18 @@ export function CreatorClaimsPage() {
               <p className="mt-1 text-xs text-[var(--muted)]">
                 {String((claim.alignment as { overallLabel?: string } | undefined)?.overallLabel ?? '')}
               </p>
+              {Array.isArray((claim.alignment as { dimensions?: unknown[] } | undefined)?.dimensions) ? (
+                <ul className="mt-2 grid gap-1 text-xs text-[var(--muted)] sm:grid-cols-2">
+                  {(
+                    (claim.alignment as { dimensions: Array<Record<string, unknown>> }).dimensions ?? []
+                  ).map((d) => (
+                    <li key={String(d.id)}>
+                      {String(d.label)}: {String(d.state)}
+                      {d.requiresHumanReview ? ' · review candidate' : ''}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <Link className="text-xs underline" to={`/creators/${String(claim.creatorId)}`}>
                 Creator
               </Link>

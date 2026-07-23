@@ -3,6 +3,9 @@ import { desc, eq } from 'drizzle-orm';
 import {
   creatorAliases,
   creatorClaims,
+  creatorClaimAlignmentAssessments,
+  creatorClaimAlignmentDimensions,
+  creatorClaimFindings,
   creatorClaimSourceSpans,
   creatorContentItems,
   creatorDisclosures,
@@ -19,6 +22,7 @@ import {
 import {
   alignCreatorClaim,
   claimRecurrenceKey,
+  ALIGNMENT_RULES_VERSION,
   CLAIM_EXTRACT_VERSION,
   extractCreatorClaimsFromText,
   normalizeCreatorName,
@@ -34,6 +38,73 @@ const BOOTSTRAP = [
     aliases: ['Example Longevity Channel'],
   },
 ];
+
+function persistClaimAlignment(
+  db: HealthspanDb,
+  opts: {
+    claimId: string;
+    claimText: string;
+    assertionRole: string;
+    confidence: string;
+    at: number;
+  },
+) {
+  const alignment = alignCreatorClaim({
+    claimText: opts.claimText,
+    assertionRole: opts.assertionRole,
+    linkedEvidenceCount: 0,
+    hasRegulatoryLink: false,
+    hasInterventionLink: false,
+  });
+  const assessmentId = randomUUID();
+  const analysisIdentity = createHash('sha256')
+    .update(`${opts.claimId}:${ALIGNMENT_RULES_VERSION}:${opts.claimText}`)
+    .digest('hex');
+  db.insert(creatorClaimAlignmentAssessments)
+    .values({
+      id: assessmentId,
+      creatorClaimId: opts.claimId,
+      inputDependencyHash: analysisIdentity.slice(0, 32),
+      rulesetVersion: ALIGNMENT_RULES_VERSION,
+      status: 'ready',
+      completeness: `${alignment.dimensions.length}/15`,
+      extractionConfidence: opts.confidence,
+      lifecycleState: 'current',
+      deterministicSummary: alignment.overallLabel,
+      analysisIdentity,
+      createdAt: opts.at,
+    })
+    .run();
+  for (const dimension of alignment.dimensions) {
+    db.insert(creatorClaimAlignmentDimensions)
+      .values({
+        id: randomUUID(),
+        assessmentId,
+        dimension: dimension.id,
+        state: dimension.state,
+        creatorClaimValue: opts.claimText.slice(0, 240),
+        explanation: dimension.note,
+        method: 'deterministic_rules',
+        reviewState: dimension.requiresHumanReview ? 'candidate' : 'accepted',
+        createdAt: opts.at,
+      })
+      .run();
+  }
+  for (const finding of alignment.findings) {
+    db.insert(creatorClaimFindings)
+      .values({
+        id: randomUUID(),
+        assessmentId,
+        findingType: finding,
+        findingState: 'candidate',
+        explanation: `Candidate finding from ${ALIGNMENT_RULES_VERSION}; adverse Live prominence requires human review.`,
+        reviewRequired: true,
+        createdAt: opts.at,
+      })
+      .run();
+  }
+  return alignment;
+}
 
 export function bootstrapCreatorCatalog(db: HealthspanDb) {
   const now = Date.now();
@@ -174,13 +245,6 @@ export function importCreatorDocument(
   for (const draft of drafts) {
     const claimId = randomUUID();
     const fingerprint = claimRecurrenceKey(draft.claimText);
-    const alignment = alignCreatorClaim({
-      claimText: draft.claimText,
-      assertionRole: draft.assertionRole,
-      linkedEvidenceCount: 0,
-      hasRegulatoryLink: false,
-      hasInterventionLink: false,
-    });
     const matchingIdx = parsed.segments.findIndex((s) =>
       s.text.includes(draft.excerpt.slice(0, Math.min(40, draft.excerpt.length))),
     );
@@ -202,10 +266,21 @@ export function importCreatorDocument(
         active: true,
         reviewStatus: 'unreviewed',
         lifecycleState: 'current',
-        alignmentJson: JSON.stringify(alignment),
+        alignmentJson: JSON.stringify({ pending: true }),
         extractionVersion: CLAIM_EXTRACT_VERSION,
         createdAt: now,
       })
+      .run();
+    const alignment = persistClaimAlignment(db, {
+      claimId,
+      claimText: draft.claimText,
+      assertionRole: draft.assertionRole,
+      confidence: draft.confidence,
+      at: now,
+    });
+    db.update(creatorClaims)
+      .set({ alignmentJson: JSON.stringify(alignment) })
+      .where(eq(creatorClaims.id, claimId))
       .run();
     db.insert(creatorClaimSourceSpans)
       .values({
@@ -509,13 +584,6 @@ export function createManualCreatorClaim(
       | 'correction'
       | 'disclosure'
       | undefined) ?? 'assertion';
-  const alignment = alignCreatorClaim({
-    claimText: text,
-    assertionRole: role,
-    linkedEvidenceCount: 0,
-    hasRegulatoryLink: false,
-    hasInterventionLink: false,
-  });
   const id = randomUUID();
   const now = Date.now();
   db.insert(creatorClaims)
@@ -529,10 +597,22 @@ export function createManualCreatorClaim(
       confidence: 'medium',
       recurrenceKey: claimRecurrenceKey(text),
       active: true,
-      alignmentJson: JSON.stringify(alignment),
+      reviewStatus: 'unreviewed',
+      alignmentJson: JSON.stringify({ pending: true }),
       extractionVersion: CLAIM_EXTRACT_VERSION,
       createdAt: now,
     })
+    .run();
+  const alignment = persistClaimAlignment(db, {
+    claimId: id,
+    claimText: text,
+    assertionRole: role,
+    confidence: 'medium',
+    at: now,
+  });
+  db.update(creatorClaims)
+    .set({ alignmentJson: JSON.stringify(alignment) })
+    .where(eq(creatorClaims.id, id))
     .run();
   return { ok: true as const, claimId: id };
 }
