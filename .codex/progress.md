@@ -1,5 +1,17 @@
 # Progress log
 
+## 2026-07-24 — Milestone 4 in progress (dossier + identity connectors)
+
+- Branch: `milestone-4/interventions-peptides-regulation` (base M3 `4d985d3`).
+- Landed `@healthspan/interventions`, intervention DB schema/migration `0004`, Live dossiers, entity-resolution queue.
+- Fixture-first identity/regulatory connectors: RxNorm, PubChem, GSRS, ARTG (exact/none/ambiguous/parser-break), Drugs@FDA, openFDA (key-disabled healthy).
+- Coverage cells (`not_checked` / miss ≠ unapproved) on dossier regulatory matrix; enrich-identity admin route.
+- Gates checked this packet: lint, typecheck, test (68), build green. `intelligence:eval` still 73/16.
+
+### Next recommended work
+
+Purple Book + Drugs@FDA bulk ZIP path, AEMS/FAERS caveats, comparison views, entity-resolution mutations, docs/ADRs, e2e, full M4 checklist + completion report. Do not start M5.
+
 ## 2026-07-23 — Milestone 1 complete
 
 - Built Healthspan Dashboard monorepo (apps/web, apps/api, packages/*).
