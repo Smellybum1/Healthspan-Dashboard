@@ -283,6 +283,7 @@ export function listCreatorClaims(db: HealthspanDb, opts?: { creatorId?: string;
     claimText: r.claimText,
     assertionRole: r.assertionRole,
     confidence: r.confidence,
+    reviewStatus: r.reviewStatus ?? 'unreviewed',
     recurrenceKey: r.recurrenceKey,
     alignment: JSON.parse(r.alignmentJson) as Record<string, unknown>,
     createdAt: new Date(r.createdAt).toISOString(),
