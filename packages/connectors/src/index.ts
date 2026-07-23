@@ -37,6 +37,26 @@ export { createPurpleBookConnector, parsePurpleBookCsv } from './purple-book.js'
 export type { PurpleBookRow } from './purple-book.js';
 export { createFdaAemsConnector, parseAemsHtml } from './fda-aems.js';
 export type { AemsSignal } from './fda-aems.js';
-export { createYoutubeConnector } from './youtube.js';
+export { createYoutubeConnector, createYoutubeClient } from './youtube.js';
+export {
+  YOUTUBE_APP_DAILY_QUOTA_CAP,
+  YOUTUBE_DEFAULT_LOOKBACK_DAYS,
+  YOUTUBE_DISPLAY_MAX_AGE_DAYS,
+  YOUTUBE_MANUAL_SEARCH_CAP_PER_DAY,
+  YOUTUBE_MAX_CHANNELS_PER_SYNC,
+  YOUTUBE_MAX_VIDEOS_PER_CHANNEL,
+  YOUTUBE_MAX_VIDEOS_PER_JOB,
+  YOUTUBE_METHOD_COSTS,
+  YOUTUBE_QUOTA_COST_TABLE_VERSION,
+  YOUTUBE_REFRESH_WITHIN_DAYS,
+} from './youtube.js';
+export type {
+  YoutubeApiMethod,
+  YoutubeChannelResolved,
+  YoutubeChannelSyncResult,
+  YoutubeClient,
+  YoutubeQuotaEvent,
+  YoutubeVideoMetadata,
+} from './youtube.js';
 export { createXConnector } from './x.js';
 export { plannedConnectors, DisabledConnector } from './legacy.js';

@@ -4,12 +4,14 @@ import {
   creatorAliases,
   creatorClaims,
   creatorClaimSourceSpans,
+  creatorContentItems,
   creatorDisclosures,
   creatorDocuments,
   creatorDocumentSegments,
   creatorEntities,
   creatorPlatformAccounts,
   creatorProfileSnapshots,
+  platformContentCurrent,
   platformPolicyState,
   xBudgetLedger,
   type HealthspanDb,
@@ -318,6 +320,36 @@ export function getCreatorDetail(db: HealthspanDb, id: string) {
       claimEligible: Boolean(d.claimEligible),
       createdAt: new Date(d.createdAt).toISOString(),
     }));
+  const now = Date.now();
+  const youtubeVideos = db
+    .select()
+    .from(creatorContentItems)
+    .all()
+    .filter((c) => c.creatorId === id && c.platform === 'youtube' && c.currentState === 'current')
+    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0))
+    .slice(0, 40)
+    .map((item) => {
+      const current = db
+        .select()
+        .from(platformContentCurrent)
+        .all()
+        .find((r) => r.contentItemId === item.id);
+      const expired = current?.expiryAt != null && current.expiryAt < now;
+      return {
+        id: item.id,
+        videoId: item.externalId,
+        title: item.title,
+        publishedAt: item.publishedAt ? new Date(item.publishedAt).toISOString() : null,
+        canonicalUrl: item.canonicalUrl,
+        thumbnailUrl: current?.thumbnailUrl ?? null,
+        captionAvailable: Boolean(current?.captionAvailable),
+        paidPlacementDeclared: Boolean(current?.paidPlacementDeclared),
+        displayEligible: Boolean(current?.displayEligible) && !expired,
+        claimEvidence: false as const,
+        metadataOnly: true as const,
+        note: 'YouTube API metadata is operational context only — not claim evidence',
+      };
+    });
   const recurrence = Object.entries(
     claims.reduce<Record<string, number>>((acc, c) => {
       acc[c.recurrenceKey] = (acc[c.recurrenceKey] ?? 0) + 1;
@@ -343,6 +375,7 @@ export function getCreatorDetail(db: HealthspanDb, id: string) {
       createdAt: new Date(d.createdAt).toISOString(),
     })),
     documents,
+    youtubeVideos,
     recurrence,
     prohibitedScores: [
       'trust_score',

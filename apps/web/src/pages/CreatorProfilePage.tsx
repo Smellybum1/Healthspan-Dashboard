@@ -37,6 +37,8 @@ export function CreatorProfilePage() {
   const [rightsBasis, setRightsBasis] = useState<(typeof RIGHTS_OPTIONS)[number]['value']>('user_owned');
   const [importBusy, setImportBusy] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [ytSyncBusy, setYtSyncBusy] = useState(false);
+  const [ytSyncMessage, setYtSyncMessage] = useState<string | null>(null);
   const [claimText, setClaimText] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [claimBusy, setClaimBusy] = useState(false);
@@ -60,7 +62,30 @@ export function CreatorProfilePage() {
   const accounts = (data.accounts as Array<Record<string, unknown>> | undefined) ?? [];
   const disclosures = (data.disclosures as Array<Record<string, unknown>> | undefined) ?? [];
   const documents = (data.documents as Array<Record<string, unknown>> | undefined) ?? [];
+  const youtubeVideos = (data.youtubeVideos as Array<Record<string, unknown>> | undefined) ?? [];
   const recurrence = (data.recurrence as Array<Record<string, unknown>> | undefined) ?? [];
+
+  async function onYoutubeSync() {
+    setYtSyncBusy(true);
+    setYtSyncMessage(null);
+    try {
+      const res = await fetch(`/api/creators/${id}/youtube-sync`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok) throw new Error(String(body.error ?? body.status ?? `Sync failed: ${res.status}`));
+      setYtSyncMessage(
+        `Synced ${String(body.channelsSynced ?? 0)} channels · ${String(body.videosUpserted ?? 0)} videos · units ${String(body.unitsSpent ?? 0)}. Metadata is never claim evidence.`,
+      );
+      reload();
+    } catch (err) {
+      setYtSyncMessage(err instanceof Error ? err.message : 'YouTube sync failed');
+    } finally {
+      setYtSyncBusy(false);
+    }
+  }
 
   async function onImportDocument(fileList: FileList | null) {
     const file = fileList?.[0];
@@ -163,9 +188,49 @@ export function CreatorProfilePage() {
                 ))}
               </ul>
             )}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={ytSyncBusy}
+                className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-50"
+                onClick={() => void onYoutubeSync()}
+              >
+                {ytSyncBusy ? 'Syncing YouTube…' : 'Sync YouTube metadata'}
+              </button>
+              {ytSyncMessage ? <p className="text-xs text-[var(--muted)]">{ytSyncMessage}</p> : null}
+            </div>
             <p className="text-xs text-[var(--muted)]">
-              YouTube metadata is never claim evidence. X is optional, budget-capped, and never sent to external AI.
+              YouTube metadata is never claim evidence. Sync uses channels.list → uploads playlist → videos.list with
+              daily quota ledger. X is optional, budget-capped, and never sent to external AI.
             </p>
+          </section>
+
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
+            <h2 className="text-sm font-semibold">YouTube videos (metadata only)</h2>
+            {youtubeVideos.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">
+                No synced video metadata yet. Run Sync YouTube metadata after adding a UC… channel ID.
+              </p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {youtubeVideos.map((v) => (
+                  <li key={String(v.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+                    <p className="font-medium">{String(v.title)}</p>
+                    <p className="text-xs text-[var(--muted)]">
+                      {v.displayEligible ? 'display-eligible' : 'refresh due / hidden'} · metadata only · not claim
+                      evidence
+                      {v.captionAvailable ? ' · captions available (flag only)' : ''}
+                      {v.paidPlacementDeclared ? ' · paid placement declared' : ''}
+                    </p>
+                    {v.canonicalUrl ? (
+                      <a className="text-xs underline" href={String(v.canonicalUrl)} target="_blank" rel="noreferrer">
+                        Open on YouTube
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">

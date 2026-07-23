@@ -12,6 +12,7 @@ import {
   type SourceConnector,
 } from '@healthspan/connectors';
 import { listMonitoredAccounts } from './creator-service.js';
+import { getYoutubeQuotaLedger, syncYoutubeMonitoredAccounts } from './youtube-sync-service.js';
 import {
   FileRawSnapshotStore,
   changeEvents,
@@ -126,6 +127,57 @@ export async function runIngestion(opts: IngestOptions) {
   const childSummaries: string[] = [];
 
   for (const connector of connectors) {
+    if (connector.id === 'youtube') {
+      const childId = randomUUID();
+      const childStart = now();
+      opts.db
+        .insert(ingestionRuns)
+        .values({
+          id: childId,
+          sourceId: connector.id,
+          parentRunId,
+          trigger: opts.trigger,
+          status: 'running',
+          startedAt: childStart,
+        })
+        .run();
+      const quotaBefore = getYoutubeQuotaLedger(opts.db);
+      const sync = await syncYoutubeMonitoredAccounts(opts.db, {
+        transport: opts.transport,
+        lookbackDays: lookbackDays || 180,
+        baseline: opts.isBaseline,
+      });
+      const status = sync.ok
+        ? sync.warnings?.length
+          ? 'partial'
+          : 'succeeded'
+        : sync.status === 'quota_exhausted'
+          ? 'partial'
+          : 'failed';
+      opts.db
+        .update(ingestionRuns)
+        .set({
+          status,
+          completedAt: now(),
+          remoteRecordCount: sync.videosUpserted,
+          rawSnapshotCount: 0,
+          contentUpsertCount: sync.videosUpserted,
+          changeEventCount: sync.newVideos,
+          warningCount: sync.warnings?.length ?? 0,
+          errorCount: sync.ok ? 0 : 1,
+          summary:
+            sync.error ??
+            `youtube: ${sync.channelsSynced} channels, ${sync.videosUpserted} videos, units=${sync.unitsSpent}, quota=${quotaBefore.status}`,
+        })
+        .where(eq(ingestionRuns.id, childId))
+        .run();
+      totalContent += sync.videosUpserted;
+      totalEvents += sync.newVideos;
+      if (!sync.ok) totalErrors += 1;
+      childSummaries.push(String(sync.error ?? `youtube ${sync.videosUpserted} videos`));
+      continue;
+    }
+
     const sourceRow = opts.db.select().from(sources).where(eq(sources.id, connector.id)).all()[0];
     const isBaseline =
       opts.isBaseline === true

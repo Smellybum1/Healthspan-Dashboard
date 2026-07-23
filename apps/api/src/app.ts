@@ -71,6 +71,11 @@ import {
   addXAccount,
   createManualCreatorClaim,
 } from './creator-service.js';
+import {
+  getYoutubeQuotaLedger,
+  syncYoutubeMonitoredAccounts,
+  applyYoutubeRetentionHold,
+} from './youtube-sync-service.js';
 import { fdaBulkSourceSchedules, scheduleForSource } from './source-schedule.js';
 
 type DataMode = 'demo' | 'live';
@@ -1022,6 +1027,34 @@ export function createApp() {
     });
   });
 
+  app.post('/api/creators/:id/youtube-sync', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as { baseline?: boolean; lookbackDays?: number };
+    applyYoutubeRetentionHold(live.db);
+    const result = await syncYoutubeMonitoredAccounts(live.db, {
+      creatorId: c.req.param('id'),
+      baseline: body.baseline,
+      lookbackDays: body.lookbackDays,
+    });
+    const status =
+      result.status === 'quota_exhausted'
+        ? 429
+        : result.ok === false && result.status === 'not_configured'
+          ? 400
+          : 200;
+    return c.json(result, status);
+  });
+
+  app.get('/api/platforms/youtube/quota', (c) => {
+    applyYoutubeRetentionHold(live.db);
+    return c.json({ dataMode: currentMode(), ...getYoutubeQuotaLedger(live.db) });
+  });
+
   app.post('/api/creators/:id/x-accounts', async (c) => {
     try {
       assertAdminMutationAllowed();
@@ -1105,12 +1138,14 @@ export function createApp() {
 
   app.get('/api/platform-policy', (c) => {
     ensureXBudgetRow(live.db);
+    applyYoutubeRetentionHold(live.db);
     return c.json({
       dataMode: currentMode(),
       youtube: {
         metadataIsClaimEvidence: false,
         unofficialCaptionsAllowed: false,
         mediaDownloadAllowed: false,
+        quota: getYoutubeQuotaLedger(live.db),
       },
       x: {
         enabledByDefault: false,
