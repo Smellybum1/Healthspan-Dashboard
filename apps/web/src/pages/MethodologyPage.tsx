@@ -8,16 +8,24 @@ const SECTIONS = [
     body: 'We keep maturity on its own axis — from social/anecdotal claims through cell, animal, observational human, early interventional, controlled trials, replicated synthesis, and regulatory/guideline-supported use for a specified indication. These are never collapsed into a single “truth score”.',
   },
   {
+    title: 'Evidence availability vs design',
+    body: 'A registered randomised trial without results can establish that a controlled design exists, but it cannot produce an efficacy finding. Protocol/plan claims stay labelled separately from reported findings and registry-posted results.',
+  },
+  {
+    title: 'Classification confidence',
+    body: 'Live extraction confidence (high/medium/low/insufficient) is separate from scientific confidence. Low-confidence outputs route to the Review Queue and are never silently promoted.',
+  },
+  {
     title: 'Confidence factors',
     body: 'Confidence is explained with human-readable rationale covering design, sample size, comparator quality, randomisation/blinding, preregistration, endpoint relevance, hard vs surrogate outcomes, uncertainty, attrition, multiplicity, peer review, replication, consistency, funding/conflicts, and corrections or retractions.',
   },
   {
     title: 'Translation gaps',
-    body: 'Cell→organism, animal→human, disease treatment→longevity, biomarker→health outcome, short-term→durable, association→causation, and selected sample→population gaps are labelled explicitly so mechanistic excitement is not mistaken for clinical readiness.',
+    body: 'Cell→organism, animal→human, disease treatment→longevity, biomarker→health outcome, short-term→durable, association→causation, protocol→results, and selected sample→population gaps are labelled explicitly so mechanistic excitement is not mistaken for clinical readiness.',
   },
   {
     title: 'Attention versus evidence',
-    body: 'Signal Radar plots evidence maturity against attention momentum. High attention does not upgrade evidence. Low attention does not downgrade strong results. Creator claims are scored as claims, not personalities.',
+    body: 'Signal Radar plots evidence maturity against research-activity (Live) or attention momentum (Demo). High activity/attention does not upgrade evidence. Low activity does not downgrade strong results. Creator claims are scored as claims, not personalities.',
   },
   {
     title: 'Preprints',
@@ -33,7 +41,7 @@ const SECTIONS = [
   },
   {
     title: 'AI-generated fields and provenance',
-    body: 'Milestone 1 uses rule-based labels and seeded rationale only — no live AI calls. Future AI-assisted fields must store model/provider, prompt/version, generation time, confidence, and source IDs. AI is an assistant, not the source of truth.',
+    body: 'Live intelligence is deterministic-first. Optional AI providers are disabled by default, must be schema-constrained, cannot write directly to the database, and cannot invent uncited claims. AI-assisted fields store provider/model/prompt/version and remain unreviewed until human confirmation.',
   },
   {
     title: 'Informational, not medical advice',
