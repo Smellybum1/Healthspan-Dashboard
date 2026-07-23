@@ -40,6 +40,7 @@ import {
   REVIEW_ACTIONS,
   type ReviewAction,
 } from './review-service.js';
+import { getAssessment, listAssessments } from './assessment-service.js';
 
 type DataMode = 'demo' | 'live';
 
@@ -730,6 +731,40 @@ export function createApp() {
   app.get('/api/claims/:id', (c) => {
     if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
     const detail = getLiveClaim(live.db, c.req.param('id'));
+    if (!detail) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', ...detail });
+  });
+
+  app.get('/api/assessments', (c) => {
+    if (currentMode() === 'demo') {
+      return c.json({
+        dataMode: 'demo',
+        items: [],
+        page: 1,
+        pageSize: 25,
+        total: 0,
+        totalPages: 1,
+        note: 'Live assessments list is empty in Demo mode.',
+      });
+    }
+    return c.json({
+      dataMode: 'live',
+      ...listAssessments(live.db, {
+        page: Number(c.req.query('page') ?? 1),
+        pageSize: Number(c.req.query('pageSize') ?? 25),
+        evidenceMaturity: c.req.query('evidenceMaturity') ?? undefined,
+        evidenceAvailability: c.req.query('evidenceAvailability') ?? undefined,
+        studyDesign: c.req.query('studyDesign') ?? undefined,
+        organism: c.req.query('organism') ?? undefined,
+        retractionOrCorrection: c.req.query('retractionOrCorrection') ?? undefined,
+        q: c.req.query('q') ?? undefined,
+      }),
+    });
+  });
+
+  app.get('/api/assessments/:id', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const detail = getAssessment(live.db, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...detail });
   });

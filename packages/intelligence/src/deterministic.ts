@@ -222,9 +222,6 @@ export function buildClaims(
   profile: StudyProfileDraft,
   segments: EvidenceTextSegment[],
 ): ClaimDraft[] {
-  const primary = segments.find((s) => s.kind === 'summary') ?? segments.find((s) => s.kind === 'title');
-  if (!primary) return [];
-
   const role =
     record.type === 'trial' && !profile.resultsPresent
       ? 'protocol_intent'
@@ -232,49 +229,88 @@ export function buildClaims(
         ? 'regulatory_statement'
         : 'reported_finding';
 
-  const text = primary.text.toLowerCase();
-  let outcomeFamily: string | null = null;
-  if (text.includes('lifespan') || text.includes('mortality')) outcomeFamily = 'lifespan_mortality';
-  else if (text.includes('biomarker') || text.includes('hdl') || text.includes('crp')) outcomeFamily = 'biomarker';
-  else if (text.includes('function') || text.includes('gait') || text.includes('vo2')) outcomeFamily = 'function';
-  else if (text.includes('safety') || text.includes('adverse')) outcomeFamily = 'safety';
-
-  // Biomarker changes are never presented as demonstrated lifespan extension.
-  let claimText =
-    record.type === 'trial' && !profile.resultsPresent
-      ? `Registry protocol/plan: ${record.title ?? 'Untitled trial'} (results not posted).`
-      : primary.text.slice(0, 280);
-  if (outcomeFamily === 'biomarker' && /lifespan extension|extends lifespan|prolongs life/i.test(claimText)) {
-    claimText = `${claimText.slice(0, 200)} [biomarker-only; not demonstrated lifespan extension]`;
-  }
-  if (profile.organismLevel === 'animal' || profile.organismLevel === 'cell') {
-    claimText = `${claimText} [${profile.organismLevel} evidence — not human evidence]`;
-  }
-
-  let direction = 'unspecified';
-  if (/\b(improv|increas|benefit|positiv)/i.test(text) && !/\b(worsen|decreas|reduc)/i.test(text)) {
-    direction = 'positive';
-  } else if (/\b(worsen|adverse|harm)/i.test(text)) {
-    direction = 'negative';
-  }
-
-  const fingerprint = hashText(
-    [record.type, role, claimText, primary.textHash, profile.evidenceMaturity].join('|'),
+  const maxClaims = Math.min(
+    12,
+    Math.max(1, Number(process.env.HEALTHSPAN_MAX_CLAIMS_PER_ITEM ?? 6)),
   );
 
-  return [
-    {
+  const preferredKinds =
+    record.type === 'trial' && !profile.resultsPresent
+      ? ['title', 'summary', 'study_design']
+      : record.type === 'regulatory_event'
+        ? ['summary', 'title']
+        : ['summary', 'title', 'study_design'];
+
+  const ordered = [
+    ...preferredKinds
+      .map((kind) => segments.find((s) => s.kind === kind))
+      .filter((s): s is EvidenceTextSegment => Boolean(s)),
+    ...segments.filter((s) => !preferredKinds.includes(s.kind)),
+  ];
+
+  const uniqueSegments: EvidenceTextSegment[] = [];
+  const seenHashes = new Set<string>();
+  for (const segment of ordered) {
+    if (seenHashes.has(segment.textHash)) continue;
+    seenHashes.add(segment.textHash);
+    uniqueSegments.push(segment);
+    if (uniqueSegments.length >= maxClaims) break;
+  }
+
+  if (uniqueSegments.length === 0) return [];
+
+  const claims: ClaimDraft[] = [];
+  for (const segment of uniqueSegments) {
+    const text = segment.text.toLowerCase();
+    let outcomeFamily: string | null = null;
+    if (text.includes('lifespan') || text.includes('mortality')) outcomeFamily = 'lifespan_mortality';
+    else if (text.includes('biomarker') || text.includes('hdl') || text.includes('crp')) {
+      outcomeFamily = 'biomarker';
+    } else if (text.includes('function') || text.includes('gait') || text.includes('vo2')) {
+      outcomeFamily = 'function';
+    } else if (text.includes('safety') || text.includes('adverse')) outcomeFamily = 'safety';
+
+    let claimText =
+      record.type === 'trial' && !profile.resultsPresent && segment.kind === 'title'
+        ? `Registry protocol/plan: ${record.title ?? 'Untitled trial'} (results not posted).`
+        : segment.text.slice(0, 280);
+    if (outcomeFamily === 'biomarker' && /lifespan extension|extends lifespan|prolongs life/i.test(claimText)) {
+      claimText = `${claimText.slice(0, 200)} [biomarker-only; not demonstrated lifespan extension]`;
+    }
+    if (profile.organismLevel === 'animal' || profile.organismLevel === 'cell') {
+      claimText = `${claimText} [${profile.organismLevel} evidence — not human evidence]`;
+    }
+
+    let direction = 'unspecified';
+    if (/\b(improv|increas|benefit|positiv)/i.test(text) && !/\b(worsen|decreas|reduc)/i.test(text)) {
+      direction = 'positive';
+    } else if (/\b(worsen|adverse|harm)/i.test(text)) {
+      direction = 'negative';
+    }
+
+    const assertionRole =
+      segment.kind === 'study_design' && record.type === 'trial' && !profile.resultsPresent
+        ? 'protocol_intent'
+        : role;
+
+    const fingerprint = hashText(
+      [record.type, assertionRole, claimText, segment.textHash, profile.evidenceMaturity].join('|'),
+    );
+
+    claims.push({
       fingerprint,
       claimKind: record.type === 'regulatory_event' ? 'safety_regulatory' : 'scientific',
-      assertionRole: role,
+      assertionRole,
       claimText,
       direction,
       outcomeFamily,
       classificationConfidence: profile.classificationConfidence,
-      primaryExcerpt: primary.text.slice(0, 240),
-      fieldPath: primary.fieldPath,
-    },
-  ];
+      primaryExcerpt: segment.text.slice(0, 240),
+      fieldPath: segment.fieldPath,
+    });
+  }
+
+  return claims;
 }
 
 export function researchActivityScore(input: {
