@@ -66,6 +66,10 @@ export function fetchJobs() {
   return getJson<{ jobs: Array<Record<string, unknown>> }>('/api/jobs');
 }
 
+export function postIntelligenceRun(body: { limit?: number } = {}) {
+  return postJson<Record<string, unknown>>('/api/intelligence/run', body);
+}
+
 export function fetchItems(params: Record<string, string | undefined> = {}) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

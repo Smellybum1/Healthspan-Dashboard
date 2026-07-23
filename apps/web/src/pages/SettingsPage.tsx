@@ -4,7 +4,7 @@ import { DemoBanner } from '@healthspan/ui';
 import { DEMO_SNAPSHOT_NOTICE } from '@healthspan/core';
 import { PageHeader } from '../components/Common';
 import { usePreferences } from '../state/PreferencesContext';
-import { fetchMode, runIngestion, setMode } from '../lib/api';
+import { fetchMode, runIngestion, setMode, postIntelligenceRun } from '../lib/api';
 import { useAsync } from '../hooks/useAsync';
 
 export function SettingsPage() {
@@ -98,6 +98,27 @@ export function SettingsPage() {
           className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-50"
         >
           {syncing ? 'Syncing…' : 'Run first sync (Live)'}
+        </button>
+        <button
+          type="button"
+          disabled={syncing}
+          onClick={() => {
+            void (async () => {
+              setSyncing(true);
+              try {
+                await setMode('live');
+                const accepted = await postIntelligenceRun({ limit: 50 });
+                setMessage(`Queued intelligence job ${String(accepted.jobId)}`);
+              } catch (err) {
+                setMessage(err instanceof Error ? err.message : 'Intelligence run failed');
+              } finally {
+                setSyncing(false);
+              }
+            })();
+          }}
+          className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-50"
+        >
+          Run Live intelligence analysis
         </button>
         <p className="text-xs text-[var(--muted)]">
           See also <Link className="underline" to="/sources">Source Health</Link>.
