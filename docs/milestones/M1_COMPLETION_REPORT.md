@@ -82,7 +82,7 @@ Also: `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/DESIGN_SYSTEM.md`, `do
 
 ## 10. Commit hash and file-tree summary
 
-**Commit hash:** `a451b4f927249269d2ce54d878c97ae8d5d68cbb`
+**Commit hash:** `e1e0e68c68067c660060a70afa49ef79e4e83888` (M1 tree: `a451b4f927249269d2ce54d878c97ae8d5d68cbb`)
 
 ```text
 apps/api          Hono API + contract tests
