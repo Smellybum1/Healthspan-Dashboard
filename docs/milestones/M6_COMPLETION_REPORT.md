@@ -7,7 +7,7 @@
 **Original first M6 implementation commit:** `ae6419f3db2b4f4799970c7529822242cdae3197`  
 **Remediation base:** `40540025f468fdefbf018ded9b9dbb4f1b00de2d`  
 **Remediation feature-complete commit:** `7853708edce228c53a49e374d602ee4012e81b95`  
-**Final branch tip:** `e37aff222aa080cc05d009751c2e95d277cbf588`  
+**Final branch tip:** `dfc655f047da65f739d8e0f1fb88505be568f068`  
 **Controlling brief:** `docs/milestones/healthspan_dashboard_milestone_6_execution_brief.md`  
 **Brief SHA-256:** `f78eeb73b7e735c9ce24103b99de617a94951101133ce010c3401667a8355118`  
 **Remediation brief:** `docs/milestones/M6_CLOSURE_REMEDIATION.md`  
@@ -28,7 +28,7 @@ Milestone 6 personalisation/production hardening is remediated against the offic
 | Original first M6 feature commit      | `ae6419f3db2b4f4799970c7529822242cdae3197` |
 | Pro-challenged tip / remediation base | `40540025f468fdefbf018ded9b9dbb4f1b00de2d` |
 | Remediation feature-complete          | `7853708edce228c53a49e374d602ee4012e81b95` |
-| Final branch tip                      | `e37aff222aa080cc05d009751c2e95d277cbf588` |
+| Final branch tip                      | `dfc655f047da65f739d8e0f1fb88505be568f068` |
 
 ## 3. One-row acceptance checklist
 
@@ -268,7 +268,7 @@ Milestone 6 personalisation/production hardening is remediated against the offic
 | M19 | Every new M6 doctor/evaluation passes.                                                                                  | PASS    | Remediation implementation + local gates (format/lint/typecheck/test/build/doctors/evals/backup/security) on branch milestone-6/personalisation-production-hardening. |
 | M20 | Documentation/ADRs match implementation.                                                                                | PASS    | Remediation implementation + local gates (format/lint/typecheck/test/build/doctors/evals/backup/security) on branch milestone-6/personalisation-production-hardening. |
 | M21 | M6 screenshots and completion report are committed.                                                                     | PASS    | Completion report committed; screenshots deferred to prior M5/M6 UI evidence where unchanged + a11y checklist.                                                        |
-| M22 | Working branch is pushed and exact final hash reported.                                                                 | PASS    | Pushed tip `e37aff222aa080cc05d009751c2e95d277cbf588`.                                                                                                                |
+| M22 | Working branch is pushed and exact final hash reported.                                                                 | PASS    | Pushed tip `dfc655f047da65f739d8e0f1fb88505be568f068`.                                                                                                                |
 | M23 | No Milestone 7 work has begun.                                                                                          | PASS    | Remediation implementation + local gates (format/lint/typecheck/test/build/doctors/evals/backup/security) on branch milestone-6/personalisation-production-hardening. |
 
 ## 4. Entry-gate evidence
