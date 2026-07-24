@@ -7,15 +7,14 @@ const CI_NOTE =
   'CI workflow links recorded in handoff after green run on implementation commit.';
 
 const existing = fs.readFileSync('docs/milestones/M6_COMPLETION_REPORT.md', 'utf8');
-const tableMatch = existing.match(/\| ID \| Criterion[\s\S]*?\n\| --- \|[\s\S]*?\n((?:\| .*\n)+)/);
-if (!tableMatch) throw new Error('Could not parse checklist table from existing report');
-
-const rowRe = /^\| ([A-Z]+\d+) \| (.+?) \| .+? \| .+? \|$/gm;
+const rowRe =
+  /^\| ([A-Z]+\d+)\s+\| (.+?) \| (?:PASS|NOT RUN|BLOCKED|DEVIATION|NOT APPLICABLE)\s+\| .+? \|\s*$/gm;
 const rows = [];
 let m;
-while ((m = rowRe.exec(tableMatch[1])) !== null) {
-  rows.push({ id: m[1], text: m[2].trim() });
+while ((m = rowRe.exec(existing)) !== null) {
+  rows.push({ id: m[1], text: m[2].trim().replace(/\s+$/, '') });
 }
+if (rows.length < 200) throw new Error(`Expected ~236 checklist rows, got ${rows.length}`);
 
 function evidenceFor(id, text) {
   const t = text.toLowerCase();
