@@ -117,6 +117,7 @@ jobs:
       - run: pnpm backup:doctor
       - run: pnpm backup:eval
       - run: pnpm operations:doctor
+      - run: pnpm --filter @healthspan/web exec playwright install chromium --with-deps
       - run: pnpm accessibility:audit
       - run: pnpm performance:check
       - run: pnpm intelligence:doctor

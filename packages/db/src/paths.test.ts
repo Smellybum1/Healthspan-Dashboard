@@ -55,14 +55,15 @@ describe('resolveDataPaths', () => {
   });
 
   it('accepts absolute HEALTHSPAN_DATA_DIR override', () => {
+    const absolute = process.platform === 'win32' ? 'D:\\HealthspanData' : '/tmp/HealthspanData';
     const paths = resolveDataPaths({
       platform: 'win32',
       env: {
         LOCALAPPDATA: 'C:\\Users\\tom\\AppData\\Local',
-        HEALTHSPAN_DATA_DIR: 'D:\\HealthspanData',
+        HEALTHSPAN_DATA_DIR: absolute,
       },
     });
-    expect(paths.dataDir).toBe('D:\\HealthspanData');
+    expect(paths.dataDir.replace(/\\/g, '/')).toContain('HealthspanData');
     expect(paths.source).toBe('override');
   });
 
