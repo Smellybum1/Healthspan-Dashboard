@@ -7,3 +7,11 @@ allowBuilds:
   esbuild: true
 
 strictDepBuilds: true
+
+# GHSA-qwww-vcr4-c8h2 (RSC CSRF bypass). Force patched react-router until
+# react-router-dom ships a matching major. This app does not enable RSC mode.
+overrides:
+  react-router: 8.3.0
+
+minimumReleaseAgeExclude:
+  - react-router@8.3.0

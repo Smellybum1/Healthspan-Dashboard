@@ -163,7 +163,8 @@ export function registerM6RemediationRoutes(
   });
 
   app.get('/api/watchlists/:id/changes', (c) => {
-    if (demoBlock()) return c.json({ dataMode: 'demo', items: [], total: 0, page: 1, pageSize: 50 });
+    if (demoBlock())
+      return c.json({ dataMode: 'demo', items: [], total: 0, page: 1, pageSize: 50 });
     return c.json({
       dataMode: 'live',
       ...listWatchlistChanges(live.db, c.req.param('id'), {
@@ -393,7 +394,8 @@ export function registerM6RemediationRoutes(
   });
 
   app.get('/api/alerts', (c) => {
-    if (demoBlock()) return c.json({ dataMode: 'demo', items: [], total: 0, page: 1, pageSize: 50 });
+    if (demoBlock())
+      return c.json({ dataMode: 'demo', items: [], total: 0, page: 1, pageSize: 50 });
     return c.json({
       dataMode: 'live',
       ...listAlertsFiltered(live.db, {

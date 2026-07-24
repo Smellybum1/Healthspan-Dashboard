@@ -10,11 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const reportPath = path.join(root, 'docs/milestones/M6_COMPLETION_REPORT.md');
 let text = fs.readFileSync(reportPath, 'utf8');
 
-function evidenceFor(
-  id: string,
-  criterion: string,
-  status: string,
-): string {
+function evidenceFor(id: string, criterion: string, status: string): string {
   const c = criterion.toLowerCase();
   const uniq = `row ${id}`;
 
@@ -42,7 +38,10 @@ function evidenceFor(
   }
 
   // Security
-  if (/csrf|session|origin|host|rate.?limit|security.?header|request.?integrity/i.test(c) || /^C\d/.test(id)) {
+  if (
+    /csrf|session|origin|host|rate.?limit|security.?header|request.?integrity/i.test(c) ||
+    /^C\d/.test(id)
+  ) {
     return `apps/api request-integrity/CSRF + security headers; scripts security doctors; privacy preference path; ${uniq}`;
   }
 
@@ -52,7 +51,11 @@ function evidenceFor(
   }
 
   // Saved search
-  if (/saved.?search|search.?builder|needs_update|match history|evaluation history|structured schema|hashing is deterministic/i.test(c)) {
+  if (
+    /saved.?search|search.?builder|needs_update|match history|evaluation history|structured schema|hashing is deterministic/i.test(
+      c,
+    )
+  ) {
     return `packages/personalization SavedSearchQuerySchemaV2 + MultiSelectCheckboxes builder; m6-product:eval ss-* cases; m6-saved-searches.png; ${uniq}`;
   }
 

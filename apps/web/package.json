@@ -17,10 +17,10 @@
     "@healthspan/ui": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.483.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^7.4.0",
-    "recharts": "^2.15.1"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.1",
+    "recharts": "^2.15.4"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

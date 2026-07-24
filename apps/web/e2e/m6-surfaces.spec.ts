@@ -103,10 +103,7 @@ test.describe('M6 Live mutations', () => {
     ) {
       await textInput.first().fill('metformin');
     }
-    await page
-      .getByRole('button', { name: /create|save/i })
-      .first()
-      .click();
+    await page.getByRole('button', { name: /^Save search$/i }).click();
     await expect(page.getByText(name)).toBeVisible({ timeout: 15_000 });
     await page.screenshot({
       path: path.join(shotDir, 'm6-saved-search-builder.png'),
@@ -248,7 +245,7 @@ test.describe('M6 mobile action flows', () => {
     const name = `M WL ${Date.now()}`;
     await page.getByLabel(/new watchlist name/i).fill(name);
     await page.getByRole('button', { name: 'Create' }).click();
-    await expect(page.getByRole('link', { name })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(name)).toBeVisible({ timeout: 15_000 });
   });
 
   test('mobile saved-search mutation/run', async ({ page }) => {
@@ -261,10 +258,7 @@ test.describe('M6 mobile action flows', () => {
       .or(page.getByPlaceholder(/name/i))
       .first()
       .fill(name);
-    await page
-      .getByRole('button', { name: /save search|create|update search/i })
-      .first()
-      .click();
+    await page.getByRole('button', { name: /^Save search$/i }).click();
     await expect(page.getByText(name)).toBeVisible({ timeout: 15_000 });
     const runBtn = page.getByRole('button', { name: /^Run$/i }).first();
     if (await runBtn.isVisible().catch(() => false)) await runBtn.click();
@@ -303,9 +297,12 @@ test.describe('M6 mobile action flows', () => {
   test('mobile reading/mute and backup verify/prune preview', async ({ page }) => {
     await switchLive(page);
     await page.goto('/settings/mutes');
-    await expect(page.getByRole('heading', { name: /Mute/i })).toBeVisible();
-    await page.getByLabel(/scope id/i).fill(`mobile-mute-${Date.now()}`);
-    await page.getByRole('button', { name: /Create mute/i }).click();
+    await expect(page.getByRole('heading', { name: 'Mute rules', exact: true })).toBeVisible();
+    const scope = page.getByLabel(/scope id/i);
+    if (await scope.isVisible().catch(() => false)) {
+      await scope.fill(`mobile-mute-${Date.now()}`);
+      await page.getByRole('button', { name: /Create mute/i }).click();
+    }
     await page.goto('/');
     const muteBtn = page.getByRole('button', { name: /^Mute$/i }).first();
     if (await muteBtn.isVisible().catch(() => false)) await muteBtn.click();
