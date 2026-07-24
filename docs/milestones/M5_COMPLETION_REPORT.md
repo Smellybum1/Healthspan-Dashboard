@@ -18,7 +18,8 @@ This report replaces the earlier overclaim that treated a chat-scrape execution 
 | X timeline/compliance | `f9b19b3…` |
 | §11 alignment dims | `9569ee0…` |
 | Doctor/eval hardening | `53edae1…` |
-| Alignment corpus + this report | `0636c363c6114f9666622fe31d1147c2b180693b` |
+| Alignment corpus + honest §34 report | `0636c363c6114f9666622fe31d1147c2b180693b` |
+| Final HEAD (hash wording) | `f06c9cf…` (this tip) |
 
 ## 1. Executive summary
 
