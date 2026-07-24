@@ -38,9 +38,10 @@
     "creators:doctor": "tsx scripts/creators-doctor.ts",
     "creator-claims:eval": "tsx scripts/creators-eval.ts",
     "creator-claims:doctor": "tsx scripts/creators-doctor.ts",
-    "creator-documents:doctor": "tsx scripts/creators-doctor.ts",
-    "youtube:doctor": "tsx scripts/platform-policy-doctor.ts",
-    "x:doctor": "tsx scripts/platform-policy-doctor.ts",
+    "creator-documents:doctor": "tsx scripts/creator-documents-doctor.ts",
+    "youtube:doctor": "tsx scripts/youtube-doctor.ts",
+    "x:doctor": "tsx scripts/x-doctor.ts",
+    "x:compliance": "tsx scripts/x-compliance.ts",
     "platform-policy:doctor": "tsx scripts/platform-policy-doctor.ts"
   },
   "devDependencies": {

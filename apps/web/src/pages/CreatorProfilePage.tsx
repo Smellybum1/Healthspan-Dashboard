@@ -75,7 +75,30 @@ export function CreatorProfilePage() {
         body: JSON.stringify({}),
       });
       const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-      if (!res.ok) throw new Error(String(body.error ?? body.status ?? `Sync failed: ${res.status}`));
+      if (!res.ok && res.status !== 202) {
+        throw new Error(String(body.error ?? body.status ?? `Sync failed: ${res.status}`));
+      }
+      const jobId = typeof body.jobId === 'string' ? body.jobId : null;
+      if (jobId) {
+        for (let i = 0; i < 40; i += 1) {
+          await new Promise((r) => setTimeout(r, 400));
+          const jobRes = await fetch(`/api/jobs/${jobId}`);
+          const job = (await jobRes.json().catch(() => ({}))) as Record<string, unknown>;
+          const status = String(job.status ?? '');
+          if (status === 'succeeded' || status === 'partial') {
+            setYtSyncMessage(
+              `YouTube sync job ${status}. Metadata is never claim evidence.`,
+            );
+            reload();
+            return;
+          }
+          if (status === 'failed' || status === 'cancelled') {
+            throw new Error(String(job.lastError ?? `Sync job ${status}`));
+          }
+        }
+        setYtSyncMessage(`YouTube sync queued (job ${jobId}). Refresh shortly.`);
+        return;
+      }
       setYtSyncMessage(
         `Synced ${String(body.channelsSynced ?? 0)} channels · ${String(body.videosUpserted ?? 0)} videos · units ${String(body.unitsSpent ?? 0)}. Metadata is never claim evidence.`,
       );

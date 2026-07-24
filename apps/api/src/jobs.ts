@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, eq, lte, sql } from 'drizzle-orm';
 import { backgroundJobs, type HealthspanDb } from '@healthspan/db';
+import { type M5JobKind } from './job-priorities.js';
 
-export type JobKind = 'ingestion' | 'intelligence';
+export type JobKind = M5JobKind;
+export { JOB_PRIORITY } from './job-priorities.js';
 
 export type EnqueueJobInput = {
   kind: JobKind;

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { schedulerState, type HealthspanDb } from '@healthspan/db';
 import type { IngestionScheduler } from './scheduler.js';
-import { enqueueJob, stableDedupeKey } from './jobs.js';
+import { enqueueJob, stableDedupeKey, JOB_PRIORITY } from './jobs.js';
 import { fdaBulkSourceSchedules } from './source-schedule.js';
 
 /** Next 06:00 Australia/Brisbane as UTC ms. */
@@ -94,7 +94,7 @@ export function createLocalScheduler(opts: {
       dedupeKey: stableDedupeKey('ingestion-scheduled-day', {
         day: new Date(now).toISOString().slice(0, 10),
       }),
-      priority: 50,
+      priority: JOB_PRIORITY.SCHEDULED_INGESTION,
     });
 
     opts.db

@@ -15,6 +15,7 @@ import {
   type XPostMetadata,
 } from '@healthspan/connectors';
 import {
+  appMeta,
   creatorClaims,
   creatorContentItems,
   creatorPlatformAccounts,
@@ -22,14 +23,14 @@ import {
   platformComplianceEvents,
   platformContentCurrent,
   platformContentTombstones,
+  platformRetentionJobResults,
   xBudgetLedger,
   type HealthspanDb,
 } from '@healthspan/db';
 import { ensureXBudgetRow, listMonitoredAccounts } from './creator-service.js';
 
-function periodKeyMonth(d = new Date()): string {
-  return d.toISOString().slice(0, 7);
-}
+const X_COMPLIANCE_META_KEY = 'x_compliance_cursor';
+const X_COMPLIANCE_LAST_KEY = 'x_compliance_last_reconciled_at';
 
 function parseMaybeDate(value: string | null | undefined): number | null {
   if (!value) return null;
@@ -435,5 +436,199 @@ export async function syncXMonitoredAccounts(
     warnings,
     budget: getXBudgetStatus(db),
     note: 'X is optional, budget-capped, no automatic recharge, and never sent to external AI.',
+  };
+}
+
+export type XComplianceStatus = {
+  platform: 'x';
+  enabled: boolean;
+  cursor: string | null;
+  lastReconciledAt: number | null;
+  lastReconciledAtIso: string | null;
+  maxAgeHours: number;
+  overdue: boolean;
+  displayBlockedWhenOverdue: boolean;
+};
+
+function readMeta(db: HealthspanDb, key: string): string | null {
+  return db.select().from(appMeta).where(eq(appMeta.key, key)).all()[0]?.value ?? null;
+}
+
+function writeMeta(db: HealthspanDb, key: string, value: string, at = Date.now()) {
+  const existing = readMeta(db, key);
+  if (existing == null) {
+    db.insert(appMeta).values({ key, value, updatedAt: at }).run();
+  } else {
+    db.update(appMeta).set({ value, updatedAt: at }).where(eq(appMeta.key, key)).run();
+  }
+}
+
+export function getXComplianceMaxAgeMs(): number {
+  const hours = Number(process.env.HEALTHSPAN_X_COMPLIANCE_MAX_AGE_HOURS ?? 24);
+  return (Number.isFinite(hours) && hours > 0 ? hours : 24) * 60 * 60 * 1000;
+}
+
+export function getXComplianceStatus(db: HealthspanDb, now = Date.now()): XComplianceStatus {
+  const enabled = process.env.HEALTHSPAN_X_ENABLED === 'true';
+  const cursor = readMeta(db, X_COMPLIANCE_META_KEY);
+  const lastRaw = readMeta(db, X_COMPLIANCE_LAST_KEY);
+  const lastReconciledAt = lastRaw && Number.isFinite(Number(lastRaw)) ? Number(lastRaw) : null;
+  const maxAgeHours = getXComplianceMaxAgeMs() / (60 * 60 * 1000);
+  const overdue = isXComplianceOverdue(
+    { enabled, lastReconciledAt, maxAgeHours } as XComplianceStatus,
+    now,
+  );
+  return {
+    platform: 'x',
+    enabled,
+    cursor,
+    lastReconciledAt,
+    lastReconciledAtIso: lastReconciledAt ? new Date(lastReconciledAt).toISOString() : null,
+    maxAgeHours,
+    overdue,
+    displayBlockedWhenOverdue: overdue && enabled,
+  };
+}
+
+export function isXComplianceOverdue(
+  status: Pick<XComplianceStatus, 'enabled' | 'lastReconciledAt'> & { maxAgeHours?: number },
+  now = Date.now(),
+): boolean {
+  if (!status.enabled) return false;
+  if (status.lastReconciledAt == null) return true;
+  const maxMs =
+    status.maxAgeHours != null
+      ? status.maxAgeHours * 60 * 60 * 1000
+      : getXComplianceMaxAgeMs();
+  return now - status.lastReconciledAt > maxMs;
+}
+
+/**
+ * Startup/daily compliance reconciliation. Applies optional action batch, expires
+ * overdue display eligibility, advances durable cursor, and records retention results.
+ */
+export function runXComplianceReconciliation(
+  db: HealthspanDb,
+  opts: {
+    actions?: XComplianceAction[];
+    backgroundJobId?: string;
+    trigger?: string;
+    at?: number;
+  } = {},
+) {
+  const at = opts.at ?? Date.now();
+  const enabled = process.env.HEALTHSPAN_X_ENABLED === 'true';
+  const jobResultId = randomUUID();
+  db.insert(platformRetentionJobResults)
+    .values({
+      id: jobResultId,
+      platform: 'x',
+      policyVersion: 'm5-x-compliance-v1',
+      backgroundJobId: opts.backgroundJobId ?? null,
+      dueRecordCount: 0,
+      refreshedCount: 0,
+      purgedCount: 0,
+      hiddenCount: 0,
+      status: 'running',
+      startedAt: at,
+      createdAt: at,
+    })
+    .run();
+
+  if (!enabled) {
+    writeMeta(db, X_COMPLIANCE_LAST_KEY, String(at), at);
+    writeMeta(db, X_COMPLIANCE_META_KEY, `disabled:${at}`, at);
+    db.update(platformRetentionJobResults)
+      .set({ status: 'skipped_disabled', completedAt: at, refreshedCount: 0 })
+      .where(eq(platformRetentionJobResults.id, jobResultId))
+      .run();
+    return {
+      ok: true as const,
+      status: 'skipped_disabled' as const,
+      purged: 0,
+      hidden: 0,
+      invalidatedClaims: 0,
+      compliance: getXComplianceStatus(db, at),
+      jobResultId,
+    };
+  }
+
+  let purged = 0;
+  let invalidatedClaims = 0;
+  if (opts.actions?.length) {
+    const batch = applyXComplianceBatch(db, opts.actions);
+    purged = batch.purged;
+    invalidatedClaims = batch.invalidatedClaims;
+  }
+
+  // Hide X content that is past display max age or when reconciliation had been overdue.
+  let hidden = 0;
+  const displayCutoff = at - X_DISPLAY_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  for (const item of db.select().from(creatorContentItems).all().filter((c) => c.platform === 'x')) {
+    const current = db
+      .select()
+      .from(platformContentCurrent)
+      .all()
+      .find((r) => r.contentItemId === item.id);
+    if (!current) continue;
+    const tooOld = (item.publishedAt ?? 0) > 0 && (item.publishedAt ?? 0) < displayCutoff;
+    const expired = current.expiryAt != null && current.expiryAt < at;
+    if ((tooOld || expired) && current.displayEligible) {
+      db.update(platformContentCurrent)
+        .set({ displayEligible: false, updatedAt: at })
+        .where(eq(platformContentCurrent.id, current.id))
+        .run();
+      hidden += 1;
+    }
+  }
+
+  const prevCursor = readMeta(db, X_COMPLIANCE_META_KEY) ?? '0';
+  const nextCursor = `local:${at}:${purged}:${hidden}`;
+  writeMeta(db, X_COMPLIANCE_META_KEY, nextCursor, at);
+  writeMeta(db, X_COMPLIANCE_LAST_KEY, String(at), at);
+
+  db.insert(platformComplianceEvents)
+    .values({
+      id: randomUUID(),
+      platform: 'x',
+      contentItemId: null,
+      accountId: null,
+      eventType: 'batch_reconciliation',
+      sourceEventOrCursor: nextCursor,
+      receivedAt: at,
+      appliedAt: at,
+      actionTaken: opts.trigger ?? 'reconcile',
+      errorRetryState: null,
+      detailJson: JSON.stringify({
+        prevCursor,
+        purged,
+        hidden,
+        invalidatedClaims,
+        actionCount: opts.actions?.length ?? 0,
+      }),
+      createdAt: at,
+    })
+    .run();
+
+  db.update(platformRetentionJobResults)
+    .set({
+      status: 'succeeded',
+      dueRecordCount: purged + hidden,
+      purgedCount: purged,
+      hiddenCount: hidden,
+      refreshedCount: 1,
+      completedAt: at,
+    })
+    .where(eq(platformRetentionJobResults.id, jobResultId))
+    .run();
+
+  return {
+    ok: true as const,
+    status: 'succeeded' as const,
+    purged,
+    hidden,
+    invalidatedClaims,
+    compliance: getXComplianceStatus(db, at),
+    jobResultId,
   };
 }

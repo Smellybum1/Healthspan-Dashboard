@@ -1,5 +1,18 @@
 # Progress log
 
+## 2026-07-24 — M5 closure packet: jobs, compliance, export, doctors, gates
+
+- Job kinds: `sync_youtube_channel`, `sync_x_account`, `run_x_batch_compliance` with leases + compliance priority
+- X compliance reconciliation startup/daily + `pnpm x:compliance` + GET status
+- Safe export sanitizer (no X text / full bodies)
+- Dedicated `youtube:doctor`, `x:doctor`, `creator-documents:doctor`
+- Gates green: lint, typecheck, test 109, e2e 18/4 skip, build, creators:eval, doctors
+- Honest report: Section 34 not uniformly DONE; residuals remain; M6 held
+
+### Next recommended work
+
+Residual M5 PARTIAL packets or Pro re-scope; then M4→M3→M2 residuals. Do not start M6.
+
 ## 2026-07-24 — Milestone 4 complete
 
 - Branch `milestone-4/interventions-peptides-regulation` finished with dossiers, identity/regulatory connectors, ZIP-safe Drugs@FDA projection, openFDA event aggregates (key-gated), AEMS, trial portfolio links, comparison, entity-resolution mutations, Today intervention watch, ADR-0009, DATA_MODEL, e2e, `dossiers:doctor`.

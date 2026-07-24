@@ -22,6 +22,7 @@ import {
   claimSourceSpans,
   dossierChangeEvents,
   interventionEntities,
+  creatorContentItems,
 } from '@healthspan/db';
 import { runIngestion } from './ingest.js';
 import { assertAdminMutationAllowed, warnIfRemoteAdminEnabled } from './admin-guard.js';
@@ -31,8 +32,14 @@ import {
   listJobs,
   startJobWorker,
   stableDedupeKey,
+  JOB_PRIORITY,
 } from './jobs.js';
 import { createLocalScheduler } from './local-scheduler.js';
+import { createPlatformScheduler } from './platform-scheduler.js';
+import {
+  buildSafeCreatorExportBundle,
+  stripForbiddenExportFields,
+} from './safe-response.js';
 import { liveRadarPoints, runIntelligenceAnalysis, intelligenceStatus, listIntelligenceRuns, getIntelligenceRun, listLiveClaims, getLiveClaim } from './intelligence-service.js';
 import { listContentItems } from './content-service.js';
 import {
@@ -87,6 +94,8 @@ import {
   getXBudgetStatus,
   syncXMonitoredAccounts,
   applyXComplianceBatch,
+  getXComplianceStatus,
+  runXComplianceReconciliation,
 } from './x-sync-service.js';
 import { fdaBulkSourceSchedules, scheduleForSource } from './source-schedule.js';
 
@@ -153,6 +162,12 @@ export function createApp() {
   });
   void scheduler.onStartupCatchup();
 
+  const platformScheduler = createPlatformScheduler({
+    db: live.db,
+    enabled: process.env.HEALTHSPAN_SCHEDULER_ENABLED === 'true',
+  });
+  void platformScheduler.onStartupCatchup();
+
   const worker = startJobWorker({
     db: live.db,
     enabled: process.env.HEALTHSPAN_JOB_WORKER_ENABLED !== 'false',
@@ -184,7 +199,7 @@ export function createApp() {
             dedupeKey: stableDedupeKey('intelligence-post-ingest', {
               window: Math.floor(Date.now() / 60_000),
             }),
-            priority: 30,
+            priority: JOB_PRIORITY.POST_INGEST_INTELLIGENCE,
           });
         }
         return {
@@ -206,6 +221,57 @@ export function createApp() {
             : undefined,
         });
         return { status: result.status, relatedRunId: result.runId };
+      }
+      if (job.kind === 'sync_youtube_channel') {
+        applyYoutubeRetentionHold(live.db);
+        const result = await syncYoutubeMonitoredAccounts(live.db, {
+          creatorId: typeof job.payload.creatorId === 'string' ? job.payload.creatorId : undefined,
+          baseline: Boolean(job.payload.baseline),
+          lookbackDays:
+            typeof job.payload.lookbackDays === 'number' ? job.payload.lookbackDays : undefined,
+        });
+        if (!result.ok) {
+          const failStatus = String((result as { status?: string }).status ?? 'failed');
+          return {
+            status: failStatus === 'quota_exhausted' ? 'partial' : 'failed',
+            error: String((result as { error?: string }).error ?? failStatus),
+          };
+        }
+        return { status: 'succeeded' };
+      }
+      if (job.kind === 'sync_x_account') {
+        const result = await syncXMonitoredAccounts(live.db, {
+          creatorId: typeof job.payload.creatorId === 'string' ? job.payload.creatorId : undefined,
+          baseline: Boolean(job.payload.baseline),
+          lookbackDays:
+            typeof job.payload.lookbackDays === 'number' ? job.payload.lookbackDays : undefined,
+        });
+        if (!result.ok) {
+          const failStatus = String((result as { status?: string }).status ?? 'failed');
+          return {
+            status: failStatus === 'budget_blocked' ? 'partial' : 'failed',
+            error: String((result as { error?: string }).error ?? failStatus),
+          };
+        }
+        return { status: 'succeeded' };
+      }
+      if (job.kind === 'run_x_batch_compliance' || job.kind === 'purge_x_content') {
+        const actions = Array.isArray(job.payload.actions)
+          ? (job.payload.actions as Array<{
+              postId: string;
+              action: 'delete' | 'withhold' | 'edit' | 'account_unavailable';
+              reason: string;
+            }>)
+          : undefined;
+        const result = runXComplianceReconciliation(live.db, {
+          actions,
+          backgroundJobId: job.id,
+          trigger: String(job.payload.trigger ?? job.kind),
+        });
+        return {
+          status: result.ok ? 'succeeded' : 'failed',
+          relatedRunId: result.jobResultId,
+        };
       }
       return { status: 'failed', error: `unsupported job kind: ${job.kind}` };
     },
@@ -699,7 +765,7 @@ export function createApp() {
         // coalesce identical in-flight manual requests
         window: Math.floor(Date.now() / 30_000),
       }),
-      priority: 10,
+      priority: JOB_PRIORITY.MANUAL_INGESTION,
     });
     return c.json(
       {
@@ -1047,19 +1113,32 @@ export function createApp() {
     }
     if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as { baseline?: boolean; lookbackDays?: number };
-    applyYoutubeRetentionHold(live.db);
-    const result = await syncYoutubeMonitoredAccounts(live.db, {
+    const payload = {
       creatorId: c.req.param('id'),
-      baseline: body.baseline,
+      baseline: body.baseline ?? false,
       lookbackDays: body.lookbackDays,
+      trigger: 'manual',
+    };
+    const { job, created } = enqueueJob(live.db, {
+      kind: 'sync_youtube_channel',
+      payload,
+      dedupeKey: stableDedupeKey('sync_youtube_channel', {
+        creatorId: payload.creatorId,
+        window: Math.floor(Date.now() / 30_000),
+      }),
+      priority: JOB_PRIORITY.PLATFORM_SYNC,
     });
-    const status =
-      result.status === 'quota_exhausted'
-        ? 429
-        : result.ok === false && result.status === 'not_configured'
-          ? 400
-          : 200;
-    return c.json(result, status);
+    return c.json(
+      {
+        accepted: true,
+        created,
+        jobId: job.id,
+        status: job.status,
+        kind: job.kind,
+        note: 'YouTube API metadata is never claim evidence. Sync runs as a leased background job.',
+      },
+      202,
+    );
   });
 
   app.get('/api/platforms/youtube/quota', (c) => {
@@ -1089,19 +1168,45 @@ export function createApp() {
     }
     if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as { baseline?: boolean; lookbackDays?: number };
-    const result = await syncXMonitoredAccounts(live.db, {
+    const payload = {
       creatorId: c.req.param('id'),
-      baseline: body.baseline,
+      baseline: body.baseline ?? false,
       lookbackDays: body.lookbackDays,
+      trigger: 'manual',
+    };
+    const { job, created } = enqueueJob(live.db, {
+      kind: 'sync_x_account',
+      payload,
+      dedupeKey: stableDedupeKey('sync_x_account', {
+        creatorId: payload.creatorId,
+        window: Math.floor(Date.now() / 30_000),
+      }),
+      priority: JOB_PRIORITY.PLATFORM_SYNC,
     });
-    const status =
-      result.status === 'budget_blocked' ? 402 : result.ok === false ? 400 : 200;
-    return c.json(result, status);
+    return c.json(
+      {
+        accepted: true,
+        created,
+        jobId: job.id,
+        status: job.status,
+        kind: job.kind,
+        note: 'X sync is budget-gated and never sent to external AI.',
+      },
+      202,
+    );
   });
 
   app.get('/api/platforms/x/budget', (c) => {
     ensureXBudgetRow(live.db);
     return c.json({ dataMode: currentMode(), ...getXBudgetStatus(live.db) });
+  });
+
+  app.get('/api/platforms/x/compliance', (c) => {
+    return c.json({
+      dataMode: currentMode(),
+      ...getXComplianceStatus(live.db),
+      scheduler: platformScheduler.getStatus(),
+    });
   });
 
   app.post('/api/platforms/x/compliance', async (c) => {
@@ -1113,10 +1218,83 @@ export function createApp() {
     if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as {
       actions?: Array<{ postId: string; action: 'delete' | 'withhold' | 'edit' | 'account_unavailable'; reason: string }>;
+      sync?: boolean;
     };
-    if (!body.actions?.length) return c.json({ error: 'actions required' }, 400);
-    const result = applyXComplianceBatch(live.db, body.actions);
-    return c.json({ accepted: true, ...result, externalAiAllowed: false });
+    // Immediate apply path for explicit action batches (tests + operators).
+    if (body.sync === true || (body.actions?.length && body.sync !== false && body.actions.length <= 50)) {
+      if (body.actions?.length) {
+        const applied = applyXComplianceBatch(live.db, body.actions);
+        const reconciled = runXComplianceReconciliation(live.db, {
+          trigger: 'api_sync',
+        });
+        return c.json({
+          accepted: true,
+          mode: 'sync',
+          ...applied,
+          compliance: reconciled.compliance,
+          externalAiAllowed: false,
+        });
+      }
+    }
+    const payload = {
+      actions: body.actions ?? [],
+      trigger: 'api',
+      platform: 'x',
+    };
+    const { job, created } = enqueueJob(live.db, {
+      kind: 'run_x_batch_compliance',
+      payload,
+      dedupeKey: stableDedupeKey('run_x_batch_compliance', {
+        window: Math.floor(Date.now() / 15_000),
+        hasActions: Boolean(body.actions?.length),
+      }),
+      priority: JOB_PRIORITY.COMPLIANCE,
+    });
+    return c.json(
+      {
+        accepted: true,
+        created,
+        jobId: job.id,
+        status: job.status,
+        kind: job.kind,
+        externalAiAllowed: false,
+      },
+      202,
+    );
+  });
+
+  app.get('/api/creators/:id/export', (c) => {
+    if (currentMode() === 'demo') {
+      return c.json({
+        dataMode: 'demo',
+        export: buildSafeCreatorExportBundle({ creatorId: c.req.param('id') }),
+      });
+    }
+    const detail = getCreatorDetail(live.db, c.req.param('id'));
+    if (!detail) return c.json({ error: 'Not found' }, 404);
+    const xPosts = live.db
+      .select()
+      .from(creatorContentItems)
+      .all()
+      .filter((item) => item.creatorId === detail.id && item.platform === 'x')
+      .map((item) => ({
+        postId: item.externalId,
+        canonicalUrl: item.canonicalUrl,
+        complianceState: item.currentState,
+      }));
+    const exportBundle = buildSafeCreatorExportBundle({
+      creatorId: detail.id,
+      preferredName: detail.preferredName,
+      accounts: detail.accounts as unknown as Array<Record<string, unknown>>,
+      documents: detail.documents as unknown as Array<Record<string, unknown>>,
+      claims: detail.claims as unknown as Array<Record<string, unknown>>,
+      youtubeVideos: detail.youtubeVideos as unknown as Array<Record<string, unknown>>,
+      xPosts,
+    });
+    return c.json({
+      dataMode: 'live',
+      export: stripForbiddenExportFields(exportBundle),
+    });
   });
 
   app.post('/api/creators/:id/claims', async (c) => {
@@ -1250,6 +1428,7 @@ export function createApp() {
         externalAiAllowed: false,
         automaticRecharge: false,
         budget: getXBudgetStatus(live.db),
+        compliance: getXComplianceStatus(live.db),
       },
     });
   });
@@ -1465,6 +1644,7 @@ export function createApp() {
   (app as unknown as { __close?: () => void }).__close = () => {
     worker.stop();
     scheduler.stop();
+    platformScheduler.stop();
     closeDatabase(live.sqlite);
   };
 
