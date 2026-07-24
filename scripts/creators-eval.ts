@@ -1,6 +1,8 @@
 import {
   ALIGNMENT_DIMENSION_IDS,
+  ALIGNMENT_PAIR_CORPUS,
   alignCreatorClaim,
+  evaluateAlignmentPairCorpus,
   extractCreatorClaimsFromText,
   parseTranscriptDocument,
   CREATOR_PROHIBITED_SCORES,
@@ -38,6 +40,8 @@ const alignment = alignCreatorClaim({
   hasRegulatoryLink: false,
   hasInterventionLink: false,
 });
+
+const alignmentPairs = evaluateAlignmentPairCorpus();
 
 const ytDisabled = await createYoutubeConnector({ apiKey: null, channelIds: [] }).fetchWindow({
   cursor: {},
@@ -98,6 +102,8 @@ const checks = {
   disclosures: disclosures.length >= 1,
   alignmentDimensions: alignment.dimensions.length === ALIGNMENT_DIMENSION_IDS.length,
   alignmentFindings: alignment.findings.length > 0,
+  alignmentPairCorpusSize: ALIGNMENT_PAIR_CORPUS.length >= 72,
+  alignmentPairCorpusEval: alignmentPairs.ok,
   prohibitedScores: CREATOR_PROHIBITED_SCORES.length >= 7,
   youtubeDisabledHealthy: ytDisabled.ok && (ytDisabled.warnings?.length ?? 0) > 0,
   xDisabledHealthy: xDisabled.ok && (xDisabled.warnings?.length ?? 0) > 0,
@@ -115,6 +121,12 @@ const report = {
   disclosures: disclosures.length,
   alignmentDimensionCount: alignment.dimensions.length,
   alignmentFindings: alignment.findings,
+  alignmentPairCorpus: {
+    total: alignmentPairs.total,
+    passed: alignmentPairs.passed,
+    failed: alignmentPairs.failed,
+    byCategory: alignmentPairs.byCategory,
+  },
   prohibitedScoresDefined: CREATOR_PROHIBITED_SCORES.length,
   checks,
   meetsMinimum: Object.values(checks).every(Boolean),

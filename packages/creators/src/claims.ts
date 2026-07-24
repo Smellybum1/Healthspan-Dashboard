@@ -127,6 +127,28 @@ function dim(
   };
 }
 
+/** Optional linked-evidence context for richer §11 dimension rules. */
+export type AlignmentEvidenceHints = {
+  linkedEvidenceCount?: number;
+  hasRegulatoryLink?: boolean;
+  hasInterventionLink?: boolean;
+  evidenceOrganism?: 'animal' | 'human' | 'in_vitro' | 'mixed' | 'unknown';
+  evidencePopulation?: 'healthy' | 'disease_specific' | 'mixed' | 'unknown';
+  claimOrganism?: 'animal' | 'human' | 'mixed' | 'unknown';
+  claimPopulation?: 'healthy' | 'disease_specific' | 'mixed' | 'unknown';
+  protocolOnly?: boolean;
+  biomarkerOnly?: boolean;
+  healthOutcomeClaimed?: boolean;
+  magnitudeOverstated?: boolean;
+  causalityOverstated?: boolean;
+  regulatoryMismatch?: boolean;
+  safetyOverreach?: boolean;
+  potentialConflict?: boolean;
+  evidenceUpdated?: boolean;
+  retracted?: boolean;
+  sourceUnavailable?: boolean;
+};
+
 /** Claim-to-evidence alignment — never a creator trust/worth score. */
 export function alignCreatorClaim(opts: {
   claimText: string;
@@ -134,17 +156,48 @@ export function alignCreatorClaim(opts: {
   linkedEvidenceCount: number;
   hasRegulatoryLink: boolean;
   hasInterventionLink: boolean;
+  evidence?: AlignmentEvidenceHints;
 }): { dimensions: AlignmentDimension[]; overallLabel: string; rulesVersion: string; findings: string[] } {
   const text = opts.claimText;
-  const nonAssertion = opts.assertionRole !== 'assertion';
-  const animal = ANIMAL.test(text);
-  const human = HUMAN.test(text);
-  const causal = CAUSAL.test(text);
-  const regulatory = REGULATORY.test(text);
-  const safety = SAFETY.test(text);
-  const magnitude = MAGNITUDE.test(text);
+  const ev = opts.evidence ?? {};
+  const nonAssertion = opts.assertionRole !== 'assertion' && opts.assertionRole !== 'correction';
+  const animal = ANIMAL.test(text) || ev.claimOrganism === 'animal' || ev.evidenceOrganism === 'animal';
+  const human = HUMAN.test(text) || ev.claimOrganism === 'human' || ev.evidenceOrganism === 'human';
+  const mixedOrganism =
+    ev.evidenceOrganism === 'mixed' ||
+    ev.claimOrganism === 'mixed' ||
+    (animal && human && (ev.evidenceOrganism === 'animal' || /mice and humans|mouse and human|interchangeable/i.test(text)));
+  const speciesMismatch =
+    (ev.evidenceOrganism === 'animal' && (ev.claimOrganism === 'human' || HUMAN.test(text))) ||
+    (/human|people|patients?/i.test(text) && /mice|mouse|rat|rodent|animal/i.test(text));
+  const causal = CAUSAL.test(text) || Boolean(ev.causalityOverstated);
+  const regulatory = REGULATORY.test(text) || Boolean(ev.regulatoryMismatch);
+  const safety = SAFETY.test(text) || Boolean(ev.safetyOverreach);
+  const magnitude = MAGNITUDE.test(text) || Boolean(ev.magnitudeOverstated);
   const citation = CITATION.test(text);
   const linked = opts.linkedEvidenceCount > 0;
+  const populationMismatch =
+    Boolean(ev.evidencePopulation) &&
+    Boolean(ev.claimPopulation) &&
+    ev.evidencePopulation !== ev.claimPopulation &&
+    ev.evidencePopulation !== 'mixed' &&
+    ev.claimPopulation !== 'mixed';
+
+  const extraFindings: string[] = [];
+  if (ev.sourceUnavailable) extraFindings.push('source_unavailable');
+  if (ev.retracted) extraFindings.push('superseded_or_corrected');
+  if (ev.potentialConflict) extraFindings.push('potentially_conflicts_with_current_evidence');
+  if (ev.protocolOnly) extraFindings.push('protocol_as_result');
+  if (ev.biomarkerOnly && (ev.healthOutcomeClaimed || /lifespan|healthspan|mortality/i.test(text))) {
+    extraFindings.push('biomarker_to_health_outcome_overreach');
+  }
+  if (ev.regulatoryMismatch) extraFindings.push('regulatory_scope_overreach');
+  if (ev.safetyOverreach) extraFindings.push('safety_scope_overreach');
+  if (ev.magnitudeOverstated) extraFindings.push('overstates_effect_magnitude');
+  if (ev.causalityOverstated) extraFindings.push('overstates_causality');
+  if (speciesMismatch) extraFindings.push('animal_to_human_overreach');
+  if (populationMismatch || mixedOrganism) extraFindings.push('not_comparable');
+  if (ev.evidenceUpdated) extraFindings.push('unresolved');
 
   const dimensions: AlignmentDimension[] = [
     dim(
@@ -158,22 +211,29 @@ export function alignCreatorClaim(opts: {
     dim(
       'species_or_organism',
       'Species / organism',
-      animal && human
+      mixedOrganism || (animal && human && speciesMismatch)
         ? 'not_comparable'
-        : animal
-          ? 'partially_aligned'
-          : human
+        : speciesMismatch
+          ? 'not_comparable'
+          : animal
             ? 'partially_aligned'
-            : 'insufficient_information',
-      animal && human
-        ? 'Claim mixes animal and human language without separable spans.'
-        : animal
-          ? 'Animal organism language detected; not treated as human evidence.'
-          : human
-            ? 'Human organism language detected; still needs linked study confirmation.'
-            : 'Organism not clear from claim text.',
-      animal && human
-        ? { requiresHumanReview: true, candidateFinding: 'not_comparable' }
+            : human
+              ? 'partially_aligned'
+              : 'insufficient_information',
+      speciesMismatch
+        ? 'Species/organism mismatch between claim wording and linked evidence.'
+        : animal && human
+          ? 'Claim mixes animal and human language without separable spans.'
+          : animal
+            ? 'Animal organism language detected; not treated as human evidence.'
+            : human
+              ? 'Human organism language detected; still needs linked study confirmation.'
+              : 'Organism not clear from claim text.',
+      speciesMismatch || (animal && human)
+        ? {
+            requiresHumanReview: true,
+            candidateFinding: speciesMismatch ? 'animal_to_human_overreach' : 'not_comparable',
+          }
         : animal && !linked
           ? { requiresHumanReview: true, candidateFinding: 'animal_to_human_overreach' }
           : undefined,
@@ -181,54 +241,93 @@ export function alignCreatorClaim(opts: {
     dim(
       'population',
       'Population',
-      /healthy|patient|disease|frailty/i.test(text) ? 'partially_aligned' : 'insufficient_information',
-      'Population must be taken from linked evidence; claim wording alone is not enough.',
+      populationMismatch
+        ? 'not_comparable'
+        : /healthy|patient|disease|frailty/i.test(text)
+          ? 'partially_aligned'
+          : 'insufficient_information',
+      populationMismatch
+        ? 'Claim population does not match linked evidence population.'
+        : 'Population must be taken from linked evidence; claim wording alone is not enough.',
+      populationMismatch
+        ? { requiresHumanReview: true, candidateFinding: 'not_comparable' }
+        : undefined,
     ),
     dim(
       'study_design',
       'Study design',
-      linked ? 'unresolved' : 'insufficient_information',
-      linked
-        ? 'Linked evidence present; design comparability not yet scored.'
-        : 'No linked study/assessment to compare design.',
+      ev.protocolOnly ? 'not_comparable' : linked ? 'unresolved' : 'insufficient_information',
+      ev.protocolOnly
+        ? 'Protocol/methods text is not a result.'
+        : linked
+          ? 'Linked evidence present; design comparability not yet scored.'
+          : 'No linked study/assessment to compare design.',
+      ev.protocolOnly
+        ? { requiresHumanReview: true, candidateFinding: 'protocol_as_result' }
+        : undefined,
     ),
     dim(
       'results_availability',
       'Results availability',
-      linked ? 'partially_aligned' : 'insufficient_information',
-      linked
-        ? `${opts.linkedEvidenceCount} linked local evidence item(s) — not proof the creator is correct.`
-        : 'No linked scientific claim/analysis yet.',
-      !linked && opts.assertionRole === 'assertion'
-        ? { requiresHumanReview: true, candidateFinding: 'unsupported_by_linked_local_evidence' }
-        : undefined,
+      ev.sourceUnavailable
+        ? 'source_unavailable'
+        : linked
+          ? 'partially_aligned'
+          : 'insufficient_information',
+      ev.sourceUnavailable
+        ? 'Supporting platform/document source is unavailable; claim cannot stay current on that span.'
+        : linked
+          ? `${opts.linkedEvidenceCount} linked local evidence item(s) — not proof the creator is correct.`
+          : 'No linked scientific claim/analysis yet. No supporting source is linked in the current local corpus.',
+      ev.sourceUnavailable
+        ? { requiresHumanReview: true, candidateFinding: 'source_unavailable' }
+        : !linked && opts.assertionRole === 'assertion'
+          ? { requiresHumanReview: true, candidateFinding: 'unsupported_by_linked_local_evidence' }
+          : undefined,
     ),
     dim(
       'outcome_type',
       'Outcome type',
-      /biomarker|mortality|lifespan|healthspan|function/i.test(text)
-        ? 'partially_aligned'
-        : 'insufficient_information',
-      'Outcome class inferred from wording only until evidence links exist.',
-      /biomarker/i.test(text) && /healthspan|lifespan|mortality/i.test(text)
+      ev.biomarkerOnly && (ev.healthOutcomeClaimed || /lifespan|healthspan|mortality/i.test(text))
+        ? 'overstated'
+        : /biomarker|mortality|lifespan|healthspan|function/i.test(text)
+          ? 'partially_aligned'
+          : 'insufficient_information',
+      'Outcome class inferred from wording and linked evidence class.',
+      ev.biomarkerOnly && (ev.healthOutcomeClaimed || /lifespan|healthspan|mortality/i.test(text))
         ? {
             requiresHumanReview: true,
             candidateFinding: 'biomarker_to_health_outcome_overreach',
           }
-        : undefined,
+        : /biomarker/i.test(text) && /healthspan|lifespan|mortality/i.test(text)
+          ? {
+              requiresHumanReview: true,
+              candidateFinding: 'biomarker_to_health_outcome_overreach',
+            }
+          : undefined,
     ),
     dim(
       'result_direction',
       'Result direction',
-      /improv|reduc|increas|decreas|prevent|extend/i.test(text)
-        ? 'partially_aligned'
-        : 'insufficient_information',
-      'Direction taken from claim language; compare against linked results when available.',
+      ev.potentialConflict
+        ? 'unresolved'
+        : /improv|reduc|increas|decreas|prevent|extend|benefit|harm/i.test(text)
+          ? 'partially_aligned'
+          : 'insufficient_information',
+      ev.potentialConflict
+        ? 'Potential disagreement with linked evidence — not a definitive contradiction.'
+        : 'Direction taken from claim language; compare against linked results when available.',
+      ev.potentialConflict
+        ? {
+            requiresHumanReview: true,
+            candidateFinding: 'potentially_conflicts_with_current_evidence',
+          }
+        : undefined,
     ),
     dim(
       'effect_magnitude',
       'Effect magnitude',
-      magnitude ? 'unresolved' : 'not_applicable',
+      magnitude ? 'overstated' : 'not_applicable',
       magnitude
         ? 'Magnitude language present — compare only against linked numeric results.'
         : 'No strong magnitude language detected.',
@@ -239,7 +338,7 @@ export function alignCreatorClaim(opts: {
     dim(
       'causality',
       'Causality',
-      causal ? 'unresolved' : HYPOTHETICAL.test(text) ? 'partially_aligned' : 'insufficient_information',
+      causal ? 'overstated' : HYPOTHETICAL.test(text) ? 'partially_aligned' : 'insufficient_information',
       causal
         ? 'Strong causal wording — do not upgrade linked associations into causation.'
         : 'Causal strength not asserted strongly in text.',
@@ -250,7 +349,7 @@ export function alignCreatorClaim(opts: {
     dim(
       'timeframe',
       'Timeframe',
-      /week|month|year|day|chronic|acute|long[- ]term/i.test(text)
+      /week|month|year|day|chronic|acute|long[- ]term|overnight/i.test(text)
         ? 'partially_aligned'
         : 'insufficient_information',
       'Timeframe must match linked evidence windows when present.',
@@ -258,42 +357,44 @@ export function alignCreatorClaim(opts: {
     dim(
       'regulatory_scope',
       'Regulatory scope',
-      opts.hasRegulatoryLink || regulatory
-        ? opts.hasRegulatoryLink
+      ev.regulatoryMismatch || (regulatory && !opts.hasRegulatoryLink)
+        ? 'overstated'
+        : opts.hasRegulatoryLink
           ? 'partially_aligned'
-          : 'unresolved'
-        : nonAssertion
-          ? 'not_applicable'
-          : 'not_applicable',
-      opts.hasRegulatoryLink
+          : regulatory
+            ? 'unresolved'
+            : 'not_applicable',
+      opts.hasRegulatoryLink && !ev.regulatoryMismatch
         ? 'Scoped regulatory fact linked — not longevity authorisation.'
-        : regulatory
-          ? 'Regulatory wording in claim without linked scoped assertion.'
+        : regulatory || ev.regulatoryMismatch
+          ? 'Regulatory wording exceeds linked jurisdiction/indication scope.'
           : 'No regulatory claim scope detected.',
-      regulatory && !opts.hasRegulatoryLink
+      ev.regulatoryMismatch || (regulatory && (!opts.hasRegulatoryLink || /aging|longevity|healthspan/i.test(text)))
         ? { requiresHumanReview: true, candidateFinding: 'regulatory_scope_overreach' }
         : undefined,
     ),
     dim(
       'safety_scope',
       'Safety scope',
-      safety ? 'unresolved' : 'not_applicable',
-      safety
+      safety || ev.safetyOverreach ? 'overstated' : 'not_applicable',
+      safety || ev.safetyOverreach
         ? 'Safety language present — link only to scoped safety/regulatory sources.'
         : 'No safety claim detected.',
-      safety ? { requiresHumanReview: true, candidateFinding: 'safety_scope_overreach' } : undefined,
+      safety || ev.safetyOverreach
+        ? { requiresHumanReview: true, candidateFinding: 'safety_scope_overreach' }
+        : undefined,
     ),
     dim(
       'certainty_language',
       'Certainty language',
-      nonAssertion
+      nonAssertion || opts.assertionRole === 'correction'
         ? 'not_applicable'
         : HYPOTHETICAL.test(text)
           ? 'partially_aligned'
           : causal
             ? 'overstated'
             : 'partially_aligned',
-      nonAssertion
+      nonAssertion || opts.assertionRole === 'correction'
         ? `Treated as ${opts.assertionRole}; not scored as an efficacy claim.`
         : 'Preserve source certainty; never make wording stronger.',
       causal && opts.assertionRole === 'assertion'
@@ -303,25 +404,43 @@ export function alignCreatorClaim(opts: {
     dim(
       'evidence_recency',
       'Evidence recency',
-      linked ? 'unresolved' : 'insufficient_information',
-      'Recency can only be assessed against linked evidence timestamps.',
+      ev.evidenceUpdated || ev.retracted
+        ? 'unresolved'
+        : linked
+          ? 'unresolved'
+          : 'insufficient_information',
+      ev.retracted
+        ? 'Linked evidence retracted/corrected — prior alignment is historical only.'
+        : ev.evidenceUpdated
+          ? 'Linked evidence changed; alignment is stale until reassessed.'
+          : 'Recency can only be assessed against linked evidence timestamps.',
+      ev.retracted
+        ? { requiresHumanReview: true, candidateFinding: 'superseded_or_corrected' }
+        : undefined,
     ),
     dim(
       'source_citation',
       'Source citation',
-      citation ? 'partially_aligned' : linked ? 'partially_aligned' : 'insufficient_information',
-      citation || linked
-        ? 'Citation or local evidence link present; verify identity before publishing findings.'
-        : 'No citation cues or linked local evidence.',
+      ev.sourceUnavailable
+        ? 'source_unavailable'
+        : citation
+          ? 'partially_aligned'
+          : linked
+            ? 'partially_aligned'
+            : 'insufficient_information',
+      ev.sourceUnavailable
+        ? 'Source unavailable for citation display.'
+        : citation || linked
+          ? 'Citation or local evidence link present; verify identity before publishing findings.'
+          : 'No citation cues or linked local evidence.',
     ),
   ];
 
   const findings = [
-    ...new Set(
-      dimensions
-        .map((d) => d.candidateFinding)
-        .filter((f): f is string => Boolean(f)),
-    ),
+    ...new Set([
+      ...extraFindings,
+      ...dimensions.map((d) => d.candidateFinding).filter((f): f is string => Boolean(f)),
+    ]),
   ];
 
   return {
