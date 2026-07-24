@@ -15,7 +15,7 @@
 ## Just completed
 
 - Milestone 6 — Personalisation, briefings & production hardening (`milestone-6/personalisation-production-hardening`)
-  - Final HEAD: `2fe629fb682d7bb53503b10195c98caa0c65edc6`
+  - Final HEAD: `72c013cb659c9644c49d11f65e0b4b61c2f4eb81`
   - Entry-gate: `36a281015176ea73fc24fde6344bfc15bfe22308`
   - Report: `docs/milestones/M6_COMPLETION_REPORT.md`
 
