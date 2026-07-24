@@ -105,7 +105,7 @@ for (let i = 0; i < 10; i += 1) {
       summary: 'Safety alert mentioning metformin',
       relevanceMatched: true,
     },
-    { maturity: 'regulatory_or_guideline_supported', availability: 'regulatory_statement' },
+    { maturity: 'mechanistic_hypothesis', availability: 'regulatory_statement' },
   );
 }
 

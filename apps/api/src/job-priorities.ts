@@ -6,6 +6,7 @@ export const JOB_PRIORITY = {
   MANUAL_INGESTION: 10,
   INTELLIGENCE: 20,
   POST_INGEST_INTELLIGENCE: 30,
+  CROSSREF_ENRICHMENT: 35,
   PLATFORM_SYNC: 40,
   SCHEDULED_INGESTION: 50,
 } as const;
@@ -13,6 +14,7 @@ export const JOB_PRIORITY = {
 export type M5JobKind =
   | 'ingestion'
   | 'intelligence'
+  | 'enrich_crossref_doi'
   | 'sync_youtube_channel'
   | 'sync_x_account'
   | 'run_x_batch_compliance'

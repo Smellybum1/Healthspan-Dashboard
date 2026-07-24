@@ -20,6 +20,7 @@ import {
   intelligenceAnalyses,
   liveClaims,
   claimSourceSpans,
+  claimRelationships,
   dossierChangeEvents,
   interventionEntities,
   creatorContentItems,
@@ -66,6 +67,17 @@ import {
 } from './entity-resolution-service.js';
 import { compareInterventions } from './comparison-service.js';
 import { linkTrialInterventionsToEntities } from './trial-portfolio.js';
+import {
+  listRegulatoryAssertions,
+  listRegulatoryHistory,
+  listRegulatoryProducts,
+  listReportingPatterns,
+  listSafetyItems,
+  listSafetySignals,
+  runRegulatoryRefresh,
+  runSafetyRefresh,
+  workspaceSummary,
+} from './regulatory-safety-service.js';
 import {
   bootstrapCreatorCatalog,
   creatorWatchItems,
@@ -239,6 +251,25 @@ export function createApp() {
             : undefined,
         });
         return { status: result.status, relatedRunId: result.runId };
+      }
+      if (job.kind === 'enrich_crossref_doi') {
+        const doi = typeof job.payload.doi === 'string' ? job.payload.doi : null;
+        if (!doi) return { status: 'failed' as const };
+        const result = await runIngestion({
+          db: live.db,
+          rawStore,
+          sourceId: 'crossref',
+          trigger: 'manual',
+          recordCap: 1,
+          crossrefDois: [doi],
+        });
+        const status =
+          result && typeof result === 'object' && 'status' in result
+            ? String((result as { status?: string }).status)
+            : 'succeeded';
+        return {
+          status: status === 'failed' ? 'failed' : status === 'partial' ? 'partial' : 'succeeded',
+        };
       }
       if (job.kind === 'sync_youtube_channel') {
         applyYoutubeRetentionHold(live.db);
@@ -941,6 +972,108 @@ export function createApp() {
     return c.json({ dataMode: 'live', ...detail });
   });
 
+  app.get('/api/claim-relationships', (c) => {
+    if (currentMode() === 'demo') {
+      return c.json({ dataMode: 'demo', items: [], page: 1, pageSize: 50, total: 0, totalPages: 1 });
+    }
+    const page = Math.max(1, Number(c.req.query('page') ?? 1) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(c.req.query('pageSize') ?? 50) || 50));
+    const claimId = c.req.query('claimId') ?? undefined;
+    const all = live.db
+      .select()
+      .from(claimRelationships)
+      .all()
+      .filter((r) => !claimId || r.leftClaimId === claimId || r.rightClaimId === claimId)
+      .sort((a, b) => b.createdAt - a.createdAt);
+    const total = all.length;
+    const items = all.slice((page - 1) * pageSize, page * pageSize).map((r) => ({
+      ...r,
+      createdAt: new Date(r.createdAt).toISOString(),
+    }));
+    return c.json({
+      dataMode: 'live',
+      items,
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    });
+  });
+
+  app.get('/api/items/:id/intelligence', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const itemId = c.req.param('id');
+    const state = live.db
+      .select()
+      .from(contentIntelligenceState)
+      .where(eq(contentIntelligenceState.contentItemId, itemId))
+      .all()[0];
+    const analyses = live.db
+      .select()
+      .from(intelligenceAnalyses)
+      .where(eq(intelligenceAnalyses.contentItemId, itemId))
+      .all()
+      .sort((a, b) => b.createdAt - a.createdAt);
+    return c.json({
+      dataMode: 'live',
+      contentItemId: itemId,
+      state: state
+        ? {
+            ...state,
+            updatedAt: state.updatedAt ? new Date(state.updatedAt).toISOString() : null,
+          }
+        : null,
+      analyses: analyses.map((a) => ({
+        id: a.id,
+        rulesetVersion: a.rulesetVersion,
+        createdAt: new Date(a.createdAt).toISOString(),
+        evidenceMaturity: a.evidenceMaturity,
+        evidenceAvailability: a.evidenceAvailability,
+        studyDesign: a.studyDesign,
+        organismLevel: a.organismLevel,
+        classificationConfidence: a.classificationConfidence,
+        assessmentCompleteness: a.assessmentCompleteness,
+        researchActivity: a.researchActivity,
+        translationGaps: JSON.parse(a.translationGapsJson || '[]'),
+        methodologicalSignals: JSON.parse(a.methodologicalSignalsJson || '[]'),
+        whatWouldChange: JSON.parse(a.whatWouldChangeJson || '[]'),
+      })),
+    });
+  });
+
+  app.get('/api/items/:id/assessment/history', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const itemId = c.req.param('id');
+    const analyses = live.db
+      .select()
+      .from(intelligenceAnalyses)
+      .where(eq(intelligenceAnalyses.contentItemId, itemId))
+      .all()
+      .sort((a, b) => b.createdAt - a.createdAt);
+    return c.json({
+      dataMode: 'live',
+      contentItemId: itemId,
+      history: analyses.map((a) => ({
+        analysisId: a.id,
+        rulesetVersion: a.rulesetVersion,
+        createdAt: new Date(a.createdAt).toISOString(),
+        summary: {
+          evidenceMaturity: a.evidenceMaturity,
+          evidenceAvailability: a.evidenceAvailability,
+          studyDesign: a.studyDesign,
+          organismLevel: a.organismLevel,
+          classificationConfidence: a.classificationConfidence,
+          assessmentCompleteness: a.assessmentCompleteness,
+          researchActivity: a.researchActivity,
+          translationGaps: JSON.parse(a.translationGapsJson || '[]'),
+          methodologicalSignals: JSON.parse(a.methodologicalSignalsJson || '[]'),
+          whatWouldChange: JSON.parse(a.whatWouldChangeJson || '[]'),
+          hallmarks: JSON.parse(a.hallmarksJson || '[]'),
+        },
+      })),
+    });
+  });
+
   app.get('/api/assessments', (c) => {
     if (currentMode() === 'demo') {
       return c.json({
@@ -1629,6 +1762,124 @@ export function createApp() {
     const built = buildDossierSnapshot(live.db, c.req.param('id'));
     if (!built) return c.json({ error: 'Not found' }, 404);
     return c.json({ ok: true, ...built });
+  });
+
+  app.get('/api/regulatory/products', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
+    return c.json({
+      dataMode: 'live',
+      ...listRegulatoryProducts(live.db, {
+        jurisdiction: c.req.query('jurisdiction') ?? undefined,
+        authority: c.req.query('authority') ?? undefined,
+        limit: c.req.query('limit') ?? undefined,
+        offset: c.req.query('offset') ?? undefined,
+      }),
+    });
+  });
+
+  app.get('/api/regulatory/assertions', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
+    return c.json({
+      dataMode: 'live',
+      ...listRegulatoryAssertions(live.db, {
+        jurisdiction: c.req.query('jurisdiction') ?? undefined,
+        entityId: c.req.query('entityId') ?? undefined,
+        limit: c.req.query('limit') ?? undefined,
+        offset: c.req.query('offset') ?? undefined,
+      }),
+    });
+  });
+
+  app.get('/api/regulatory/history', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
+    return c.json({
+      dataMode: 'live',
+      ...listRegulatoryHistory(live.db, {
+        productId: c.req.query('productId') ?? undefined,
+        entityId: c.req.query('entityId') ?? undefined,
+        limit: c.req.query('limit') ?? undefined,
+        offset: c.req.query('offset') ?? undefined,
+      }),
+    });
+  });
+
+  app.get('/api/safety/items', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
+    return c.json({
+      dataMode: 'live',
+      ...listSafetyItems(live.db, {
+        jurisdiction: c.req.query('jurisdiction') ?? undefined,
+        limit: c.req.query('limit') ?? undefined,
+        offset: c.req.query('offset') ?? undefined,
+      }),
+    });
+  });
+
+  app.get('/api/safety/signals', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
+    return c.json({
+      dataMode: 'live',
+      ...listSafetySignals(live.db, {
+        entityId: c.req.query('entityId') ?? undefined,
+        limit: c.req.query('limit') ?? undefined,
+        offset: c.req.query('offset') ?? undefined,
+      }),
+    });
+  });
+
+  app.get('/api/safety/reporting-patterns', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
+    return c.json({
+      dataMode: 'live',
+      ...listReportingPatterns(live.db, {
+        entityId: c.req.query('entityId') ?? undefined,
+        limit: c.req.query('limit') ?? undefined,
+        offset: c.req.query('offset') ?? undefined,
+      }),
+    });
+  });
+
+  app.get('/api/regulatory-safety/summary', (c) => {
+    if (currentMode() === 'demo') {
+      return c.json({ dataMode: 'demo', productCount: 0, assertionCount: 0, signalCount: 0 });
+    }
+    return c.json({ dataMode: 'live', ...workspaceSummary(live.db) });
+  });
+
+  app.post('/api/regulatory/runs', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      entityId?: string;
+      useNetwork?: boolean;
+    };
+    const result = await runRegulatoryRefresh(live.db, {
+      entityId: body.entityId,
+      useNetwork: body.useNetwork === true,
+    });
+    return c.json({ accepted: true, ...result }, 202);
+  });
+
+  app.post('/api/safety/runs', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      entityId?: string;
+      useNetwork?: boolean;
+    };
+    const result = await runSafetyRefresh(live.db, {
+      entityId: body.entityId,
+      useNetwork: body.useNetwork === true,
+    });
+    return c.json({ accepted: true, ...result }, 202);
   });
 
   app.post('/api/interventions/:id/enrich-identity', async (c) => {

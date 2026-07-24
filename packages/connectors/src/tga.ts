@@ -60,6 +60,56 @@ function tag(block: string, name: string): string | null {
   return (m[1] ?? m[2] ?? '').trim() || null;
 }
 
+function pagesFromTgaXml(xml: string, feedKey: string, category: string, recordCap: number) {
+  const pages: ConnectorFetchResult['pages'] = [];
+  for (const item of parseRssItems(xml)) {
+    if (pages.length >= recordCap) break;
+    const title = tag(item, 'title') ?? 'TGA item';
+    const link = tag(item, 'link');
+    const guid = tag(item, 'guid') ?? link ?? `${feedKey}:${title}`;
+    const description = tag(item, 'description');
+    const pubDate = tag(item, 'pubDate');
+    const haystack = `${title} ${description ?? ''}`.toLowerCase();
+    const matchedTerms = RELEVANCE_TERMS.filter((term) => haystack.includes(term));
+    const normalized = {
+      type: 'regulatory_event',
+      jurisdiction: 'AU',
+      authority: 'TGA',
+      feedKey,
+      category,
+      title,
+      summary: description,
+      guid,
+      officialUrl: link,
+      publishedAt: pubDate,
+      relevanceMatched: matchedTerms.length > 0,
+      relevanceTerms: matchedTerms,
+    };
+    pages.push({
+      externalId: guid,
+      canonicalUrl: link ?? undefined,
+      sourceCreatedAt: pubDate ?? undefined,
+      payload: { feed: feedKey, itemXml: item },
+      normalized: { ...normalized, normalizedHash: hashNormalized(normalized) },
+    });
+  }
+  return pages;
+}
+
+/** Re-parse stored TGA RSS XML without network. */
+export function reparseTgaRaw(bytes: Buffer, recordCap = 1000): ConnectorFetchResult {
+  const fetchedAt = new Date().toISOString();
+  const xml = bytes.toString('utf8');
+  const pages = pagesFromTgaXml(xml, 'reprocess', 'safety_alerts', recordCap);
+  return {
+    connectorId: 'tga',
+    fetchedAt,
+    ok: true,
+    pages,
+    rawBodies: [{ bytes, mediaType: 'application/rss+xml', ext: 'rss' }],
+  };
+}
+
 export function createTgaConnector(opts: {
   transport?: FetchTransport;
   feeds?: typeof TGA_FEEDS;

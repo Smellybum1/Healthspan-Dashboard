@@ -14,10 +14,14 @@ export type {
 } from './identity-types.js';
 export { identityResult } from './identity-types.js';
 export { createHttpClient } from './http.js';
-export { createPubmedConnector } from './pubmed.js';
-export { createClinicalTrialsConnector } from './clinicaltrials.js';
-export { createCrossrefConnector } from './crossref.js';
-export { createTgaConnector, TGA_FEEDS, RELEVANCE_TERMS } from './tga.js';
+export { createPubmedConnector, reparsePubmedRaw, parsePubmedEfetchXml } from './pubmed.js';
+export {
+  createClinicalTrialsConnector,
+  reparseClinicalTrialsRaw,
+  normalizeClinicalTrialStudy,
+} from './clinicaltrials.js';
+export { createCrossrefConnector, reparseCrossrefRaw } from './crossref.js';
+export { createTgaConnector, TGA_FEEDS, RELEVANCE_TERMS, reparseTgaRaw } from './tga.js';
 export { createRxNormConnector } from './rxnorm.js';
 export { createPubChemConnector } from './pubchem.js';
 export { createGsrsConnector } from './gsrs.js';

@@ -7,9 +7,9 @@ import {
   InterventionsListPage,
   PeptidesListPage,
   ResearchListPage,
-  SafetyListPage,
   TrialsListPage,
 } from './pages/CatalogPages';
+import { RegulatorySafetyWorkspacePage } from './pages/RegulatorySafetyWorkspacePage';
 import { DetailPage } from './pages/DetailPage';
 import { InterventionOrDossierPage } from './pages/InterventionOrDossierPage';
 import { WatchlistsPage } from './pages/WatchlistsPage';
@@ -44,7 +44,7 @@ export function App() {
         <Route path="creator-claims" element={<CreatorClaimsPage />} />
         <Route path="creator-claims/:id/alignment" element={<CreatorClaimAlignmentPage />} />
         <Route path="creator-claims/:id" element={<CreatorClaimsPage />} />
-        <Route path="safety" element={<SafetyListPage />} />
+        <Route path="safety" element={<RegulatorySafetyWorkspacePage />} />
         <Route path="sources" element={<SourceHealthPage />} />
         <Route path="claims" element={<ClaimsPage />} />
         <Route path="claims/:id" element={<ClaimDetailPage />} />

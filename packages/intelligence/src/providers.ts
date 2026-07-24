@@ -55,11 +55,21 @@ export function createFixtureIntelligenceProvider(): IntelligenceProvider {
   };
 }
 
-/** OpenAI adapter is wired but inert unless explicitly enabled and keyed. */
+const OpenAiSuggestionSchema = z.object({
+  notes: z.array(z.string()).max(8).optional(),
+  confidence: z.enum(['low', 'medium', 'high']).optional(),
+});
+
+/**
+ * OpenAI Responses API adapter — optional, disabled by default.
+ * Strict structured output, storage disabled where supported, no tools,
+ * minimal public-source segments only, deterministic fallback on failure.
+ */
 export function createOpenAIResponsesIntelligenceProvider(opts: {
   apiKey?: string;
   enabled?: boolean;
   model?: string;
+  fetchImpl?: typeof fetch;
 } = {}): IntelligenceProvider {
   return {
     id: 'openai',
@@ -73,15 +83,106 @@ export function createOpenAIResponsesIntelligenceProvider(opts: {
           warnings: ['openai_disabled_or_missing_key'],
         };
       }
-      // Network path is intentionally not exercised in default tests.
-      void request;
-      return {
-        providerId: 'openai',
-        model: opts.model ?? 'gpt-4.1-mini',
-        used: false,
-        suggestions: null,
-        warnings: ['openai_network_path_reserved'],
-      };
+
+      const model = opts.model ?? 'gpt-4.1-mini';
+      const segments = request.segments
+        .slice(0, 6)
+        .map((s) => ({ fieldPath: s.fieldPath, text: s.text.slice(0, 1200) }));
+
+      try {
+        const fetchFn = opts.fetchImpl ?? fetch;
+        const res = await fetchFn('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${opts.apiKey}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            store: false,
+            tools: [],
+            input: [
+              {
+                role: 'system',
+                content:
+                  'Return JSON suggestions only. Never invent citations. Never request or accept local paths, secrets, preferences, or personal-health data.',
+              },
+              {
+                role: 'user',
+                content: JSON.stringify({
+                  contentItemId: request.contentItemId,
+                  segments,
+                  deterministicSummary: request.deterministicSummary,
+                  schema: { notes: ['string'], confidence: 'low|medium|high' },
+                }),
+              },
+            ],
+            text: {
+              format: {
+                type: 'json_schema',
+                name: 'intelligence_suggestions',
+                strict: true,
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    notes: { type: 'array', items: { type: 'string' } },
+                    confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+                  },
+                  required: ['notes', 'confidence'],
+                },
+              },
+            },
+          }),
+        });
+
+        if (!res.ok) {
+          return {
+            providerId: 'openai',
+            model,
+            used: false,
+            suggestions: null,
+            warnings: [`openai_http_${res.status}`, 'deterministic_fallback'],
+          };
+        }
+
+        const json = (await res.json()) as {
+          output_text?: string;
+          output?: Array<{ content?: Array<{ text?: string }> }>;
+        };
+        const text =
+          json.output_text ??
+          json.output?.flatMap((o) => o.content ?? []).map((c) => c.text ?? '').join('') ??
+          '';
+        const parsed = OpenAiSuggestionSchema.safeParse(JSON.parse(text || '{}'));
+        if (!parsed.success) {
+          return {
+            providerId: 'openai',
+            model,
+            used: false,
+            suggestions: null,
+            warnings: ['openai_schema_validation_failed', 'deterministic_fallback'],
+          };
+        }
+        return {
+          providerId: 'openai',
+          model,
+          used: true,
+          suggestions: parsed.data,
+          warnings: [],
+        };
+      } catch (err) {
+        return {
+          providerId: 'openai',
+          model,
+          used: false,
+          suggestions: null,
+          warnings: [
+            err instanceof Error ? err.message : 'openai_request_failed',
+            'deterministic_fallback',
+          ],
+        };
+      }
     },
   };
 }

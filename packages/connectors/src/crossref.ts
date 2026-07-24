@@ -13,6 +13,60 @@ function normalizeDoi(doi: string): string {
     .replace(/^https?:\/\/(dx\.)?doi\.org\//, '');
 }
 
+/** Re-parse a stored Crossref works JSON body without network. */
+export function reparseCrossrefRaw(bytes: Buffer): ConnectorFetchResult {
+  const fetchedAt = new Date().toISOString();
+  try {
+    const json = JSON.parse(bytes.toString('utf8')) as { message?: Record<string, unknown> };
+    const message = json.message ?? {};
+    const doi = normalizeDoi(String(message.DOI ?? message.doi ?? ''));
+    if (!doi) {
+      return {
+        connectorId: 'crossref',
+        fetchedAt,
+        ok: true,
+        pages: [],
+        rawBodies: [{ bytes, mediaType: 'application/json', ext: 'json' }],
+      };
+    }
+    const normalized = {
+      type: 'paper_enrichment',
+      doi,
+      title: Array.isArray(message.title) ? String(message.title[0] ?? '') : null,
+      publisher: message.publisher ? String(message.publisher) : null,
+      licence: Array.isArray(message.license)
+        ? String((message.license[0] as { URL?: string })?.URL ?? '')
+        : null,
+      deposited: (message.deposited as { dateTime?: string } | undefined)?.dateTime ?? null,
+      updateTo: message['update-to'] ?? null,
+      canonicalUrl: `https://doi.org/${doi}`,
+    };
+    return {
+      connectorId: 'crossref',
+      fetchedAt,
+      ok: true,
+      pages: [
+        {
+          externalId: doi,
+          canonicalUrl: normalized.canonicalUrl,
+          payload: message,
+          normalized: { ...normalized, normalizedHash: hashNormalized(normalized) },
+        },
+      ],
+      rawBodies: [{ bytes, mediaType: 'application/json', ext: 'json' }],
+    };
+  } catch (err) {
+    return {
+      connectorId: 'crossref',
+      fetchedAt,
+      ok: false,
+      pages: [],
+      rawBodies: [],
+      errorMessage: err instanceof Error ? err.message : 'Crossref reparse failed',
+    };
+  }
+}
+
 /** Crossref enrichment-only connector: exact DOI lookups for locally known DOIs. */
 export function createCrossrefConnector(opts: {
   mailto?: string;

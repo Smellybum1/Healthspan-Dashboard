@@ -137,10 +137,17 @@ export function classifyStudyProfile(record: NormalizedLiveRecord): StudyProfile
       whatWouldChange.push('Larger controlled trials and independent replication.');
     }
   } else if (type === 'regulatory_event') {
+    // Live V2: regulator notices are availability/source class, not evidence-maturity stages.
     evidenceAvailability = 'regulatory_statement';
-    evidenceMaturity = 'regulatory_or_guideline_supported';
+    evidenceMaturity = 'mechanistic_hypothesis';
     organismLevel = 'human';
-    whatWouldChange.push('Updated regulator notice or label change.');
+    methodologicalSignals.push({
+      code: 'regulator_notice_not_evidence_maturity',
+      state: 'present',
+      explanation:
+        'Regulatory/safety notices are tracked separately from scientific evidence maturity; listing or guideline status is never treated as an evidence-maturity stage.',
+    });
+    whatWouldChange.push('Primary scientific evidence for related interventions, if any.');
   } else {
     evidenceMaturity = 'social_anecdotal';
     evidenceAvailability = 'unknown';

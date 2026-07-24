@@ -5,7 +5,7 @@ import { PageHeader } from '../components/Common';
 const SECTIONS = [
   {
     title: 'Evidence maturity',
-    body: 'We keep maturity on its own axis — from social/anecdotal claims through cell, animal, observational human, early interventional, controlled trials, replicated synthesis, and regulatory/guideline-supported use for a specified indication. These are never collapsed into a single “truth score”.',
+    body: 'Live V2 keeps scientific evidence maturity on its own axis — social/anecdotal through cell, animal, observational human, early interventional, controlled trials, and replicated synthesis. Regulatory authorization, listing, licensing, or guideline status is never treated as an evidence-maturity stage; it lives in the separate Regulation & Safety workspace. Dimensions are never collapsed into a single “truth score”.',
   },
   {
     title: 'Evidence availability vs design',

@@ -4,7 +4,7 @@ Longevity intelligence, evidence first.
 
 Local-first research intelligence dashboard for longevity and healthspan.
 
-**Current work:** Milestone 5 complete on `milestone-5/creator-social-intelligence` — awaiting Milestone 6 brief.
+**Current work:** Milestone 6 on `milestone-6/personalisation-production-hardening` (mandatory M4→M3→M2 entry gate, then personalisation/hardening).
 **Completed:** Milestone 1–5 (prototype → Live ingestion → evidence/claims → interventions/regulatory → creator/social claim intelligence)
 
 ## Requirements

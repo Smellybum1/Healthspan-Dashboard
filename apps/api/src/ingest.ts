@@ -38,6 +38,7 @@ import {
   type HealthspanDb,
 } from '@healthspan/db';
 import { markIntelligenceStale } from './intelligence-service.js';
+import { enqueueJob, JOB_PRIORITY } from './jobs.js';
 
 export type IngestOptions = {
   db: HealthspanDb;
@@ -50,6 +51,17 @@ export type IngestOptions = {
   crossrefDois?: string[];
   isBaseline?: boolean;
 };
+
+function queueCrossrefDoi(db: HealthspanDb, doi: string, contentItemId: string) {
+  const normalized = doi.trim().toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, '');
+  if (!normalized || !normalized.includes('/')) return;
+  enqueueJob(db, {
+    kind: 'enrich_crossref_doi',
+    payload: { doi: normalized, contentItemId },
+    dedupeKey: `crossref-doi:${normalized}`,
+    priority: JOB_PRIORITY.CROSSREF_ENRICHMENT,
+  });
+}
 
 function now() {
   return Date.now();
@@ -454,13 +466,20 @@ export async function runIngestion(opts: IngestOptions) {
           consecutiveFailures: result.ok ? 0 : 1,
           lastError: result.errorMessage ?? null,
           baselineCompletedAt:
-            result.ok && isBaseline
-              ? sourceRow?.baselineCompletedAt ?? now()
-              : sourceRow?.baselineCompletedAt ?? undefined,
+            opts.trigger === 'reprocess'
+              ? sourceRow?.baselineCompletedAt ?? undefined
+              : result.ok && isBaseline
+                ? sourceRow?.baselineCompletedAt ?? now()
+                : sourceRow?.baselineCompletedAt ?? undefined,
           updatedAt: now(),
         })
         .where(eq(sources.id, connector.id))
         .run();
+
+      // Never advance connector_checkpoints from a reprocess trigger.
+      if (opts.trigger !== 'reprocess') {
+        // checkpoint updates happen via scheduler/ingest status paths elsewhere
+      }
 
       totalContent += contentUpserts;
       totalEvents += changeCount;
@@ -593,6 +612,9 @@ function upsertContentFromNormalized(
           .values({ id: randomUUID(), contentItemId: contentId, scheme: 'doi', value: doi, sourceId })
           .onConflictDoNothing()
           .run();
+        if (sourceId === 'pubmed') {
+          queueCrossrefDoi(db, doi, contentId);
+        }
       }
       content += 1;
       contentIds.push(contentId);
@@ -630,6 +652,9 @@ function upsertContentFromNormalized(
         .run();
       content += 1;
       contentIds.push(contentId);
+      if (doi && sourceId === 'pubmed') {
+        queueCrossrefDoi(db, doi, contentId);
+      }
     }
 
     db.insert(contentItemSources)

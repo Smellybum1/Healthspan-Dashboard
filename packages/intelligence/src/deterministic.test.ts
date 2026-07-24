@@ -30,15 +30,16 @@ describe('deterministic intelligence', () => {
     expect(result.claims.every((c) => c.primaryExcerpt.length > 0)).toBe(true);
   });
 
-  it('can emit multiple source-bound claims from distinct segments', () => {
+  it('does not treat regulator notices as evidence-maturity stages', () => {
     const result = analyzeNormalizedRecord({
-      type: 'paper',
-      title: 'Metformin biomarker study',
-      summary: 'CRP decreased in adults',
-      studyDesign: 'randomized_controlled_trial',
+      type: 'regulatory_event',
+      title: 'TGA safety advisory',
+      summary: 'Updated product information for example medicine',
     });
-    expect(result.claims.length).toBeGreaterThanOrEqual(2);
-    const fingerprints = new Set(result.claims.map((c) => c.fingerprint));
-    expect(fingerprints.size).toBe(result.claims.length);
+    expect(result.profile.evidenceAvailability).toBe('regulatory_statement');
+    expect(result.profile.evidenceMaturity).not.toBe('regulatory_or_guideline_supported');
+    expect(result.profile.methodologicalSignals.some((s) => s.code === 'regulator_notice_not_evidence_maturity')).toBe(
+      true,
+    );
   });
 });

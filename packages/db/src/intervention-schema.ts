@@ -245,6 +245,108 @@ export const regulatoryAssertions = sqliteTable('regulatory_assertions', {
   createdAt: ts('created_at'),
 });
 
+export const regulatedProductIngredients = sqliteTable(
+  'regulated_product_ingredients',
+  {
+    id: id(),
+    productId: text('product_id').notNull(),
+    ingredientName: text('ingredient_name').notNull(),
+    role: text('role').notNull().default('active'),
+    quantityText: text('quantity_text'),
+    sourceRecordVersionId: text('source_record_version_id'),
+    createdAt: ts('created_at'),
+  },
+  (t) => [index('regulated_product_ingredients_product').on(t.productId)],
+);
+
+export const regulatoryApplications = sqliteTable('regulatory_applications', {
+  id: id(),
+  productId: text('product_id'),
+  entityId: text('entity_id'),
+  jurisdiction: text('jurisdiction').notNull(),
+  authority: text('authority').notNull(),
+  applicationType: text('application_type').notNull(),
+  nativeApplicationId: text('native_application_id'),
+  statusRaw: text('status_raw'),
+  normalizedStatus: text('normalized_status').notNull(),
+  officialUrl: text('official_url'),
+  sourceRecordVersionId: text('source_record_version_id'),
+  createdAt: ts('created_at'),
+  updatedAt: ts('updated_at'),
+});
+
+export const regulatoryIndications = sqliteTable('regulatory_indications', {
+  id: id(),
+  productId: text('product_id'),
+  assertionId: text('assertion_id'),
+  indicationText: text('indication_text').notNull(),
+  populationContext: text('population_context'),
+  jurisdiction: text('jurisdiction').notNull(),
+  sourceRecordVersionId: text('source_record_version_id'),
+  createdAt: ts('created_at'),
+});
+
+export const regulatoryStatusHistory = sqliteTable('regulatory_status_history', {
+  id: id(),
+  productId: text('product_id'),
+  assertionId: text('assertion_id'),
+  fromStanding: text('from_standing'),
+  toStanding: text('to_standing').notNull(),
+  effectiveAt: tsNull('effective_at'),
+  sourceRecordVersionId: text('source_record_version_id'),
+  note: text('note'),
+  createdAt: ts('created_at'),
+});
+
+export const productLabelRecords = sqliteTable(
+  'product_label_records',
+  {
+    id: id(),
+    productId: text('product_id'),
+    entityId: text('entity_id'),
+    jurisdiction: text('jurisdiction').notNull(),
+    authority: text('authority').notNull(),
+    labelVersion: text('label_version'),
+    sectionKind: text('section_kind').notNull(),
+    sectionTitle: text('section_title'),
+    sectionText: text('section_text').notNull(),
+    officialUrl: text('official_url'),
+    sourceRecordVersionId: text('source_record_version_id'),
+    createdAt: ts('created_at'),
+  },
+  (t) => [index('product_label_records_entity').on(t.entityId)],
+);
+
+export const safetyItems = sqliteTable('safety_items', {
+  id: id(),
+  kind: text('kind').notNull(),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  jurisdiction: text('jurisdiction').notNull(),
+  authority: text('authority').notNull(),
+  severityClass: text('severity_class'),
+  officialUrl: text('official_url'),
+  severityCaveat: text('severity_caveat').notNull(),
+  sourceRecordVersionId: text('source_record_version_id'),
+  currentState: text('current_state').notNull().default('current'),
+  createdAt: ts('created_at'),
+  updatedAt: ts('updated_at'),
+});
+
+export const interventionSafetyLinks = sqliteTable(
+  'intervention_safety_links',
+  {
+    id: id(),
+    entityId: text('entity_id').notNull(),
+    safetyItemId: text('safety_item_id'),
+    signalRecordId: text('signal_record_id'),
+    linkRole: text('link_role').notNull().default('related'),
+    matchState: text('match_state').notNull().default('unreviewed'),
+    createdAt: ts('created_at'),
+  },
+  (t) => [index('intervention_safety_links_entity').on(t.entityId)],
+);
+
 export const dossierSnapshots = sqliteTable('dossier_snapshots', {
   id: id(),
   entityId: text('entity_id').notNull(),

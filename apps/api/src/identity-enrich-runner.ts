@@ -133,10 +133,17 @@ export async function enrichEntityIdentity(
         quarter: p.normalized.quarter,
         productOrClass: p.normalized.productOrClass,
         signalText: p.normalized.signalText,
+        additionalInformation: p.normalized.additionalInformation ?? null,
+        officialUrl: p.normalized.officialUrl ?? null,
+        publishedAt: p.normalized.publishedAt ?? null,
         provenCausality: false,
         incidenceEstablished: false,
       })),
     );
+
+  // Persist AEMS into regulator_signal_records (never as proven causality).
+  const { persistAemsSignals } = await import('./regulatory-safety-service.js');
+  const signalsPersisted = persistAemsSignals(db, entityId, potentialSignals);
 
   const coverage = mergeCoverage(results.map(coverageFromLookup));
   const dossier = buildDossierSnapshot(db, entityId, { coverage, potentialSignals });
@@ -154,6 +161,8 @@ export async function enrichEntityIdentity(
     })),
     applied,
     coverage,
+    potentialSignals,
+    signalsPersisted,
     dossier,
   };
 }

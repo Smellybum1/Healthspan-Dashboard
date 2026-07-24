@@ -13,9 +13,23 @@ export const EvidenceMaturitySchema = z.enum([
   'early_human_interventional',
   'controlled_clinical_trial',
   'replicated_controlled_or_synthesis',
+  /** Demo / historical M1 label only — Live V2 never assigns this as maturity. */
   'regulatory_or_guideline_supported',
 ]);
 export type EvidenceMaturity = z.infer<typeof EvidenceMaturitySchema>;
+
+/** Live V2 scientific maturity — excludes regulatory/guideline status. */
+export const LiveEvidenceMaturitySchema = z.enum([
+  'social_anecdotal',
+  'mechanistic_hypothesis',
+  'in_vitro_ex_vivo',
+  'animal_model',
+  'human_observational',
+  'early_human_interventional',
+  'controlled_clinical_trial',
+  'replicated_controlled_or_synthesis',
+]);
+export type LiveEvidenceMaturity = z.infer<typeof LiveEvidenceMaturitySchema>;
 
 export const StudyDesignSchema = z.enum([
   'anecdote',
