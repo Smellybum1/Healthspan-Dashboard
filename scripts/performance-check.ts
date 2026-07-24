@@ -112,7 +112,11 @@ if (!fs.existsSync(distDir)) {
   );
   if (built.status !== 0 || !fs.existsSync(distDir)) {
     console.log(
-      JSON.stringify({ suite: 'performance:check', ok: false, error: 'dist missing — build failed' }),
+      JSON.stringify({
+        suite: 'performance:check',
+        ok: false,
+        error: 'dist missing — build failed',
+      }),
     );
     process.exit(1);
   }
