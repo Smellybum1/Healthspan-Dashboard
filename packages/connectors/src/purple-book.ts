@@ -1,6 +1,15 @@
 import { createHash } from 'node:crypto';
-import { identityResult, type IdentityConnector, type IdentityLookupQuery } from './identity-types.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import {
+  identityResult,
+  type IdentityConnector,
+  type IdentityLookupQuery,
+} from './identity-types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 function hashNormalized(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -161,7 +170,10 @@ export function createPurpleBookConnector(
 
     const rawBodies: ConnectorFetchResult['rawBodies'] = [
       {
-        bytes: Buffer.from(JSON.stringify({ query: args.query, hits, release: opts.sourceReleaseDate ?? null }), 'utf8'),
+        bytes: Buffer.from(
+          JSON.stringify({ query: args.query, hits, release: opts.sourceReleaseDate ?? null }),
+          'utf8',
+        ),
         mediaType: 'application/json',
         ext: 'json',
       },
@@ -181,7 +193,8 @@ export function createPurpleBookConnector(
 
     const pages: ConnectorPage[] = hits.slice(0, Math.min(args.recordCap ?? 20, 50)).map((r) => {
       const interchangeableExplicit =
-        typeof r.interchangeable === 'string' && /^(y|yes|true|interchangeable)$/i.test(r.interchangeable.trim());
+        typeof r.interchangeable === 'string' &&
+        /^(y|yes|true|interchangeable)$/i.test(r.interchangeable.trim());
       const normalized = {
         type: 'regulated_product',
         authority: 'fda_purple_book',

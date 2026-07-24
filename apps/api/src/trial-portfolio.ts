@@ -32,7 +32,9 @@ export function linkTrialInterventionsToEntities(db: HealthspanDb, limit = 500) 
       aliases,
       identifiers: [],
     });
-    const auto = candidates.find((c) => c.method === 'exact_alias_unique' || c.method === 'exact_identifier');
+    const auto = candidates.find(
+      (c) => c.method === 'exact_alias_unique' || c.method === 'exact_identifier',
+    );
     if (!auto) {
       reviewNeeded += 1;
       continue;
@@ -91,6 +93,7 @@ export function trialPortfolioForEntity(db: HealthspanDb, entityId: string) {
   return {
     count: items.length,
     items,
-    caveat: 'Trial portfolio links preserve source intervention terms. Registry presence ≠ approval or efficacy.',
+    caveat:
+      'Trial portfolio links preserve source intervention terms. Registry presence ≠ approval or efficacy.',
   };
 }

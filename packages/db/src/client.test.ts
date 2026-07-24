@@ -15,7 +15,6 @@ import {
   platformPolicyVersions,
 } from './creator-schema.js';
 
-
 describe('sqlite database', () => {
   let dir: string;
 
@@ -56,22 +55,22 @@ describe('sqlite database', () => {
     expect(db.select().from(platformContentCurrent).all()).toEqual([]);
     expect(db.select().from(creatorClaimEvidenceLinks).all()).toEqual([]);
     expect(db.select().from(claimRecurrenceSnapshots).all()).toEqual([]);
-    const cols = sqlite
-      .prepare(`PRAGMA table_info(creator_claims)`)
-      .all() as Array<{ name: string }>;
+    const cols = sqlite.prepare(`PRAGMA table_info(creator_claims)`).all() as Array<{
+      name: string;
+    }>;
     const names = new Set(cols.map((c) => c.name));
     expect(names.has('claim_fingerprint')).toBe(true);
     expect(names.has('lifecycle_state')).toBe(true);
     expect(names.has('review_status')).toBe(true);
-    const docCols = sqlite
-      .prepare(`PRAGMA table_info(creator_documents)`)
-      .all() as Array<{ name: string }>;
+    const docCols = sqlite.prepare(`PRAGMA table_info(creator_documents)`).all() as Array<{
+      name: string;
+    }>;
     const docNames = new Set(docCols.map((c) => c.name));
     expect(docNames.has('replaces_document_id')).toBe(true);
     expect(docNames.has('deleted_at')).toBe(true);
-    const entityCols = sqlite
-      .prepare(`PRAGMA table_info(creator_entities)`)
-      .all() as Array<{ name: string }>;
+    const entityCols = sqlite.prepare(`PRAGMA table_info(creator_entities)`).all() as Array<{
+      name: string;
+    }>;
     expect(entityCols.some((c) => c.name === 'identity_revision')).toBe(true);
     closeDatabase(sqlite);
   });

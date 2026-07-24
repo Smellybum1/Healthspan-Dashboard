@@ -1,9 +1,5 @@
 import { eq } from 'drizzle-orm';
-import {
-  creatorClaimFindings,
-  creatorClaims,
-  type HealthspanDb,
-} from '@healthspan/db';
+import { creatorClaimFindings, creatorClaims, type HealthspanDb } from '@healthspan/db';
 
 export const CREATOR_REVIEW_ACTIONS = ['accept', 'reject', 'dismiss'] as const;
 export type CreatorReviewAction = (typeof CREATOR_REVIEW_ACTIONS)[number];
@@ -20,9 +16,7 @@ const ADVERSE_FINDING_PREFIXES = [
 ];
 
 export function isAdverseCreatorFinding(findingType: string): boolean {
-  return ADVERSE_FINDING_PREFIXES.some(
-    (p) => findingType === p || findingType.startsWith(p),
-  );
+  return ADVERSE_FINDING_PREFIXES.some((p) => findingType === p || findingType.startsWith(p));
 }
 
 /** Open creator-alignment findings that require human review before profile publish. */
@@ -42,7 +36,11 @@ export function listCreatorReviewTasks(db: HealthspanDb, opts?: { limit?: number
 
   return findings.map((f) => {
     const claim = f.claimId
-      ? db.select().from(creatorClaims).all().find((c) => c.id === f.claimId)
+      ? db
+          .select()
+          .from(creatorClaims)
+          .all()
+          .find((c) => c.id === f.claimId)
       : undefined;
     return {
       id: f.id,

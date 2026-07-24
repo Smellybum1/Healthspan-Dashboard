@@ -6,8 +6,7 @@
 export const CREATOR_AI_RESERVED_PATH_VERSION = 'm5.creator-ai.reserved.1';
 
 export type CreatorAiGate =
-  | { allowed: false; reason: string }
-  | { allowed: true; constraints: string[] };
+  { allowed: false; reason: string } | { allowed: true; constraints: string[] };
 
 export function isCreatorAiEnabled(): boolean {
   return process.env.HEALTHSPAN_CREATOR_AI_ENABLED === 'true';

@@ -59,7 +59,11 @@ function normalizeTheme(text: string): string {
 }
 
 function tokenSet(text: string): Set<string> {
-  return new Set(normalizeTheme(text).split(' ').filter((t) => t.length > 2));
+  return new Set(
+    normalizeTheme(text)
+      .split(' ')
+      .filter((t) => t.length > 2),
+  );
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {
@@ -77,7 +81,10 @@ export function classifyClaimRelationship(
   a: Pick<RecurrenceClaimInput, 'id' | 'claimText' | 'recurrenceKey'>,
   b: Pick<RecurrenceClaimInput, 'id' | 'claimText' | 'recurrenceKey'>,
 ): ClaimRelationship {
-  if (a.recurrenceKey === b.recurrenceKey || normalizeTheme(a.claimText) === normalizeTheme(b.claimText)) {
+  if (
+    a.recurrenceKey === b.recurrenceKey ||
+    normalizeTheme(a.claimText) === normalizeTheme(b.claimText)
+  ) {
     return {
       sourceClaimId: a.id,
       targetClaimId: b.id,
@@ -135,10 +142,11 @@ export function computeClaimRecurrence(claims: RecurrenceClaimInput[]): Recurren
   for (const [recurrenceKey, list] of byKey) {
     const sourceKeys = list.map((c) => c.sourceKey).filter((k): k is string => Boolean(k));
     const distinctSources = new Set(sourceKeys);
-    const firstObservedAt = list
-      .map((c) => c.firstObservedAt)
-      .filter((t): t is number => t != null)
-      .sort((a, b) => a - b)[0] ?? null;
+    const firstObservedAt =
+      list
+        .map((c) => c.firstObservedAt)
+        .filter((t): t is number => t != null)
+        .sort((a, b) => a - b)[0] ?? null;
 
     groups.push({
       recurrenceKey,
@@ -163,5 +171,8 @@ export function computeClaimRecurrence(claims: RecurrenceClaimInput[]): Recurren
 }
 
 export function recurrenceSourceScopeHash(sourceKeys: string[]): string {
-  return createHash('sha256').update([...sourceKeys].sort().join('|')).digest('hex').slice(0, 24);
+  return createHash('sha256')
+    .update([...sourceKeys].sort().join('|'))
+    .digest('hex')
+    .slice(0, 24);
 }

@@ -25,9 +25,7 @@ import {
 import { markOpenReviewsStaleForContent } from './review-service.js';
 
 function inputHash(record: NormalizedLiveRecord, rulesetVersion: string) {
-  return createHash('sha256')
-    .update(JSON.stringify({ record, rulesetVersion }))
-    .digest('hex');
+  return createHash('sha256').update(JSON.stringify({ record, rulesetVersion })).digest('hex');
 }
 
 function recordFromContent(
@@ -90,7 +88,11 @@ function currentSourceVersionId(db: HealthspanDb, contentItemId: string): string
     .where(eq(contentItemSources.contentItemId, contentItemId))
     .all()[0];
   if (!link) return null;
-  const obj = db.select().from(sourceObjects).where(eq(sourceObjects.id, link.sourceObjectId)).all()[0];
+  const obj = db
+    .select()
+    .from(sourceObjects)
+    .where(eq(sourceObjects.id, link.sourceObjectId))
+    .all()[0];
   return obj?.currentVersionId ?? null;
 }
 
@@ -125,7 +127,12 @@ export function markIntelligenceStale(
 }
 
 export function intelligenceStatus(db: HealthspanDb) {
-  const runs = db.select().from(intelligenceRuns).orderBy(desc(intelligenceRuns.startedAt)).limit(5).all();
+  const runs = db
+    .select()
+    .from(intelligenceRuns)
+    .orderBy(desc(intelligenceRuns.startedAt))
+    .limit(5)
+    .all();
   const states = db.select().from(contentIntelligenceState).all();
   const staleCount = states.filter((s) => s.stale).length;
   const assessed = states.filter((s) => s.currentAnalysisId).length;
@@ -229,7 +236,11 @@ export function getLiveClaim(db: HealthspanDb, id: string) {
   const claim = db.select().from(liveClaims).where(eq(liveClaims.id, id)).all()[0];
   if (!claim) return null;
   const spans = db.select().from(claimSourceSpans).where(eq(claimSourceSpans.claimId, id)).all();
-  const item = db.select().from(contentItems).where(eq(contentItems.id, claim.contentItemId)).all()[0];
+  const item = db
+    .select()
+    .from(contentItems)
+    .where(eq(contentItems.id, claim.contentItemId))
+    .all()[0];
   const relationships = db
     .select()
     .from(claimRelationships)
@@ -533,7 +544,11 @@ export function liveRadarPoints(db: HealthspanDb, limit = 40) {
       .from(intelligenceAnalyses)
       .where(eq(intelligenceAnalyses.id, state.currentAnalysisId))
       .all()[0];
-    const item = db.select().from(contentItems).where(eq(contentItems.id, state.contentItemId)).all()[0];
+    const item = db
+      .select()
+      .from(contentItems)
+      .where(eq(contentItems.id, state.contentItemId))
+      .all()[0];
     if (!analysis || !item) continue;
     const maturityX: Record<string, number> = {
       social_anecdotal: 0.05,

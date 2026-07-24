@@ -1,8 +1,4 @@
-import type {
-  ContentItem,
-  DashboardPayload,
-  EvidenceAssessment,
-} from '@healthspan/core';
+import type { ContentItem, DashboardPayload, EvidenceAssessment } from '@healthspan/core';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 

@@ -1,11 +1,7 @@
 export const CREATOR_NORMALIZE_VERSION = 'm5.normalize.1';
 
 export function normalizeCreatorName(input: string): string {
-  return input
-    .normalize('NFKC')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
+  return input.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 export const CREATOR_KINDS = [

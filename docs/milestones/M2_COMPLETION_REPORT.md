@@ -24,13 +24,13 @@ Healthspan Dashboard now has a durable local SQLite/Drizzle backbone, primary-so
 
 ## Quality gates
 
-| Gate | Result |
-| --- | --- |
-| `pnpm lint` | pass |
-| `pnpm typecheck` | pass |
-| `pnpm test` | 33 passed |
-| `pnpm test:e2e` | 9 passed / 1 skipped |
-| `pnpm build` | pass |
+| Gate             | Result               |
+| ---------------- | -------------------- |
+| `pnpm lint`      | pass                 |
+| `pnpm typecheck` | pass                 |
+| `pnpm test`      | 33 passed            |
+| `pnpm test:e2e`  | 9 passed / 1 skipped |
+| `pnpm build`     | pass                 |
 
 ## Verification notes
 

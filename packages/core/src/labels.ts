@@ -17,9 +17,7 @@ export function evidenceMaturityToRadarX(maturity: EvidenceMaturity): number {
   return MATURITY_TO_X[maturity];
 }
 
-export function evidenceTone(
-  maturity: EvidenceMaturity,
-): 'established' | 'emerging' | 'weak' {
+export function evidenceTone(maturity: EvidenceMaturity): 'established' | 'emerging' | 'weak' {
   if (
     maturity === 'controlled_clinical_trial' ||
     maturity === 'replicated_controlled_or_synthesis' ||

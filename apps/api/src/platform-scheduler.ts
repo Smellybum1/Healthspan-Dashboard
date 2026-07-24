@@ -20,8 +20,7 @@ export function createPlatformScheduler(opts: {
 }) {
   const enabled =
     opts.enabled ??
-    (process.env.HEALTHSPAN_SCHEDULER_ENABLED === 'true' ||
-      process.env.NODE_ENV === 'production');
+    (process.env.HEALTHSPAN_SCHEDULER_ENABLED === 'true' || process.env.NODE_ENV === 'production');
   let timer: ReturnType<typeof setInterval> | null = null;
   let lastDailyKey: string | null = null;
 
@@ -37,14 +36,22 @@ export function createPlatformScheduler(opts: {
     const { created } = enqueueJob(opts.db, {
       kind: 'run_x_batch_compliance',
       payload: { trigger: reason, platform: 'x' },
-      dedupeKey: stableDedupeKey('x-compliance', { day, reason: reason === 'startup' ? 'startup' : 'daily' }),
+      dedupeKey: stableDedupeKey('x-compliance', {
+        day,
+        reason: reason === 'startup' ? 'startup' : 'daily',
+      }),
       priority: JOB_PRIORITY.COMPLIANCE,
     });
     return { enqueued: created, reason };
   }
 
   function tick(now = Date.now()) {
-    if (!enabled) return { enqueued: false, reason: null as string | null, status: getXComplianceStatus(opts.db) };
+    if (!enabled)
+      return {
+        enqueued: false,
+        reason: null as string | null,
+        status: getXComplianceStatus(opts.db),
+      };
     const day = new Date(now).toISOString().slice(0, 10);
     const status = getXComplianceStatus(opts.db);
     const overdue = isXComplianceOverdue(status, now);
@@ -100,6 +107,7 @@ export function createPlatformScheduler(opts: {
       if (timer) clearInterval(timer);
       timer = null;
     },
-    maxAgeMs: Number(process.env.HEALTHSPAN_X_COMPLIANCE_MAX_AGE_HOURS ?? 24) * 60 * 60 * 1000 || DAY_MS,
+    maxAgeMs:
+      Number(process.env.HEALTHSPAN_X_COMPLIANCE_MAX_AGE_HOURS ?? 24) * 60 * 60 * 1000 || DAY_MS,
   };
 }

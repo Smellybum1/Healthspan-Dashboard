@@ -33,20 +33,28 @@ export function CreatorClaimsPage() {
       ) : (
         <ul className="space-y-2">
           {(data?.claims ?? []).map((claim) => (
-            <li key={String(claim.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+            <li
+              key={String(claim.id)}
+              className="rounded-lg border border-[var(--border)] px-3 py-2"
+            >
               <p className="font-medium">{String(claim.claimText)}</p>
               <p className="text-xs text-[var(--muted)]">
                 {String(claim.assertionRole)} · {String(claim.claimKind ?? '—')} ·{' '}
-                {String(claim.direction ?? '—')} · {String(claim.certaintyLanguage ?? '—')} · recurrence{' '}
-                {String(claim.recurrenceKey).slice(0, 24)}
+                {String(claim.direction ?? '—')} · {String(claim.certaintyLanguage ?? '—')} ·
+                recurrence {String(claim.recurrenceKey).slice(0, 24)}
               </p>
               <p className="mt-1 text-xs text-[var(--muted)]">
-                {String((claim.alignment as { overallLabel?: string } | undefined)?.overallLabel ?? '')}
+                {String(
+                  (claim.alignment as { overallLabel?: string } | undefined)?.overallLabel ?? '',
+                )}
               </p>
-              {Array.isArray((claim.alignment as { dimensions?: unknown[] } | undefined)?.dimensions) ? (
+              {Array.isArray(
+                (claim.alignment as { dimensions?: unknown[] } | undefined)?.dimensions,
+              ) ? (
                 <ul className="mt-2 grid gap-1 text-xs text-[var(--muted)] sm:grid-cols-2">
                   {(
-                    (claim.alignment as { dimensions: Array<Record<string, unknown>> }).dimensions ?? []
+                    (claim.alignment as { dimensions: Array<Record<string, unknown>> })
+                      .dimensions ?? []
                   ).map((d) => (
                     <li key={String(d.id)}>
                       {String(d.label)}: {String(d.state)}
@@ -62,7 +70,8 @@ export function CreatorClaimsPage() {
                 <Link className="underline" to={`/creator-claims/${String(claim.id)}/alignment`}>
                   Evidence alignment
                 </Link>
-              </div>            </li>
+              </div>{' '}
+            </li>
           ))}
         </ul>
       )}

@@ -84,10 +84,7 @@ export function proposeMapping(opts: {
 
   const normalized = opts.mentionNormalized || normalizeForMatch(opts.mentionRaw);
   const aliasHits = opts.aliases.filter(
-    (a) =>
-      a.normalizedAlias === normalized &&
-      a.reviewState !== 'rejected' &&
-      !a.collisionFlag,
+    (a) => a.normalizedAlias === normalized && a.reviewState !== 'rejected' && !a.collisionFlag,
   );
   const uniqueEntityIds = [...new Set(aliasHits.map((a) => a.entityId))];
   if (uniqueEntityIds.length === 1) {

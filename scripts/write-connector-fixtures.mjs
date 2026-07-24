@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'connectors', 'fixtures');
+const dir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'packages',
+  'connectors',
+  'fixtures',
+);
 fs.mkdirSync(dir, { recursive: true });
 
 fs.writeFileSync(

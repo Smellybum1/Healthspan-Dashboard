@@ -43,7 +43,8 @@ export const M4_IDENTITY_CORPUS: M4IdentityCase[] = pad('id', 120, (i) => ({
 export const M4_REGULATORY_CORPUS: M4RegulatoryCase[] = pad('reg', 72, (i) => ({
   id: `m4-reg-${i}`,
   jurisdiction: i % 2 === 0 ? 'AU' : 'US',
-  standing: i % 3 === 0 ? 'included_or_authorised' : i % 3 === 1 ? 'unknown_source_status' : 'not_found',
+  standing:
+    i % 3 === 0 ? 'included_or_authorised' : i % 3 === 1 ? 'unknown_source_status' : 'not_found',
   missMeansUnapproved: false,
   trialMeansAuthorized: false,
 }));
@@ -73,7 +74,6 @@ export function m4CorpusCounts() {
 
 export function assertM4CorporaMinima() {
   const c = m4CorpusCounts();
-  const ok =
-    c.identity >= 120 && c.regulatory >= 72 && c.safety >= 48 && c.multiClaim >= 32;
+  const ok = c.identity >= 120 && c.regulatory >= 72 && c.safety >= 48 && c.multiClaim >= 32;
   return { ok, ...c };
 }

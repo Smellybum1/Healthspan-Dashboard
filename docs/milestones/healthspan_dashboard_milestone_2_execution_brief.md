@@ -1,4 +1,5 @@
 Milestone 2 is now issued and authorised
+
 1. SQLite path and filename
 
 Use the operating system’s per-user application-data directory, not the Git repository.
@@ -15,9 +16,9 @@ Raw source snapshots will be stored alongside it:
 %LOCALAPPDATA%\Healthspan Dashboard\
 ├─ healthspan-dashboard.sqlite3
 └─ raw\
-   └─ sha256\
-      └─ <first-two-hash-characters>\
-         └─ <full-sha256>.<json|xml|rss>.gz
+└─ sha256\
+└─ <first-two-hash-characters>\
+└─ <full-sha256>.<json|xml|rss>.gz
 
 The cross-platform defaults are:
 
@@ -53,7 +54,7 @@ Keep all four planned connector families. Implement and run them in this order:
 2. ClinicalTrials.gov
 3. Crossref exact-DOI enrichment
 4. TGA RSS
-PubMed
+   PubMed
 
 This is the primary paper-discovery and bibliographic source.
 
@@ -195,7 +196,7 @@ Begin Healthspan Dashboard Milestone 2 from the latest main. Create and work on 
 
 Milestone 2 is authorised
 
-I reviewed the Milestone 1 implementation and completion report. The existing Hono API/repository boundary is appropriate for replacing seeded-memory persistence with SQLite. Milestone 1 currently has 89 seeded demo records, no database, no live connectors, and passing lint, type-check, unit, E2E, and build gates. 
+I reviewed the Milestone 1 implementation and completion report. The existing Hono API/repository boundary is appropriate for replacing seeded-memory persistence with SQLite. Milestone 1 currently has 89 seeded demo records, no database, no live connectors, and passing lint, type-check, unit, E2E, and build gates.
 GitHub
 
 1. SQLite path convention
@@ -206,9 +207,9 @@ Windows default
 %LOCALAPPDATA%\Healthspan Dashboard\
 ├─ healthspan-dashboard.sqlite3
 └─ raw\
-   └─ sha256\
-      └─ <first-two-hash-characters>\
-         └─ <full-sha256>.<json|xml|rss>.gz
+└─ sha256\
+└─ <first-two-hash-characters>\
+└─ <full-sha256>.<json|xml|rss>.gz
 
 Typical resolved path:
 
@@ -252,8 +253,7 @@ SQL
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
-PRAGMA busy_timeout = 5000;
-2. Connector set and order
+PRAGMA busy_timeout = 5000; 2. Connector set and order
 
 Keep all four connectors, in this order:
 
@@ -261,14 +261,14 @@ Keep all four connectors, in this order:
 2. ClinicalTrials.gov
 3. Crossref DOI enrichment
 4. TGA RSS
-PubMed
+   PubMed
 
-Use NCBI E-utilities for paper discovery and bibliographic data. Throttle to no more than 2.5 requests per second without an API key and 8 requests per second with one, staying beneath NCBI’s documented ceilings of three and ten requests per second. Use batched EFetch requests rather than one request per paper. 
+Use NCBI E-utilities for paper discovery and bibliographic data. Throttle to no more than 2.5 requests per second without an API key and 8 requests per second with one, staying beneath NCBI’s documented ceilings of three and ten requests per second. Use batched EFetch requests rather than one request per paper.
 NCBI
 
 ClinicalTrials.gov
 
-Use API v2 JSON for trial discovery, complete trial records, status changes, results-posted detection, outcomes, interventions, eligibility, and Australian trial locations. 
+Use API v2 JSON for trial discovery, complete trial records, status changes, results-posted detection, outcomes, interventions, eligibility, and Australian trial locations.
 ClinicalTrials.gov
 
 Crossref
@@ -289,7 +289,7 @@ Post-publication updates
 
 Correction and retraction relationships
 
-Crossref’s public REST API supports exact DOI retrieval and includes post-publication, funding, licence, and relationship metadata. 
+Crossref’s public REST API supports exact DOI retrieval and includes post-publication, funding, licence, and relationship metadata.
 www.crossref.org
 
 TGA RSS
@@ -301,7 +301,7 @@ Market actions
 Safety updates
 Media releases
 
-Do not ingest the broad general-news feed during Milestone 2. TGA officially provides each of those feeds separately. 
+Do not ingest the broad general-news feed during Milestone 2. TGA officially provides each of those feeds separately.
 Therapeutic Goods Administration (TGA)
 
 Ingest every item returned by those four feeds, then apply a deterministic, versioned longevity relevance matcher for dashboard display. One failed TGA feed must not invalidate the other three.
@@ -312,7 +312,7 @@ ANZCTR remains deferred. Do not scrape or create a nominal production connector 
 
 Design for D1 portability now; implement D1 in Milestone 7.
 
-ChatGPT Sites identifies D1 as its relational store for durable structured data and R2 as object storage for files. It also warns that some databases and background-service patterns may not be supported in the Sites runtime. That makes repository, raw-storage, and scheduler abstractions worthwhile now without introducing hosted dependencies prematurely. 
+ChatGPT Sites identifies D1 as its relational store for durable structured data and R2 as object storage for files. It also warns that some databases and background-service patterns may not be supported in the Sites runtime. That makes repository, raw-storage, and scheduler abstractions worthwhile now without introducing hosted dependencies prematurely.
 OpenAI Developers
 +2
 OpenAI Developers
@@ -342,7 +342,7 @@ JSON columns only for small opaque cursor, diagnostic, or change-diff data
 
 No dependency on triggers, stored procedures, generated columns, custom SQLite extensions, or FTS5
 
-Cloudflare describes D1 as using SQLite SQL semantics and supporting most SQLite conventions, so maintaining a conservative SQLite schema now should reduce the later migration burden. 
+Cloudflare describes D1 as using SQLite SQL semantics and supporting most SQLite conventions, so maintaining a conservative SQLite schema now should reduce the later migration burden.
 Cloudflare Docs
 +1
 
@@ -394,7 +394,7 @@ healthspan_dashboard_milestone_2_execution_brief.md
 
 Controlling instruction for Grok
 
-Begin Healthspan Dashboard Milestone 2 from the latest main. Create and work on milestone-2/persistent-data-backbone. Implement the complete persistent data backbone and official-source ingestion system exactly within the supplied execution brief. Make routine implementation decisions autonomously. Preserve strict Live/Demo separation, do not fabricate scientific assessments for live data, and do not begin Milestone 3. When every acceptance criterion is met, push the branch, commit the required completion report, report the final commit hash and test results, and stop. 
+Begin Healthspan Dashboard Milestone 2 from the latest main. Create and work on milestone-2/persistent-data-backbone. Implement the complete persistent data backbone and official-source ingestion system exactly within the supplied execution brief. Make routine implementation decisions autonomously. Preserve strict Live/Demo separation, do not fabricate scientific assessments for live data, and do not begin Milestone 3. When every acceptance criterion is met, push the branch, commit the required completion report, report the final commit hash and test results, and stop.
 
 Sources
 ChatGPT can make mistakes. Check important info.
@@ -444,25 +444,25 @@ Do not implement AI extraction, evidence scoring, creator monitoring, X, YouTube
 Make routine implementation decisions autonomously. Do not pause for approval over ordinary package additions, file layout refinements, component structure, migrations, test fixtures, refactors, debugging, or visual polish that remain inside this brief.
 
 2. Fixed project-management decisions
-2.1 SQLite path and filename
+   2.1 SQLite path and filename
 
 The database must live in the operating system's per-user application-data directory by default. It must not live inside the Git repository.
 
 Resolve the application data directory centrally:
 
-Platform	Default directory
-Windows	%LOCALAPPDATA%\Healthspan Dashboard
-macOS	~/Library/Application Support/Healthspan Dashboard
-Linux	${XDG_DATA_HOME:-~/.local/share}/healthspan-dashboard
+Platform Default directory
+Windows %LOCALAPPDATA%\Healthspan Dashboard
+macOS ~~/Library/Application Support/Healthspan Dashboard
+Linux ${XDG_DATA_HOME:-~~/.local/share}/healthspan-dashboard
 
 Use this layout:
 
 <application-data-directory>/
 ├─ healthspan-dashboard.sqlite3
 └─ raw/
-   └─ sha256/
-      └─ <first-two-hash-characters>/
-         └─ <full-sha256>.<json|xml|rss>.gz
+└─ sha256/
+└─ <first-two-hash-characters>/
+└─ <full-sha256>.<json|xml|rss>.gz
 
 Expected Windows path:
 
@@ -508,11 +508,11 @@ These are local runtime settings, not assumptions embedded in portable migration
 Keep the original four source families. The full-ingestion order is fixed:
 
 PubMed
-  ↓
+↓
 ClinicalTrials.gov
-  ↓
+↓
 Crossref exact-DOI enrichment
-  ↓
+↓
 TGA RSS
 
 Rationale:
@@ -660,7 +660,7 @@ apps/web/
 The existing Hono API and repository seam are intentional. Replace the seeded-memory implementation behind that boundary rather than bypassing it.
 
 5. Scope
-5.1 In scope
+   5.1 In scope
 
 Windows-first application-data path resolution
 
@@ -755,31 +755,31 @@ Paid API services
 Production backup/restore UI
 
 6. Target architecture
-Official source
-    ↓
-Shared HTTP client
-    ↓
-Connector fetch page/feed response
-    ↓
-Immutable RawSnapshotStore
-    ↓
-Source-specific parser
-    ↓
-Zod validation
-    ↓
-Normalised source record
-    ↓
-Source object and version persistence
-    ↓
-Exact identifier matching
-    ↓
-Content entity projection
-    ↓
-Deterministic change detection
-    ↓
-Repository/API
-    ↓
-Live UI, source health, and alerts
+   Official source
+   ↓
+   Shared HTTP client
+   ↓
+   Connector fetch page/feed response
+   ↓
+   Immutable RawSnapshotStore
+   ↓
+   Source-specific parser
+   ↓
+   Zod validation
+   ↓
+   Normalised source record
+   ↓
+   Source object and version persistence
+   ↓
+   Exact identifier matching
+   ↓
+   Content entity projection
+   ↓
+   Deterministic change detection
+   ↓
+   Repository/API
+   ↓
+   Live UI, source health, and alerts
 
 Cross-cutting rules:
 
@@ -800,7 +800,7 @@ Every Live content item must trace to at least one source object and version.
 No personal health data is stored.
 
 7. Package boundaries
-packages/core
+   packages/core
 
 Own:
 
@@ -1423,21 +1423,21 @@ invalid/corrupt-file handling
 Define a portable interface equivalent in behaviour to:
 
 interface RawSnapshotStore {
-  put(input: {
-    sourceId: string;
-    bytes: Uint8Array;
-    mediaType: string;
-    preferredExtension: "json" | "xml" | "rss";
-  }): Promise<{
-    contentHash: string;
-    storageKey: string;
-    uncompressedBytes: number;
-    compressedBytes: number;
-    compression: "gzip";
-  }>;
+put(input: {
+sourceId: string;
+bytes: Uint8Array;
+mediaType: string;
+preferredExtension: "json" | "xml" | "rss";
+}): Promise<{
+contentHash: string;
+storageKey: string;
+uncompressedBytes: number;
+compressedBytes: number;
+compression: "gzip";
+}>;
 
-  get(storageKey: string): Promise<Uint8Array>;
-  exists(storageKey: string): Promise<boolean>;
+get(storageKey: string): Promise<Uint8Array>;
+exists(storageKey: string): Promise<boolean>;
 }
 
 Rules:
@@ -1589,7 +1589,7 @@ Other 4xx: non-retryable by default
 Do not retry parser/schema errors as transient network failures.
 
 13. Connector specifications
-13.1 PubMed
+    13.1 PubMed
 
 Use NCBI E-utilities.
 
@@ -1926,7 +1926,7 @@ supplements/products explicitly marketed with anti-ageing claims
 Store match state, matched terms, and matcher version. Do not infer causation or clinical severity.
 
 14. Identifier normalisation and deduplication
-DOI
+    DOI
 
 Trim.
 
@@ -2020,33 +2020,33 @@ Retain existing routes where practical and make repository calls asynchronous.
 Response envelope:
 
 {
-  data: ...,
-  meta: {
-    dataMode: "live" | "demo",
-    generatedAt: string,
-    partial: boolean,
-    sourceFreshness?: ...
-  }
+data: ...,
+meta: {
+dataMode: "live" | "demo",
+generatedAt: string,
+partial: boolean,
+sourceFreshness?: ...
+}
 }
 
 Required routes:
 
-GET  /health
-GET  /api/dashboard
-GET  /api/items
-GET  /api/items/:id
-GET  /api/search
-GET  /api/sources
-GET  /api/ingestion/status
-GET  /api/ingestion/runs
-GET  /api/ingestion/runs/:id
+GET /health
+GET /api/dashboard
+GET /api/items
+GET /api/items/:id
+GET /api/search
+GET /api/sources
+GET /api/ingestion/status
+GET /api/ingestion/runs
+GET /api/ingestion/runs/:id
 POST /api/ingestion/runs
 
 Validated refresh body:
 
 {
-  "sourceIds": ["pubmed", "clinicaltrials-gov", "crossref", "tga"],
-  "force": false
+"sourceIds": ["pubmed", "clinicaltrials-gov", "crossref", "tga"],
+"force": false
 }
 
 Behaviour:
@@ -2806,25 +2806,25 @@ Do not implement AI extraction, evidence scoring, creator monitoring, X, YouTube
 Make routine implementation decisions autonomously. Do not pause for approval over ordinary package additions, file layout refinements, component structure, migrations, test fixtures, refactors, debugging, or visual polish that remain inside this brief.
 
 2. Fixed project-management decisions
-2.1 SQLite path and filename
+   2.1 SQLite path and filename
 
 The database must live in the operating system's per-user application-data directory by default. It must not live inside the Git repository.
 
 Resolve the application data directory centrally:
 
-Platform	Default directory
-Windows	%LOCALAPPDATA%\Healthspan Dashboard
-macOS	~/Library/Application Support/Healthspan Dashboard
-Linux	${XDG_DATA_HOME:-~/.local/share}/healthspan-dashboard
+Platform Default directory
+Windows %LOCALAPPDATA%\Healthspan Dashboard
+macOS ~~/Library/Application Support/Healthspan Dashboard
+Linux ${XDG_DATA_HOME:-~~/.local/share}/healthspan-dashboard
 
 Use this layout:
 
 <application-data-directory>/
 ├─ healthspan-dashboard.sqlite3
 └─ raw/
-   └─ sha256/
-      └─ <first-two-hash-characters>/
-         └─ <full-sha256>.<json|xml|rss>.gz
+└─ sha256/
+└─ <first-two-hash-characters>/
+└─ <full-sha256>.<json|xml|rss>.gz
 
 Expected Windows path:
 
@@ -2870,11 +2870,11 @@ These are local runtime settings, not assumptions embedded in portable migration
 Keep the original four source families. The full-ingestion order is fixed:
 
 PubMed
-  ↓
+↓
 ClinicalTrials.gov
-  ↓
+↓
 Crossref exact-DOI enrichment
-  ↓
+↓
 TGA RSS
 
 Rationale:
@@ -3022,7 +3022,7 @@ apps/web/
 The existing Hono API and repository seam are intentional. Replace the seeded-memory implementation behind that boundary rather than bypassing it.
 
 5. Scope
-5.1 In scope
+   5.1 In scope
 
 Windows-first application-data path resolution
 
@@ -3117,31 +3117,31 @@ Paid API services
 Production backup/restore UI
 
 6. Target architecture
-Official source
-    ↓
-Shared HTTP client
-    ↓
-Connector fetch page/feed response
-    ↓
-Immutable RawSnapshotStore
-    ↓
-Source-specific parser
-    ↓
-Zod validation
-    ↓
-Normalised source record
-    ↓
-Source object and version persistence
-    ↓
-Exact identifier matching
-    ↓
-Content entity projection
-    ↓
-Deterministic change detection
-    ↓
-Repository/API
-    ↓
-Live UI, source health, and alerts
+   Official source
+   ↓
+   Shared HTTP client
+   ↓
+   Connector fetch page/feed response
+   ↓
+   Immutable RawSnapshotStore
+   ↓
+   Source-specific parser
+   ↓
+   Zod validation
+   ↓
+   Normalised source record
+   ↓
+   Source object and version persistence
+   ↓
+   Exact identifier matching
+   ↓
+   Content entity projection
+   ↓
+   Deterministic change detection
+   ↓
+   Repository/API
+   ↓
+   Live UI, source health, and alerts
 
 Cross-cutting rules:
 
@@ -3162,7 +3162,7 @@ Every Live content item must trace to at least one source object and version.
 No personal health data is stored.
 
 7. Package boundaries
-packages/core
+   packages/core
 
 Own:
 
@@ -3785,21 +3785,21 @@ invalid/corrupt-file handling
 Define a portable interface equivalent in behaviour to:
 
 interface RawSnapshotStore {
-  put(input: {
-    sourceId: string;
-    bytes: Uint8Array;
-    mediaType: string;
-    preferredExtension: "json" | "xml" | "rss";
-  }): Promise<{
-    contentHash: string;
-    storageKey: string;
-    uncompressedBytes: number;
-    compressedBytes: number;
-    compression: "gzip";
-  }>;
+put(input: {
+sourceId: string;
+bytes: Uint8Array;
+mediaType: string;
+preferredExtension: "json" | "xml" | "rss";
+}): Promise<{
+contentHash: string;
+storageKey: string;
+uncompressedBytes: number;
+compressedBytes: number;
+compression: "gzip";
+}>;
 
-  get(storageKey: string): Promise<Uint8Array>;
-  exists(storageKey: string): Promise<boolean>;
+get(storageKey: string): Promise<Uint8Array>;
+exists(storageKey: string): Promise<boolean>;
 }
 
 Rules:
@@ -3951,7 +3951,7 @@ Other 4xx: non-retryable by default
 Do not retry parser/schema errors as transient network failures.
 
 13. Connector specifications
-13.1 PubMed
+    13.1 PubMed
 
 Use NCBI E-utilities.
 
@@ -4288,7 +4288,7 @@ supplements/products explicitly marketed with anti-ageing claims
 Store match state, matched terms, and matcher version. Do not infer causation or clinical severity.
 
 14. Identifier normalisation and deduplication
-DOI
+    DOI
 
 Trim.
 
@@ -4382,33 +4382,33 @@ Retain existing routes where practical and make repository calls asynchronous.
 Response envelope:
 
 {
-  data: ...,
-  meta: {
-    dataMode: "live" | "demo",
-    generatedAt: string,
-    partial: boolean,
-    sourceFreshness?: ...
-  }
+data: ...,
+meta: {
+dataMode: "live" | "demo",
+generatedAt: string,
+partial: boolean,
+sourceFreshness?: ...
+}
 }
 
 Required routes:
 
-GET  /health
-GET  /api/dashboard
-GET  /api/items
-GET  /api/items/:id
-GET  /api/search
-GET  /api/sources
-GET  /api/ingestion/status
-GET  /api/ingestion/runs
-GET  /api/ingestion/runs/:id
+GET /health
+GET /api/dashboard
+GET /api/items
+GET /api/items/:id
+GET /api/search
+GET /api/sources
+GET /api/ingestion/status
+GET /api/ingestion/runs
+GET /api/ingestion/runs/:id
 POST /api/ingestion/runs
 
 Validated refresh body:
 
 {
-  "sourceIds": ["pubmed", "clinicaltrials-gov", "crossref", "tga"],
-  "force": false
+"sourceIds": ["pubmed", "clinicaltrials-gov", "crossref", "tga"],
+"force": false
 }
 
 Behaviour:

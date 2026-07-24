@@ -36,7 +36,11 @@ function parseMaybeDate(value: unknown): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
-function reparseBytes(sourceId: ConnectorId, bytes: Buffer, recordCap: number): ConnectorFetchResult {
+function reparseBytes(
+  sourceId: ConnectorId,
+  bytes: Buffer,
+  recordCap: number,
+): ConnectorFetchResult {
   if (sourceId === 'pubmed') return reparsePubmedRaw(bytes, recordCap);
   if (sourceId === 'clinicaltrials-gov') return reparseClinicalTrialsRaw(bytes, recordCap);
   if (sourceId === 'crossref') return reparseCrossrefRaw(bytes);
@@ -130,7 +134,12 @@ export async function reprocessFromStoredSnapshots(opts: {
       const existingObj = opts.db
         .select()
         .from(sourceObjects)
-        .where(and(eq(sourceObjects.sourceId, opts.sourceId), eq(sourceObjects.externalId, page.externalId)))
+        .where(
+          and(
+            eq(sourceObjects.sourceId, opts.sourceId),
+            eq(sourceObjects.externalId, page.externalId),
+          ),
+        )
         .all()[0];
 
       let sourceObjectId = existingObj?.id;

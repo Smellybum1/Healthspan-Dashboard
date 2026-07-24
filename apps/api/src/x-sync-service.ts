@@ -43,7 +43,8 @@ export function getXBudgetStatus(db: HealthspanDb) {
   const remaining = Math.max(0, row.capMicros - row.spentMicros);
   let status: 'healthy' | 'disabled' | 'not_configured' | 'budget_blocked' = 'healthy';
   if (process.env.HEALTHSPAN_X_ENABLED !== 'true') status = 'disabled';
-  else if (!process.env.X_BEARER_TOKEN || !row.acknowledged || row.capMicros <= 0) status = 'not_configured';
+  else if (!process.env.X_BEARER_TOKEN || !row.acknowledged || row.capMicros <= 0)
+    status = 'not_configured';
   else if (remaining <= 0) status = 'budget_blocked';
   return {
     periodKey: row.periodKey,
@@ -182,7 +183,10 @@ function upsertXPost(
     updatedAt: opts.at,
   };
   if (current) {
-    db.update(platformContentCurrent).set(values).where(eq(platformContentCurrent.id, current.id)).run();
+    db.update(platformContentCurrent)
+      .set(values)
+      .where(eq(platformContentCurrent.id, current.id))
+      .run();
   } else {
     db.insert(platformContentCurrent)
       .values({ id: randomUUID(), contentItemId: contentId, ...values, createdAt: opts.at })
@@ -232,7 +236,9 @@ export function purgeXPost(db: HealthspanDb, postId: string, reason: string, at 
       unavailabilityReason: reason,
       complianceEventId: eventId,
       purgedAt: at,
-      auditMetadataJson: JSON.stringify({ note: 'X source text purged; dependent platform claims invalidated' }),
+      auditMetadataJson: JSON.stringify({
+        note: 'X source text purged; dependent platform claims invalidated',
+      }),
       createdAt: at,
     })
     .run();
@@ -241,7 +247,11 @@ export function purgeXPost(db: HealthspanDb, postId: string, reason: string, at 
   for (const claim of db.select().from(creatorClaims).all()) {
     if (claim.contentItemId === item.id && claim.active) {
       db.update(creatorClaims)
-        .set({ active: false, lifecycleState: 'invalidated_compliance', reviewStatus: 'invalidated' })
+        .set({
+          active: false,
+          lifecycleState: 'invalidated_compliance',
+          reviewStatus: 'invalidated',
+        })
         .where(eq(creatorClaims.id, claim.id))
         .run();
       invalidatedClaims += 1;
@@ -259,25 +269,28 @@ export function applyXComplianceBatch(db: HealthspanDb, actions: XComplianceActi
     .from(creatorContentItems)
     .all()
     .filter((c) => c.platform === 'x')
-    .map(
-      (c): XPostMetadata => ({
-        postId: c.externalId,
-        userId: c.platformAccountId ?? '',
-        text: c.title,
-        createdAt: c.publishedAt ? new Date(c.publishedAt).toISOString() : null,
-        editedAt: null,
-        conversationId: null,
-        isReply: false,
-        isRepost: false,
-        withheld: false,
-        claimEvidence: false,
-        externalAiAllowed: false,
-        note: '',
-      }),
-    );
+    .map((c): XPostMetadata => ({
+      postId: c.externalId,
+      userId: c.platformAccountId ?? '',
+      text: c.title,
+      createdAt: c.publishedAt ? new Date(c.publishedAt).toISOString() : null,
+      editedAt: null,
+      conversationId: null,
+      isReply: false,
+      isRepost: false,
+      withheld: false,
+      claimEvidence: false,
+      externalAiAllowed: false,
+      note: '',
+    }));
   const local = applyXComplianceActionsLocally(posts, actions);
   for (const postId of local.purged) {
-    const result = purgeXPost(db, postId, actions.find((a) => a.postId === postId)?.reason ?? 'compliance', at);
+    const result = purgeXPost(
+      db,
+      postId,
+      actions.find((a) => a.postId === postId)?.reason ?? 'compliance',
+      at,
+    );
     if (result.purged) purged += 1;
     invalidatedClaims += result.invalidatedClaims;
   }
@@ -497,9 +510,7 @@ export function isXComplianceOverdue(
   if (!status.enabled) return false;
   if (status.lastReconciledAt == null) return true;
   const maxMs =
-    status.maxAgeHours != null
-      ? status.maxAgeHours * 60 * 60 * 1000
-      : getXComplianceMaxAgeMs();
+    status.maxAgeHours != null ? status.maxAgeHours * 60 * 60 * 1000 : getXComplianceMaxAgeMs();
   return now - status.lastReconciledAt > maxMs;
 }
 
@@ -564,7 +575,11 @@ export function runXComplianceReconciliation(
   // Hide X content that is past display max age or when reconciliation had been overdue.
   let hidden = 0;
   const displayCutoff = at - X_DISPLAY_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
-  for (const item of db.select().from(creatorContentItems).all().filter((c) => c.platform === 'x')) {
+  for (const item of db
+    .select()
+    .from(creatorContentItems)
+    .all()
+    .filter((c) => c.platform === 'x')) {
     const current = db
       .select()
       .from(platformContentCurrent)

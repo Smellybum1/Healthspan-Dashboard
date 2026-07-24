@@ -19,7 +19,11 @@ export function CatalogPage({
   description: string;
   type?: string;
   pathPrefix?: string;
-  extraFilters?: Array<{ key: string; label: string; options: Array<{ value: string; label: string }> }>;
+  extraFilters?: Array<{
+    key: string;
+    label: string;
+    options: Array<{ value: string; label: string }>;
+  }>;
   liveEmptyHint?: string;
 }) {
   const [params, setParams] = useSearchParams();
@@ -34,9 +38,7 @@ export function CatalogPage({
       fetchItems({
         type,
         q: q || undefined,
-        ...Object.fromEntries(
-          Object.entries(filterValues).filter(([, value]) => Boolean(value)),
-        ),
+        ...Object.fromEntries(Object.entries(filterValues).filter(([, value]) => Boolean(value))),
       }),
     [type, q, JSON.stringify(filterValues)],
   );
@@ -99,7 +101,9 @@ export function CatalogPage({
         ))}
       </div>
 
-      <p className="text-sm text-[var(--muted)]">{loading ? 'Loading…' : `${items.length} results`}</p>
+      <p className="text-sm text-[var(--muted)]">
+        {loading ? 'Loading…' : `${items.length} results`}
+      </p>
 
       {loading ? (
         <div className="space-y-2">
@@ -234,4 +238,3 @@ export function SafetyListPage() {
     />
   );
 }
-

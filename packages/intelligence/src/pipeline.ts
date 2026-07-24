@@ -6,11 +6,7 @@ import {
   type NormalizedLiveRecord,
 } from './deterministic.js';
 import { resolveIntelligenceProvider } from './providers.js';
-import {
-  CLAIM_SCHEMA_VERSION,
-  RULESET_VERSION,
-  SEGMENT_BUILDER_VERSION,
-} from './versions.js';
+import { CLAIM_SCHEMA_VERSION, RULESET_VERSION, SEGMENT_BUILDER_VERSION } from './versions.js';
 
 export function analyzeNormalizedRecord(record: NormalizedLiveRecord) {
   const segments = buildSegments(record);

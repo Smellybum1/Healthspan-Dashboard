@@ -13,6 +13,7 @@ Healthspan Dashboard now has a source-grounded Live intervention/peptide identit
 ## Delivered
 
 ### Identity & dossiers
+
 - Package `@healthspan/interventions` (normalize, peptide policy, mentions, resolve)
 - Migrations `0004`–`0005` (entities/dossiers/regulatory + safety aggregates/trial links/peptide modifications)
 - Bootstrap catalog, mention extraction/resolution, immutable dossier snapshots
@@ -20,6 +21,7 @@ Healthspan Dashboard now has a source-grounded Live intervention/peptide identit
 - Entity-resolution queue with accept/reject/defer/create_entity/keep_separate/link_other
 
 ### Connectors (fixture-first; default tests make no live calls)
+
 - RxNorm, PubChem, GSRS identity enrichment (presence ≠ approval)
 - Bounded TGA ARTG HTML connector + terms/robots note (`docs/source-policies/artg-bounded-access.md`, check date 24 Jul 2026)
 - Drugs@FDA Products projection + ZIP extract with zip-slip/size guards
@@ -28,25 +30,27 @@ Healthspan Dashboard now has a source-grounded Live intervention/peptide identit
 - FDA AEMS potential signals (never causal / never incidence)
 
 ### Comparison, trials, Today
+
 - Compare 2–4 entities; no winner/rank/recommendation/spontaneous-report ranking
 - `trial_intervention_entity_links` + link admin route; dossier trial portfolio caveat
 - Today Intervention Watch feeds non-baseline `dossier_change_events`
 
 ### Docs / doctors
+
 - ADR-0009, DATA_MODEL M4 section, methodology expansions
 - `pnpm dossiers:doctor` (+ interventions/regulatory/safety aliases)
 
 ## Quality gates
 
-| Gate | Result |
-| --- | --- |
-| `pnpm lint` | pass (0 warnings) |
-| `pnpm typecheck` | pass |
-| `pnpm test` | 74 passed |
-| `pnpm test:e2e` | 15 passed / 3 skipped (chromium mobile-only skips) |
-| `pnpm build` | pass |
-| `pnpm intelligence:eval` | 73/73 + 16/16 claim pairs |
-| `pnpm dossiers:doctor` | ok |
+| Gate                     | Result                                             |
+| ------------------------ | -------------------------------------------------- |
+| `pnpm lint`              | pass (0 warnings)                                  |
+| `pnpm typecheck`         | pass                                               |
+| `pnpm test`              | 74 passed                                          |
+| `pnpm test:e2e`          | 15 passed / 3 skipped (chromium mobile-only skips) |
+| `pnpm build`             | pass                                               |
+| `pnpm intelligence:eval` | 73/73 + 16/16 claim pairs                          |
+| `pnpm dossiers:doctor`   | ok                                                 |
 
 ## Screenshots
 

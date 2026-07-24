@@ -31,13 +31,16 @@ export function createLocalScheduler(opts: {
 } {
   const enabled =
     opts.enabled ??
-    (process.env.HEALTHSPAN_SCHEDULER_ENABLED === 'true' ||
-      process.env.NODE_ENV === 'production');
+    (process.env.HEALTHSPAN_SCHEDULER_ENABLED === 'true' || process.env.NODE_ENV === 'production');
   const staleThreshold = opts.staleThresholdMs ?? 24 * 60 * 60 * 1000;
   let timer: ReturnType<typeof setInterval> | null = null;
 
   function ensureState() {
-    const row = opts.db.select().from(schedulerState).where(eq(schedulerState.id, 'local')).all()[0];
+    const row = opts.db
+      .select()
+      .from(schedulerState)
+      .where(eq(schedulerState.id, 'local'))
+      .all()[0];
     if (!row) {
       const now = Date.now();
       opts.db
@@ -56,7 +59,11 @@ export function createLocalScheduler(opts: {
 
   function getStatus() {
     ensureState();
-    const row = opts.db.select().from(schedulerState).where(eq(schedulerState.id, 'local')).all()[0]!;
+    const row = opts.db
+      .select()
+      .from(schedulerState)
+      .where(eq(schedulerState.id, 'local'))
+      .all()[0]!;
     return {
       timezone: row.timezone,
       schedule: row.cronExpression,
@@ -72,13 +79,16 @@ export function createLocalScheduler(opts: {
   function tick(now = Date.now()) {
     if (!enabled) return { enqueued: false, reason: null };
     ensureState();
-    const row = opts.db.select().from(schedulerState).where(eq(schedulerState.id, 'local')).all()[0]!;
+    const row = opts.db
+      .select()
+      .from(schedulerState)
+      .where(eq(schedulerState.id, 'local'))
+      .all()[0]!;
     if (!row.enabled) return { enqueued: false, reason: null };
 
     let reason: string | null = null;
     const due = row.nextRunAt != null && row.nextRunAt <= now;
-    const stale =
-      row.lastCompletedAt == null || now - row.lastCompletedAt >= staleThreshold;
+    const stale = row.lastCompletedAt == null || now - row.lastCompletedAt >= staleThreshold;
 
     if (due) reason = 'scheduled_0600_brisbane';
     else if (stale && (row.lastEnqueuedAt == null || now - row.lastEnqueuedAt >= staleThreshold)) {

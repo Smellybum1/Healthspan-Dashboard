@@ -68,11 +68,13 @@ export function reparseCrossrefRaw(bytes: Buffer): ConnectorFetchResult {
 }
 
 /** Crossref enrichment-only connector: exact DOI lookups for locally known DOIs. */
-export function createCrossrefConnector(opts: {
-  mailto?: string;
-  dois?: string[];
-  transport?: FetchTransport;
-} = {}): SourceConnector {
+export function createCrossrefConnector(
+  opts: {
+    mailto?: string;
+    dois?: string[];
+    transport?: FetchTransport;
+  } = {},
+): SourceConnector {
   const client = createHttpClient({
     transport: opts.transport,
     userAgent: `HealthspanDashboard/0.2 (mailto:${opts.mailto ?? 'local@invalid'})`,

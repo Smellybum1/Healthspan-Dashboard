@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { fdaBulkSourceSchedules, nextWeeklyBrisbaneSixAm, scheduleForSource } from './source-schedule.js';
+import {
+  fdaBulkSourceSchedules,
+  nextWeeklyBrisbaneSixAm,
+  scheduleForSource,
+} from './source-schedule.js';
 
 describe('FDA bulk / Purple Book source schedule', () => {
   it('computes a future weekly Brisbane Sunday 06:00', () => {

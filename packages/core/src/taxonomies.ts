@@ -67,25 +67,10 @@ export const RegulatoryStatusSchema = z.enum([
 ]);
 export type RegulatoryStatus = z.infer<typeof RegulatoryStatusSchema>;
 
-export const JurisdictionSchema = z.enum([
-  'AU',
-  'US',
-  'EU',
-  'UK',
-  'CA',
-  'JP',
-  'global',
-  'other',
-]);
+export const JurisdictionSchema = z.enum(['AU', 'US', 'EU', 'UK', 'CA', 'JP', 'global', 'other']);
 export type Jurisdiction = z.infer<typeof JurisdictionSchema>;
 
-export const SafetySeveritySchema = z.enum([
-  'info',
-  'low',
-  'moderate',
-  'high',
-  'critical',
-]);
+export const SafetySeveritySchema = z.enum(['info', 'low', 'moderate', 'high', 'critical']);
 export type SafetySeverity = z.infer<typeof SafetySeveritySchema>;
 
 export const ContentTypeSchema = z.enum([
@@ -154,12 +139,7 @@ export const CreatorTypeSchema = z.enum([
 ]);
 export type CreatorType = z.infer<typeof CreatorTypeSchema>;
 
-export const ReviewTaskStatusSchema = z.enum([
-  'open',
-  'in_progress',
-  'resolved',
-  'dismissed',
-]);
+export const ReviewTaskStatusSchema = z.enum(['open', 'in_progress', 'resolved', 'dismissed']);
 export type ReviewTaskStatus = z.infer<typeof ReviewTaskStatusSchema>;
 
 export const ChangeKindSchema = z.enum([

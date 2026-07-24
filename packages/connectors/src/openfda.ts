@@ -1,7 +1,16 @@
 import { createHash } from 'node:crypto';
 import { createHttpClient } from './http.js';
-import { identityResult, type IdentityConnector, type IdentityLookupQuery } from './identity-types.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import {
+  identityResult,
+  type IdentityConnector,
+  type IdentityLookupQuery,
+} from './identity-types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 function hashNormalized(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -94,7 +103,11 @@ export function createOpenFdaLabelConnector(
       const res = await client.request(url);
       const json = (await res.json()) as OpenFdaLabelResponse;
       const rawBodies: ConnectorFetchResult['rawBodies'] = [
-        { bytes: Buffer.from(JSON.stringify(json), 'utf8'), mediaType: 'application/json', ext: 'json' },
+        {
+          bytes: Buffer.from(JSON.stringify(json), 'utf8'),
+          mediaType: 'application/json',
+          ext: 'json',
+        },
       ];
       const results = json.results ?? [];
       if (results.length === 0) {

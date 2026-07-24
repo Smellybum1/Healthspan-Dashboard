@@ -25,7 +25,9 @@ const sourceIdx = args.indexOf('--source');
 const sourceArg = (sourceIdx >= 0 ? args[sourceIdx + 1] : 'pubmed') ?? 'pubmed';
 const allowed = new Set(['pubmed', 'clinicaltrials-gov', 'crossref', 'tga', 'all']);
 if (!allowed.has(sourceArg)) {
-  console.error(`Unsupported --source ${sourceArg}. Use pubmed|clinicaltrials-gov|crossref|tga|all`);
+  console.error(
+    `Unsupported --source ${sourceArg}. Use pubmed|clinicaltrials-gov|crossref|tga|all`,
+  );
   process.exit(2);
 }
 
@@ -79,9 +81,7 @@ function offlineTransport() {
 }
 
 const useTemp = process.env.HEALTHSPAN_REPROCESS_TEMP !== '0';
-const tempRoot = useTemp
-  ? fs.mkdtempSync(path.join(os.tmpdir(), 'healthspan-reprocess-'))
-  : null;
+const tempRoot = useTemp ? fs.mkdtempSync(path.join(os.tmpdir(), 'healthspan-reprocess-')) : null;
 
 if (tempRoot) {
   process.env.HEALTHSPAN_DATA_DIR = tempRoot;

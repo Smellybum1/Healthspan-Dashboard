@@ -35,17 +35,22 @@ export function ClaimsPage() {
       {error ? <p className="text-rose-300">{error}</p> : null}
       {data?.note ? <p className="text-sm text-[var(--muted)]">{data.note}</p> : null}
       {(data?.items ?? []).length === 0 ? (
-        <p className="text-sm text-[var(--muted)]">No Live claims yet. Run ingestion then intelligence analysis.</p>
+        <p className="text-sm text-[var(--muted)]">
+          No Live claims yet. Run ingestion then intelligence analysis.
+        </p>
       ) : (
         <ul className="space-y-2">
           {(data?.items ?? []).map((claim) => (
-            <li key={String(claim.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+            <li
+              key={String(claim.id)}
+              className="rounded-lg border border-[var(--border)] px-3 py-2"
+            >
               <Link className="font-medium underline" to={`/claims/${String(claim.id)}`}>
                 {String(claim.claimText)}
               </Link>
               <p className="text-xs text-[var(--muted)]">
-                {String(claim.claimKind)} · {String(claim.assertionRole)} · review {String(claim.reviewStatus)} ·{' '}
-                {String(claim.classificationConfidence)}
+                {String(claim.claimKind)} · {String(claim.assertionRole)} · review{' '}
+                {String(claim.reviewStatus)} · {String(claim.classificationConfidence)}
               </p>
             </li>
           ))}

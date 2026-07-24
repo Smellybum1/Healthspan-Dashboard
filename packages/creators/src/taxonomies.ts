@@ -24,12 +24,7 @@ export const CREATOR_LIFECYCLE_STATES = [
   'under_review',
 ] as const;
 
-export const ROLE_PROVENANCE_STATES = [
-  'declared',
-  'documented',
-  'reviewed',
-  'withdrawn',
-] as const;
+export const ROLE_PROVENANCE_STATES = ['declared', 'documented', 'reviewed', 'withdrawn'] as const;
 
 export const CREATOR_CLAIM_KINDS = [
   'efficacy',
@@ -81,16 +76,19 @@ export function classifyCreatorClaimTaxonomy(
   else if (/\b(safe|safety|adverse|toxicity|side effect)/i.test(text)) claimKind = 'safety';
   else if (/\b(dose|protocol|stack|regimen|mg|iu)\b/i.test(text)) claimKind = 'protocol';
   else if (/\b(mechanism|pathway|receptor|autophagy)/i.test(text)) claimKind = 'mechanism';
-  else if (/\b(i took|my experience|anecdotal|personally)/i.test(text)) claimKind = 'personal_experience';
+  else if (/\b(i took|my experience|anecdotal|personally)/i.test(text))
+    claimKind = 'personal_experience';
   else if (/\b(improv\w*|reduc\w*|prevent\w*|extend\w*|benefit\w*|efficac\w*|works)\b/i.test(text))
     claimKind = 'efficacy';
 
   let direction: CreatorClaimDirection = 'unclear';
-  if (assertionRole === 'question' || assertionRole === 'hypothetical') direction = 'not_applicable';
+  if (assertionRole === 'question' || assertionRole === 'hypothetical')
+    direction = 'not_applicable';
   else if (/\b(harm|toxic|danger|worsen|adverse)/i.test(text)) direction = 'harm';
   else if (/\b(no effect|null|no benefit|does not)/i.test(text)) direction = 'null';
   else if (/\b(mixed|depends|context)/i.test(text)) direction = 'mixed';
-  else if (/\b(improv\w*|reduc\w*|prevent\w*|extend\w*|benefit\w*|safe)/i.test(text)) direction = 'benefit';
+  else if (/\b(improv\w*|reduc\w*|prevent\w*|extend\w*|benefit\w*|safe)/i.test(text))
+    direction = 'benefit';
 
   let certaintyLanguage: CertaintyLanguage = 'unknown';
   if (/\b(proven|guarantees?|definitely|always|causes)\b/.test(text)) certaintyLanguage = 'certain';

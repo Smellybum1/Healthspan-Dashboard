@@ -60,7 +60,10 @@ export function createHttpClient(options: HttpClientOptions = {}) {
         }
 
         const retryAfter = Number(res.headers.get('retry-after') ?? '0');
-        const backoff = Math.min(10_000, 250 * 2 ** (attempt - 1) + Math.floor(Math.random() * 100));
+        const backoff = Math.min(
+          10_000,
+          250 * 2 ** (attempt - 1) + Math.floor(Math.random() * 100),
+        );
         await sleep(Math.max(backoff, retryAfter * 1000));
       } catch (err) {
         clearTimeout(timer);

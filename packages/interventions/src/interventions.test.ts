@@ -16,7 +16,9 @@ describe('peptide policy', () => {
     const c = classifyPeptideLabel('BPC-157');
     expect(c.classification).toBe('peptide');
     expect(c.sequenceState).toBe('no_sequence');
-    expect(canStoreSequence({ sourceScheme: null, sequenceText: 'GKLP', reviewed: false })).toBe(false);
+    expect(canStoreSequence({ sourceScheme: null, sequenceText: 'GKLP', reviewed: false })).toBe(
+      false,
+    );
     expect(PEPTIDE_PROHIBITED_UI).toContain('dosing');
   });
 });

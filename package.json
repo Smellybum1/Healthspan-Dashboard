@@ -2,17 +2,18 @@
   "name": "healthspan-dashboard",
   "private": true,
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "description": "Healthspan Dashboard — longevity intelligence, evidence first.",
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@11.6.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=24 <25"
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @healthspan/api --filter @healthspan/web dev",
     "dev:web": "pnpm --filter @healthspan/web dev",
     "dev:api": "pnpm --filter @healthspan/api dev",
     "build": "pnpm -r --filter=./packages/* build && pnpm --filter @healthspan/api build && pnpm --filter @healthspan/web build",
+    "start": "tsx scripts/start-production.ts",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
@@ -45,7 +46,16 @@
     "youtube:doctor": "tsx scripts/youtube-doctor.ts",
     "x:doctor": "tsx scripts/x-doctor.ts",
     "x:compliance": "tsx scripts/x-compliance.ts",
-    "platform-policy:doctor": "tsx scripts/platform-policy-doctor.ts"
+    "platform-policy:doctor": "tsx scripts/platform-policy-doctor.ts",
+    "personalisation:doctor": "tsx scripts/personalisation-doctor.ts",
+    "alerts:doctor": "tsx scripts/alerts-doctor.ts",
+    "briefs:doctor": "tsx scripts/briefs-doctor.ts",
+    "backup:doctor": "tsx scripts/backup-doctor.ts",
+    "operations:doctor": "tsx scripts/operations-doctor.ts",
+    "backup:create": "tsx scripts/backup-create.ts",
+    "sbom": "tsx scripts/sbom.ts",
+    "secrets:scan": "tsx scripts/secrets-scan.ts",
+    "audit:deps": "pnpm audit --prod"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
@@ -54,6 +64,8 @@
     "@healthspan/intelligence": "workspace:*",
     "@healthspan/interventions": "workspace:*",
     "@healthspan/creators": "workspace:*",
+    "@healthspan/personalization": "workspace:*",
+    "@healthspan/operations": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.10",

@@ -72,20 +72,27 @@ export function SourceHealthPage() {
         </div>
         <ul className="grid gap-2 md:grid-cols-2">
           {(sources.data?.sources ?? []).map((source) => (
-            <li key={String(source.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+            <li
+              key={String(source.id)}
+              className="rounded-lg border border-[var(--border)] px-3 py-2"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium">{String(source.displayName ?? source.name ?? source.id)}</p>
+                  <p className="font-medium">
+                    {String(source.displayName ?? source.name ?? source.id)}
+                  </p>
                   <p className="text-xs text-[var(--muted)]">
                     {String(source.health ?? source.healthState)} · failures{' '}
                     {String(source.consecutiveFailures ?? 0)}
                   </p>
                   <p className="text-xs text-[var(--muted)]">
-                    Last success: {formatWhen(source.lastSuccessfulFetchAt as string | null | undefined)}
+                    Last success:{' '}
+                    {formatWhen(source.lastSuccessfulFetchAt as string | null | undefined)}
                   </p>
                   {source.nextRunAt ? (
                     <p className="text-xs text-[var(--muted)]">
-                      Next due: {formatWhen(source.nextRunAt as string)} ({String(source.scheduleCadence)})
+                      Next due: {formatWhen(source.nextRunAt as string)} (
+                      {String(source.scheduleCadence)})
                     </p>
                   ) : null}
                   {source.scheduleNotes ? (
@@ -116,7 +123,8 @@ export function SourceHealthPage() {
           <ul className="space-y-1 text-sm">
             {sources.data?.feeds.map((feed) => (
               <li key={String(feed.id)} className="text-[var(--muted)]">
-                <span className="text-[var(--fg)]">{String(feed.feedKey)}</span> · {String(feed.url)}
+                <span className="text-[var(--fg)]">{String(feed.feedKey)}</span> ·{' '}
+                {String(feed.url)}
               </li>
             ))}
           </ul>
@@ -130,13 +138,16 @@ export function SourceHealthPage() {
         ) : (
           <ul className="space-y-2 text-sm">
             {(runs.data?.runs ?? []).slice(0, 12).map((run) => (
-              <li key={String(run.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+              <li
+                key={String(run.id)}
+                className="rounded-lg border border-[var(--border)] px-3 py-2"
+              >
                 <p className="font-medium">
                   {String(run.sourceId ?? 'all')} · {String(run.status)} · {String(run.trigger)}
                 </p>
                 <p className="text-xs text-[var(--muted)]">
-                  {formatWhen(run.startedAt as string)} · fetched {String(run.remoteRecordCount ?? 0)} ·
-                  changes {String(run.changeEventCount ?? 0)}
+                  {formatWhen(run.startedAt as string)} · fetched{' '}
+                  {String(run.remoteRecordCount ?? 0)} · changes {String(run.changeEventCount ?? 0)}
                 </p>
               </li>
             ))}
@@ -174,7 +185,9 @@ function PlatformPolicyHealth() {
           type="button"
           className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
           onClick={() => {
-            void fetch('/api/platform-policy/audit', { method: 'POST' }).then(() => policy.reload());
+            void fetch('/api/platform-policy/audit', { method: 'POST' }).then(() =>
+              policy.reload(),
+            );
           }}
         >
           Run policy audit

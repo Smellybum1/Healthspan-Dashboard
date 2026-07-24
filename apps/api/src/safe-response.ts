@@ -20,8 +20,19 @@ const FORBIDDEN_KEYS = new Set([
 export type SafeExportCreatorBundle = {
   creatorId: string;
   preferredName?: string;
-  accounts: Array<{ platform: string; externalAccountId: string; handle: string | null; canonicalUrl: string | null }>;
-  documents: Array<{ id: string; filename: string; documentKind: string; rightsBasis: string; lifecycleState: string }>;
+  accounts: Array<{
+    platform: string;
+    externalAccountId: string;
+    handle: string | null;
+    canonicalUrl: string | null;
+  }>;
+  documents: Array<{
+    id: string;
+    filename: string;
+    documentKind: string;
+    rightsBasis: string;
+    lifecycleState: string;
+  }>;
   claims: Array<{ id: string; claimId: string; reviewStatus: string; assertionRole: string }>;
   youtubeVideos: Array<{ videoId: string; canonicalUrl: string | null; claimEvidence: false }>;
   xPosts: Array<{ postId: string; canonicalUrl: string | null; complianceState: string }>;

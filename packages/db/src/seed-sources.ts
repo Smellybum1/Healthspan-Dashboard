@@ -75,7 +75,8 @@ export const DEFAULT_SOURCES = [
     id: 'fda-aems',
     displayName: 'FDA AEMS Potential Signals',
     kind: 'regulator',
-    officialBaseUrl: 'https://www.fda.gov/drugs/questions-and-answers-fdas-adverse-event-reporting-system-faers/',
+    officialBaseUrl:
+      'https://www.fda.gov/drugs/questions-and-answers-fdas-adverse-event-reporting-system-faers/',
   },
   {
     id: 'youtube',

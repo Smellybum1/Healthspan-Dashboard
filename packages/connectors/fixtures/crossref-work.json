@@ -1,1 +1,11 @@
-{"message":{"title":["Example Crossref Work"],"DOI":"10.1234/example.doi","container-title":["Aging Cell"],"abstract":"<jats:p>Abstract</jats:p>","author":[{"given":"Ada","family":"Lovelace"}],"published-print":{"date-parts":[[2024,1,15]]},"URL":"https://doi.org/10.1234/example.doi"}}
+{
+  "message": {
+    "title": ["Example Crossref Work"],
+    "DOI": "10.1234/example.doi",
+    "container-title": ["Aging Cell"],
+    "abstract": "<jats:p>Abstract</jats:p>",
+    "author": [{ "given": "Ada", "family": "Lovelace" }],
+    "published-print": { "date-parts": [[2024, 1, 15]] },
+    "URL": "https://doi.org/10.1234/example.doi"
+  }
+}

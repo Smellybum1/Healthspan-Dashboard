@@ -34,7 +34,8 @@ function fileToBase64(file: File): Promise<string> {
 export function CreatorProfilePage() {
   const { id = '' } = useParams();
   const { data, loading, error, reload } = useAsync(() => fetchCreator(id), [id]);
-  const [rightsBasis, setRightsBasis] = useState<(typeof RIGHTS_OPTIONS)[number]['value']>('user_owned');
+  const [rightsBasis, setRightsBasis] =
+    useState<(typeof RIGHTS_OPTIONS)[number]['value']>('user_owned');
   const [importBusy, setImportBusy] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [ytSyncBusy, setYtSyncBusy] = useState(false);
@@ -86,9 +87,7 @@ export function CreatorProfilePage() {
           const job = (await jobRes.json().catch(() => ({}))) as Record<string, unknown>;
           const status = String(job.status ?? '');
           if (status === 'succeeded' || status === 'partial') {
-            setYtSyncMessage(
-              `YouTube sync job ${status}. Metadata is never claim evidence.`,
-            );
+            setYtSyncMessage(`YouTube sync job ${status}. Metadata is never claim evidence.`);
             reload();
             return;
           }
@@ -181,16 +180,20 @@ export function CreatorProfilePage() {
 
       {isLive ? (
         <>
-          <p className="text-sm text-[var(--muted)]">{String(data.neutralDescription ?? data.summary ?? '')}</p>
+          <p className="text-sm text-[var(--muted)]">
+            {String(data.neutralDescription ?? data.summary ?? '')}
+          </p>
           <p className="text-xs text-[var(--muted)]">
-            Kind: {String(data.creatorKind)} · Identity confidence: {String(data.identityConfidence)}
+            Kind: {String(data.creatorKind)} · Identity confidence:{' '}
+            {String(data.identityConfidence)}
           </p>
 
           <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
             <h2 className="text-sm font-semibold">Monitored accounts</h2>
             {accounts.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">
-                No platform accounts yet. Add a YouTube channel ID/URL/@handle or optional X username via admin API.
+                No platform accounts yet. Add a YouTube channel ID/URL/@handle or optional X
+                username via admin API.
               </p>
             ) : (
               <ul className="space-y-1 text-sm">
@@ -202,7 +205,12 @@ export function CreatorProfilePage() {
                       <>
                         {' '}
                         ·{' '}
-                        <a className="underline" href={String(a.canonicalUrl)} target="_blank" rel="noreferrer">
+                        <a
+                          className="underline"
+                          href={String(a.canonicalUrl)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           open
                         </a>
                       </>
@@ -220,11 +228,14 @@ export function CreatorProfilePage() {
               >
                 {ytSyncBusy ? 'Syncing YouTube…' : 'Sync YouTube metadata'}
               </button>
-              {ytSyncMessage ? <p className="text-xs text-[var(--muted)]">{ytSyncMessage}</p> : null}
+              {ytSyncMessage ? (
+                <p className="text-xs text-[var(--muted)]">{ytSyncMessage}</p>
+              ) : null}
             </div>
             <p className="text-xs text-[var(--muted)]">
-              YouTube metadata is never claim evidence. Sync uses channels.list → uploads playlist → videos.list with
-              daily quota ledger. X is optional, budget-capped, and never sent to external AI.
+              YouTube metadata is never claim evidence. Sync uses channels.list → uploads playlist →
+              videos.list with daily quota ledger. X is optional, budget-capped, and never sent to
+              external AI.
             </p>
           </section>
 
@@ -232,21 +243,30 @@ export function CreatorProfilePage() {
             <h2 className="text-sm font-semibold">YouTube videos (metadata only)</h2>
             {youtubeVideos.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">
-                No synced video metadata yet. Run Sync YouTube metadata after adding a UC… channel ID.
+                No synced video metadata yet. Run Sync YouTube metadata after adding a UC… channel
+                ID.
               </p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {youtubeVideos.map((v) => (
-                  <li key={String(v.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+                  <li
+                    key={String(v.id)}
+                    className="rounded-lg border border-[var(--border)] px-3 py-2"
+                  >
                     <p className="font-medium">{String(v.title)}</p>
                     <p className="text-xs text-[var(--muted)]">
-                      {v.displayEligible ? 'display-eligible' : 'refresh due / hidden'} · metadata only · not claim
-                      evidence
+                      {v.displayEligible ? 'display-eligible' : 'refresh due / hidden'} · metadata
+                      only · not claim evidence
                       {v.captionAvailable ? ' · captions available (flag only)' : ''}
                       {v.paidPlacementDeclared ? ' · paid placement declared' : ''}
                     </p>
                     {v.canonicalUrl ? (
-                      <a className="text-xs underline" href={String(v.canonicalUrl)} target="_blank" rel="noreferrer">
+                      <a
+                        className="text-xs underline"
+                        href={String(v.canonicalUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         Open on YouTube
                       </a>
                     ) : null}
@@ -259,8 +279,9 @@ export function CreatorProfilePage() {
           <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
             <h2 className="text-sm font-semibold">Documents</h2>
             <p className="text-xs text-[var(--muted)]">
-              Import user-supplied or authorised VTT/SRT/TXT/JSON only. Unofficial caption scrape, media download, and
-              speech-to-text are prohibited. YouTube API metadata cannot become claim evidence.
+              Import user-supplied or authorised VTT/SRT/TXT/JSON only. Unofficial caption scrape,
+              media download, and speech-to-text are prohibited. YouTube API metadata cannot become
+              claim evidence.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <label className="block text-xs space-y-1 flex-1">
@@ -293,13 +314,16 @@ export function CreatorProfilePage() {
             </div>
             {importMessage ? <p className="text-xs text-[var(--muted)]">{importMessage}</p> : null}
             {documents.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">No authorised transcripts/documents imported yet.</p>
+              <p className="text-sm text-[var(--muted)]">
+                No authorised transcripts/documents imported yet.
+              </p>
             ) : (
               <ul className="space-y-1 text-sm">
                 {documents.map((d) => (
                   <li key={String(d.id)} className="flex flex-wrap items-center gap-2">
                     <span>
-                      {String(d.filename)} · {String(d.documentKind)} · rights {String(d.rightsBasis)}
+                      {String(d.filename)} · {String(d.documentKind)} · rights{' '}
+                      {String(d.rightsBasis)}
                       {d.claimEligible ? ' · claim-eligible' : ''}
                     </span>
                     <button
@@ -310,7 +334,10 @@ export function CreatorProfilePage() {
                           const res = await fetch(`/api/creators/${id}/documents/${String(d.id)}`, {
                             method: 'DELETE',
                           });
-                          const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+                          const body = (await res.json().catch(() => ({}))) as Record<
+                            string,
+                            unknown
+                          >;
                           if (!res.ok) {
                             setImportMessage(String(body.error ?? `Delete failed: ${res.status}`));
                             return;
@@ -334,7 +361,8 @@ export function CreatorProfilePage() {
             <h2 className="text-sm font-semibold">Claims</h2>
             <form className="space-y-2" onSubmit={(e) => void onCreateManualClaim(e)}>
               <p className="text-xs text-[var(--muted)]">
-                Manual source-linked claim capture. Assess the claim text — never invent trust or popularity scores.
+                Manual source-linked claim capture. Assess the claim text — never invent trust or
+                popularity scores.
               </p>
               <label className="block text-xs space-y-1">
                 <span className="text-[var(--muted)]">Claim text</span>
@@ -369,7 +397,10 @@ export function CreatorProfilePage() {
             ) : (
               <ul className="space-y-2">
                 {claims.map((claim) => (
-                  <li key={String(claim.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+                  <li
+                    key={String(claim.id)}
+                    className="rounded-lg border border-[var(--border)] px-3 py-2"
+                  >
                     <p className="font-medium">{String(claim.claimText)}</p>
                     <p className="text-xs text-[var(--muted)]">
                       {String(claim.assertionRole)} · {String(claim.confidence)}
@@ -377,7 +408,8 @@ export function CreatorProfilePage() {
                     </p>
                     <p className="text-xs text-[var(--muted)]">
                       {String(
-                        (claim.alignment as { overallLabel?: string } | undefined)?.overallLabel ?? '',
+                        (claim.alignment as { overallLabel?: string } | undefined)?.overallLabel ??
+                          '',
                       )}
                     </p>
                   </li>

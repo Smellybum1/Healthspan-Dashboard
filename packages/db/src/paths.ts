@@ -70,7 +70,9 @@ export function resolveDataPaths(input: ResolveDataPathsInput = {}): DataPaths {
   if (platform === 'win32') {
     const local = env.LOCALAPPDATA;
     if (!local) {
-      throw new Error('LOCALAPPDATA is required on Windows to resolve the Healthspan data directory.');
+      throw new Error(
+        'LOCALAPPDATA is required on Windows to resolve the Healthspan data directory.',
+      );
     }
     const dataDir = targetApi.join(local, 'Healthspan Dashboard');
     return {

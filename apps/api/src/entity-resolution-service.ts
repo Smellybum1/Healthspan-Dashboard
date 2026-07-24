@@ -61,7 +61,11 @@ export function resolveEntityResolutionTask(
     newEntityType?: string;
   },
 ) {
-  const task = db.select().from(entityResolutionTasks).where(eq(entityResolutionTasks.id, opts.taskId)).all()[0];
+  const task = db
+    .select()
+    .from(entityResolutionTasks)
+    .where(eq(entityResolutionTasks.id, opts.taskId))
+    .all()[0];
   if (!task) {
     return { ok: false as const, status: 404 as const, error: 'Entity-resolution task not found' };
   }
@@ -77,7 +81,11 @@ export function resolveEntityResolutionTask(
   }
 
   const mention = task.mentionId
-    ? db.select().from(interventionMentions).where(eq(interventionMentions.id, task.mentionId)).all()[0]
+    ? db
+        .select()
+        .from(interventionMentions)
+        .where(eq(interventionMentions.id, task.mentionId))
+        .all()[0]
     : null;
   const prior = mention
     ? db
@@ -141,12 +149,20 @@ export function resolveEntityResolutionTask(
         .where(eq(entityResolutionTasks.id, task.id))
         .run();
     }
-  } else if (opts.action === 'accept' || opts.action === 'link_other' || opts.action === 'create_entity') {
+  } else if (
+    opts.action === 'accept' ||
+    opts.action === 'link_other' ||
+    opts.action === 'create_entity'
+  ) {
     let entityId = opts.entityId ?? task.proposedEntityId ?? null;
 
     if (opts.action === 'link_other') {
       if (!opts.entityId) {
-        return { ok: false as const, status: 400 as const, error: 'entityId is required for link_other' };
+        return {
+          ok: false as const,
+          status: 400 as const,
+          error: 'entityId is required for link_other',
+        };
       }
       entityId = opts.entityId;
     }
@@ -154,7 +170,11 @@ export function resolveEntityResolutionTask(
     if (opts.action === 'create_entity') {
       const name = (opts.newEntityName ?? mention?.rawText ?? '').trim();
       if (!name) {
-        return { ok: false as const, status: 400 as const, error: 'newEntityName is required for create_entity' };
+        return {
+          ok: false as const,
+          status: 400 as const,
+          error: 'newEntityName is required for create_entity',
+        };
       }
       entityId = randomUUID();
       db.insert(interventionEntities)
@@ -188,9 +208,17 @@ export function resolveEntityResolutionTask(
     }
 
     if (!entityId) {
-      return { ok: false as const, status: 400 as const, error: 'No target entity for accept/link' };
+      return {
+        ok: false as const,
+        status: 400 as const,
+        error: 'No target entity for accept/link',
+      };
     }
-    const entity = db.select().from(interventionEntities).where(eq(interventionEntities.id, entityId)).all()[0];
+    const entity = db
+      .select()
+      .from(interventionEntities)
+      .where(eq(interventionEntities.id, entityId))
+      .all()[0];
     if (!entity) {
       return { ok: false as const, status: 404 as const, error: 'Target entity not found' };
     }

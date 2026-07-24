@@ -37,9 +37,17 @@ export function compareInterventions(db: HealthspanDb, entityIds: string[]) {
   }
 
   const entities = unique.map((id) => {
-    const entity = db.select().from(interventionEntities).where(eq(interventionEntities.id, id)).all()[0];
+    const entity = db
+      .select()
+      .from(interventionEntities)
+      .where(eq(interventionEntities.id, id))
+      .all()[0];
     if (!entity || entity.lifecycleState !== 'active') return null;
-    const peptide = db.select().from(peptideProfiles).where(eq(peptideProfiles.entityId, id)).all()[0];
+    const peptide = db
+      .select()
+      .from(peptideProfiles)
+      .where(eq(peptideProfiles.entityId, id))
+      .all()[0];
     const identifiers = db
       .select()
       .from(interventionIdentifiers)
@@ -51,7 +59,11 @@ export function compareInterventions(db: HealthspanDb, entityIds: string[]) {
       .all()
       .filter((a) => a.entityId === id && a.currentState === 'current');
     const snapshot = entity.currentDossierSnapshotId
-      ? db.select().from(dossierSnapshots).where(eq(dossierSnapshots.id, entity.currentDossierSnapshotId)).all()[0]
+      ? db
+          .select()
+          .from(dossierSnapshots)
+          .where(eq(dossierSnapshots.id, entity.currentDossierSnapshotId))
+          .all()[0]
       : null;
     const summary = snapshot ? (JSON.parse(snapshot.summaryJson) as Record<string, unknown>) : {};
     const evidenceMap = snapshot
@@ -79,7 +91,11 @@ export function compareInterventions(db: HealthspanDb, entityIds: string[]) {
   });
 
   if (entities.some((e) => e == null)) {
-    return { ok: false as const, status: 404 as const, error: 'One or more entities were not found' };
+    return {
+      ok: false as const,
+      status: 404 as const,
+      error: 'One or more entities were not found',
+    };
   }
   const rows = entities as NonNullable<(typeof entities)[number]>[];
 
@@ -134,11 +150,12 @@ export function compareInterventions(db: HealthspanDb, entityIds: string[]) {
           ? `${r.peptide.classification} · ${r.peptide.sequenceState} · ${r.peptide.warningState}`
           : 'Not a peptide profile',
         comparable: rows.every((x) => Boolean(x.peptide)) || rows.every((x) => !x.peptide),
-        note: rows.some((x) => x.peptide) && rows.some((x) => !x.peptide)
-          ? 'Peptide vs non-peptide — not comparable on sequence identity.'
-          : r.peptide
-            ? 'Sequence is never invented from a marketing name.'
-            : undefined,
+        note:
+          rows.some((x) => x.peptide) && rows.some((x) => !x.peptide)
+            ? 'Peptide vs non-peptide — not comparable on sequence identity.'
+            : r.peptide
+              ? 'Sequence is never invented from a marketing name.'
+              : undefined,
       })),
     },
     {

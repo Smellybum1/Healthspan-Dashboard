@@ -137,9 +137,7 @@
       "indexes": {
         "change_events_dedupe": {
           "name": "change_events_dedupe",
-          "columns": [
-            "dedupe_key"
-          ],
+          "columns": ["dedupe_key"],
           "isUnique": true
         }
       },
@@ -148,12 +146,8 @@
           "name": "change_events_content_item_id_content_items_id_fk",
           "tableFrom": "change_events",
           "tableTo": "content_items",
-          "columnsFrom": [
-            "content_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["content_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -161,12 +155,8 @@
           "name": "change_events_source_object_id_source_objects_id_fk",
           "tableFrom": "change_events",
           "tableTo": "source_objects",
-          "columnsFrom": [
-            "source_object_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_object_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -247,10 +237,7 @@
       "indexes": {
         "checkpoints_source_feed": {
           "name": "checkpoints_source_feed",
-          "columns": [
-            "source_id",
-            "feed_id"
-          ],
+          "columns": ["source_id", "feed_id"],
           "isUnique": true
         }
       },
@@ -259,12 +246,8 @@
           "name": "connector_checkpoints_source_id_sources_id_fk",
           "tableFrom": "connector_checkpoints",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -272,12 +255,8 @@
           "name": "connector_checkpoints_feed_id_source_feeds_id_fk",
           "tableFrom": "connector_checkpoints",
           "tableTo": "source_feeds",
-          "columnsFrom": [
-            "feed_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["feed_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -329,10 +308,7 @@
       "indexes": {
         "content_item_sources_pk": {
           "name": "content_item_sources_pk",
-          "columns": [
-            "content_item_id",
-            "source_object_id"
-          ],
+          "columns": ["content_item_id", "source_object_id"],
           "isUnique": true
         }
       },
@@ -341,12 +317,8 @@
           "name": "content_item_sources_content_item_id_content_items_id_fk",
           "tableFrom": "content_item_sources",
           "tableTo": "content_items",
-          "columnsFrom": [
-            "content_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["content_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -354,12 +326,8 @@
           "name": "content_item_sources_source_object_id_source_objects_id_fk",
           "tableFrom": "content_item_sources",
           "tableTo": "source_objects",
-          "columnsFrom": [
-            "source_object_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_object_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -468,16 +436,12 @@
       "indexes": {
         "content_items_type": {
           "name": "content_items_type",
-          "columns": [
-            "type"
-          ],
+          "columns": ["type"],
           "isUnique": false
         },
         "content_items_origin": {
           "name": "content_items_origin",
-          "columns": [
-            "data_origin"
-          ],
+          "columns": ["data_origin"],
           "isUnique": false
         }
       },
@@ -528,10 +492,7 @@
       "indexes": {
         "external_ids_scheme_value": {
           "name": "external_ids_scheme_value",
-          "columns": [
-            "scheme",
-            "value"
-          ],
+          "columns": ["scheme", "value"],
           "isUnique": true
         }
       },
@@ -540,12 +501,8 @@
           "name": "external_identifiers_content_item_id_content_items_id_fk",
           "tableFrom": "external_identifiers",
           "tableTo": "content_items",
-          "columnsFrom": [
-            "content_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["content_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -553,12 +510,8 @@
           "name": "external_identifiers_source_id_sources_id_fk",
           "tableFrom": "external_identifiers",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -648,12 +601,8 @@
           "name": "ingestion_run_errors_run_id_ingestion_runs_id_fk",
           "tableFrom": "ingestion_run_errors",
           "tableTo": "ingestion_runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -661,12 +610,8 @@
           "name": "ingestion_run_errors_source_id_sources_id_fk",
           "tableFrom": "ingestion_run_errors",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -696,10 +641,7 @@
       "indexes": {
         "run_snapshots_pk": {
           "name": "run_snapshots_pk",
-          "columns": [
-            "run_id",
-            "raw_snapshot_id"
-          ],
+          "columns": ["run_id", "raw_snapshot_id"],
           "isUnique": true
         }
       },
@@ -708,12 +650,8 @@
           "name": "ingestion_run_snapshots_run_id_ingestion_runs_id_fk",
           "tableFrom": "ingestion_run_snapshots",
           "tableTo": "ingestion_runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -721,12 +659,8 @@
           "name": "ingestion_run_snapshots_raw_snapshot_id_raw_snapshots_id_fk",
           "tableFrom": "ingestion_run_snapshots",
           "tableTo": "raw_snapshots",
-          "columnsFrom": [
-            "raw_snapshot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["raw_snapshot_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -895,12 +829,8 @@
           "name": "ingestion_runs_source_id_sources_id_fk",
           "tableFrom": "ingestion_runs",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -975,12 +905,8 @@
           "name": "paper_authors_paper_id_papers_content_item_id_fk",
           "tableFrom": "paper_authors",
           "tableTo": "papers",
-          "columnsFrom": [
-            "paper_id"
-          ],
-          "columnsTo": [
-            "content_item_id"
-          ],
+          "columnsFrom": ["paper_id"],
+          "columnsTo": ["content_item_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1027,12 +953,8 @@
           "name": "paper_funders_paper_id_papers_content_item_id_fk",
           "tableFrom": "paper_funders",
           "tableTo": "papers",
-          "columnsFrom": [
-            "paper_id"
-          ],
-          "columnsTo": [
-            "content_item_id"
-          ],
+          "columnsFrom": ["paper_id"],
+          "columnsTo": ["content_item_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1129,12 +1051,8 @@
           "name": "papers_content_item_id_content_items_id_fk",
           "tableFrom": "papers",
           "tableTo": "content_items",
-          "columnsFrom": [
-            "content_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["content_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1263,10 +1181,7 @@
       "indexes": {
         "raw_snapshots_source_hash": {
           "name": "raw_snapshots_source_hash",
-          "columns": [
-            "source_id",
-            "sha256"
-          ],
+          "columns": ["source_id", "sha256"],
           "isUnique": true
         }
       },
@@ -1275,12 +1190,8 @@
           "name": "raw_snapshots_source_id_sources_id_fk",
           "tableFrom": "raw_snapshots",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1288,12 +1199,8 @@
           "name": "raw_snapshots_feed_id_source_feeds_id_fk",
           "tableFrom": "raw_snapshots",
           "tableTo": "source_feeds",
-          "columnsFrom": [
-            "feed_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["feed_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1385,12 +1292,8 @@
           "name": "regulatory_events_content_item_id_content_items_id_fk",
           "tableFrom": "regulatory_events",
           "tableTo": "content_items",
-          "columnsFrom": [
-            "content_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["content_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1477,10 +1380,7 @@
       "indexes": {
         "source_feeds_source_key": {
           "name": "source_feeds_source_key",
-          "columns": [
-            "source_id",
-            "feed_key"
-          ],
+          "columns": ["source_id", "feed_key"],
           "isUnique": true
         }
       },
@@ -1489,12 +1389,8 @@
           "name": "source_feeds_source_id_sources_id_fk",
           "tableFrom": "source_feeds",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1573,10 +1469,7 @@
       "indexes": {
         "source_objects_external": {
           "name": "source_objects_external",
-          "columns": [
-            "source_id",
-            "external_id"
-          ],
+          "columns": ["source_id", "external_id"],
           "isUnique": true
         }
       },
@@ -1585,12 +1478,8 @@
           "name": "source_objects_source_id_sources_id_fk",
           "tableFrom": "source_objects",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1677,18 +1566,12 @@
       "indexes": {
         "source_versions_hash": {
           "name": "source_versions_hash",
-          "columns": [
-            "source_object_id",
-            "normalized_hash"
-          ],
+          "columns": ["source_object_id", "normalized_hash"],
           "isUnique": true
         },
         "source_versions_number": {
           "name": "source_versions_number",
-          "columns": [
-            "source_object_id",
-            "version_number"
-          ],
+          "columns": ["source_object_id", "version_number"],
           "isUnique": true
         }
       },
@@ -1697,12 +1580,8 @@
           "name": "source_record_versions_source_object_id_source_objects_id_fk",
           "tableFrom": "source_record_versions",
           "tableTo": "source_objects",
-          "columnsFrom": [
-            "source_object_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_object_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1710,12 +1589,8 @@
           "name": "source_record_versions_raw_snapshot_id_raw_snapshots_id_fk",
           "tableFrom": "source_record_versions",
           "tableTo": "raw_snapshots",
-          "columnsFrom": [
-            "raw_snapshot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["raw_snapshot_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1859,12 +1734,8 @@
           "name": "trial_conditions_trial_id_trials_content_item_id_fk",
           "tableFrom": "trial_conditions",
           "tableTo": "trials",
-          "columnsFrom": [
-            "trial_id"
-          ],
-          "columnsTo": [
-            "content_item_id"
-          ],
+          "columnsFrom": ["trial_id"],
+          "columnsTo": ["content_item_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1911,12 +1782,8 @@
           "name": "trial_interventions_trial_id_trials_content_item_id_fk",
           "tableFrom": "trial_interventions",
           "tableTo": "trials",
-          "columnsFrom": [
-            "trial_id"
-          ],
-          "columnsTo": [
-            "content_item_id"
-          ],
+          "columnsFrom": ["trial_id"],
+          "columnsTo": ["content_item_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1998,12 +1865,8 @@
           "name": "trial_locations_trial_id_trials_content_item_id_fk",
           "tableFrom": "trial_locations",
           "tableTo": "trials",
-          "columnsFrom": [
-            "trial_id"
-          ],
-          "columnsTo": [
-            "content_item_id"
-          ],
+          "columnsFrom": ["trial_id"],
+          "columnsTo": ["content_item_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2064,12 +1927,8 @@
           "name": "trial_outcomes_trial_id_trials_content_item_id_fk",
           "tableFrom": "trial_outcomes",
           "tableTo": "trials",
-          "columnsFrom": [
-            "trial_id"
-          ],
-          "columnsTo": [
-            "content_item_id"
-          ],
+          "columnsFrom": ["trial_id"],
+          "columnsTo": ["content_item_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2134,10 +1993,7 @@
       "indexes": {
         "trial_status_event_key": {
           "name": "trial_status_event_key",
-          "columns": [
-            "trial_id",
-            "event_key"
-          ],
+          "columns": ["trial_id", "event_key"],
           "isUnique": true
         }
       },
@@ -2146,12 +2002,8 @@
           "name": "trial_status_history_trial_id_trials_content_item_id_fk",
           "tableFrom": "trial_status_history",
           "tableTo": "trials",
-          "columnsFrom": [
-            "trial_id"
-          ],
-          "columnsTo": [
-            "content_item_id"
-          ],
+          "columnsFrom": ["trial_id"],
+          "columnsTo": ["content_item_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2326,12 +2178,8 @@
           "name": "trials_content_item_id_content_items_id_fk",
           "tableFrom": "trials",
           "tableTo": "content_items",
-          "columnsFrom": [
-            "content_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["content_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

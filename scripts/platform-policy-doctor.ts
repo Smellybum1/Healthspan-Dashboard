@@ -27,8 +27,7 @@ const content = db.select().from(creatorContentItems).all();
 
 const youtubeDisabledHealthy =
   yt.ok && (yt.warnings?.some((w) => /never claim evidence/i.test(w)) ?? false);
-const xDisabledHealthy =
-  x.ok && (x.warnings?.some((w) => /disabled by default/i.test(w)) ?? false);
+const xDisabledHealthy = x.ok && (x.warnings?.some((w) => /disabled by default/i.test(w)) ?? false);
 
 if (!youtubeDisabledHealthy) failures.push('YouTube disabled path unhealthy');
 if (!xDisabledHealthy) failures.push('X disabled path unhealthy');
@@ -44,8 +43,11 @@ if (displayEligibilityViolations > 0) {
 
 const xEnabled = process.env.HEALTHSPAN_X_ENABLED === 'true';
 const lastRaw =
-  db.select().from(appMeta).all().find((r) => r.key === 'x_compliance_last_reconciled_at')?.value ??
-  null;
+  db
+    .select()
+    .from(appMeta)
+    .all()
+    .find((r) => r.key === 'x_compliance_last_reconciled_at')?.value ?? null;
 const lastReconciledAt = lastRaw && Number.isFinite(Number(lastRaw)) ? Number(lastRaw) : null;
 const maxAgeMs = Number(process.env.HEALTHSPAN_X_COMPLIANCE_MAX_AGE_HOURS ?? 24) * 60 * 60 * 1000;
 const purgeJobOverdue =

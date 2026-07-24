@@ -73,7 +73,12 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
               unit="%"
               domain={[0, 100]}
               tick={{ fill: 'var(--muted)', fontSize: 11 }}
-              label={{ value: 'Evidence maturity →', position: 'insideBottom', offset: -2, fill: 'var(--muted)' }}
+              label={{
+                value: 'Evidence maturity →',
+                position: 'insideBottom',
+                offset: -2,
+                fill: 'var(--muted)',
+              }}
             />
             <YAxis
               type="number"
@@ -82,7 +87,12 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
               unit="%"
               domain={[0, 100]}
               tick={{ fill: 'var(--muted)', fontSize: 11 }}
-              label={{ value: 'Research activity ↑', angle: -90, position: 'insideLeft', fill: 'var(--muted)' }}
+              label={{
+                value: 'Research activity ↑',
+                angle: -90,
+                position: 'insideLeft',
+                fill: 'var(--muted)',
+              }}
             />
             <ZAxis type="number" dataKey="z" range={[50, 240]} />
             <Tooltip
@@ -99,16 +109,23 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
                 return (
                   <div className="max-w-xs rounded-md border border-[var(--border)] bg-[var(--surface)] p-2 text-xs shadow">
                     <p className="font-semibold">{p.label}</p>
-                    <p className="text-[var(--muted)]">{EVIDENCE_MATURITY_LABELS[p.evidenceMaturity]}</p>
+                    <p className="text-[var(--muted)]">
+                      {EVIDENCE_MATURITY_LABELS[p.evidenceMaturity]}
+                    </p>
                     <p>
                       Research activity: {Math.round(p.attentionY * 100)}% (raw{' '}
                       {p.researchActivityRaw ?? p.attentionY})
                     </p>
                     <p className="text-[var(--muted)]">
-                      Formula: {p.formulaVersion ?? 'research_activity.v1'} — not social attention, truth, or efficacy
+                      Formula: {p.formulaVersion ?? 'research_activity.v1'} — not social attention,
+                      truth, or efficacy
                     </p>
-                    {p.stale ? <p className="text-amber-300">Intelligence stale — awaiting reassessment</p> : null}
-                    {p.safetyConcern ? <p className="text-rose-300">Safety/regulatory concern</p> : null}
+                    {p.stale ? (
+                      <p className="text-amber-300">Intelligence stale — awaiting reassessment</p>
+                    ) : null}
+                    {p.safetyConcern ? (
+                      <p className="text-rose-300">Safety/regulatory concern</p>
+                    ) : null}
                   </div>
                 );
               }}
@@ -120,7 +137,9 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
               {data.map((entry) => (
                 <Cell
                   key={entry.id}
-                  fill={entry.safetyConcern ? 'rgba(251, 113, 133, 0.75)' : 'rgba(45, 212, 191, 0.7)'}
+                  fill={
+                    entry.safetyConcern ? 'rgba(251, 113, 133, 0.75)' : 'rgba(45, 212, 191, 0.7)'
+                  }
                   stroke={entry.safetyConcern ? '#fb7185' : '#2dd4bf'}
                 />
               ))}
@@ -144,7 +163,10 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
             {filtered.map((p) => (
               <tr key={p.id} className="border-t border-[var(--border)]">
                 <td className="px-2 py-1.5">
-                  <Link className="underline-offset-2 hover:underline" to={itemPath(p.itemType, p.itemId)}>
+                  <Link
+                    className="underline-offset-2 hover:underline"
+                    to={itemPath(p.itemType, p.itemId)}
+                  >
                     {p.label}
                   </Link>
                 </td>
@@ -165,7 +187,9 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
           </Link>
         </p>
       ) : (
-        <p className="mt-2 text-sm text-[var(--muted)]">Click a bubble or use the table to inspect signals.</p>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Click a bubble or use the table to inspect signals.
+        </p>
       )}
     </div>
   );

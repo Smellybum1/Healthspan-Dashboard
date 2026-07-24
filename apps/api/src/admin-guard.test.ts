@@ -17,8 +17,8 @@ describe('admin mutation guard', () => {
   });
 
   it('allows non-loopback when override is true', () => {
-    expect(
-      adminMutationsAllowed({ bindHost: '0.0.0.0', allowRemoteAdmin: true }).allowed,
-    ).toBe(true);
+    expect(adminMutationsAllowed({ bindHost: '0.0.0.0', allowRemoteAdmin: true }).allowed).toBe(
+      true,
+    );
   });
 });

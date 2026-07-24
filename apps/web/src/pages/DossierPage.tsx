@@ -50,10 +50,15 @@ export function DossierPage() {
       <p className="text-xs text-[var(--muted)]">{String(data.summary.provenanceNote ?? '')}</p>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">Aliases</h2>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Aliases
+        </h2>
         <ul className="flex flex-wrap gap-2 text-sm">
           {data.aliases.map((a) => (
-            <li key={String(a.aliasText)} className="rounded border border-[var(--border)] px-2 py-1">
+            <li
+              key={String(a.aliasText)}
+              className="rounded border border-[var(--border)] px-2 py-1"
+            >
               {String(a.aliasText)}
             </li>
           ))}
@@ -71,7 +76,9 @@ export function DossierPage() {
           <p className="text-[var(--muted)]">
             {String((data.summary.peptide as Record<string, unknown>).note)}
           </p>
-          <p className="text-xs text-[var(--muted)]">No dosing, vendors, stacking, or treatment advice.</p>
+          <p className="text-xs text-[var(--muted)]">
+            No dosing, vendors, stacking, or treatment advice.
+          </p>
         </section>
       ) : null}
 
@@ -80,17 +87,22 @@ export function DossierPage() {
           Evidence map (M3-linked)
         </h2>
         <p className="mb-2 text-sm text-[var(--muted)]">
-          {String(data.summary.linkedAnalysisCount)} analyses · {String(data.summary.linkedClaimCount)} claims ·{' '}
-          {String(data.summary.linkedContentCount)} content items
+          {String(data.summary.linkedAnalysisCount)} analyses ·{' '}
+          {String(data.summary.linkedClaimCount)} claims · {String(data.summary.linkedContentCount)}{' '}
+          content items
         </p>
         <ul className="space-y-2 text-sm">
           {data.evidenceMap.analyses.map((a) => (
-            <li key={String(a.analysisId)} className="rounded border border-[var(--border)] px-3 py-2">
+            <li
+              key={String(a.analysisId)}
+              className="rounded border border-[var(--border)] px-3 py-2"
+            >
               <Link className="underline" to={itemPath('paper', String(a.contentItemId))}>
                 Analysis {String(a.analysisId).slice(0, 8)}
               </Link>
               <p className="text-xs text-[var(--muted)]">
-                {String(a.evidenceMaturity)} · {String(a.evidenceAvailability)} · {String(a.studyDesign)}
+                {String(a.evidenceMaturity)} · {String(a.evidenceAvailability)} ·{' '}
+                {String(a.studyDesign)}
               </p>
             </li>
           ))}
@@ -106,7 +118,10 @@ export function DossierPage() {
           {(
             (data.regulatoryMatrix.coverage as Array<Record<string, unknown>> | undefined) ?? []
           ).map((c) => (
-            <li key={String(c.sourceId)} className="rounded border border-[var(--border)] px-3 py-1.5">
+            <li
+              key={String(c.sourceId)}
+              className="rounded border border-[var(--border)] px-3 py-1.5"
+            >
               <span className="font-medium">{String(c.sourceId)}</span>
               {c.jurisdiction ? ` · ${String(c.jurisdiction)}` : ''} · {String(c.state)}
               <p className="text-xs text-[var(--muted)]">{String(c.note)}</p>
@@ -130,7 +145,10 @@ export function DossierPage() {
           Trial portfolio
         </h2>
         <p className="mb-2 text-sm text-[var(--muted)]">
-          {String((data as { trialPortfolio?: { caveat?: string; count?: number } }).trialPortfolio?.caveat ?? '')}
+          {String(
+            (data as { trialPortfolio?: { caveat?: string; count?: number } }).trialPortfolio
+              ?.caveat ?? '',
+          )}
         </p>
         <ul className="space-y-1 text-sm">
           {(
@@ -152,7 +170,9 @@ export function DossierPage() {
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">Safety</h2>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Safety
+        </h2>
         <p className="text-sm text-[var(--muted)]">
           {String((data.safety.spontaneousReports as Record<string, unknown>).caveat)}
         </p>
@@ -164,12 +184,13 @@ export function DossierPage() {
             <ul className="space-y-1">
               {(
                 ((data.safety.potentialSignals as Record<string, unknown>).items as
-                  | Array<Record<string, unknown>>
-                  | undefined) ?? []
+                  Array<Record<string, unknown>> | undefined) ?? []
               ).map((s, i) => (
                 <li key={i} className="rounded border border-[var(--border)] px-2 py-1">
                   {String(s.quarter)} · {String(s.productOrClass)} · {String(s.signalText)}
-                  <span className="block text-xs text-amber-300">Not proven causality · not incidence</span>
+                  <span className="block text-xs text-amber-300">
+                    Not proven causality · not incidence
+                  </span>
                 </li>
               ))}
             </ul>

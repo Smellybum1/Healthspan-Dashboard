@@ -16,7 +16,9 @@ import { fileURLToPath } from 'node:url';
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
-function fixtureTransport(map: Record<string, { body: string; contentType: string }>): FetchTransport {
+function fixtureTransport(
+  map: Record<string, { body: string; contentType: string }>,
+): FetchTransport {
   return async (input) => {
     const url = String(input);
     const key = Object.keys(map).find((k) => url.includes(k));
@@ -106,7 +108,10 @@ describe('connectors with fixtures', () => {
   it('PubChem enriches CID without treating presence as approval', async () => {
     const transport = fixtureTransport({
       '/cids/JSON': { body: readFixture('pubchem-cids.json'), contentType: 'application/json' },
-      '/property/': { body: readFixture('pubchem-properties.json'), contentType: 'application/json' },
+      '/property/': {
+        body: readFixture('pubchem-properties.json'),
+        contentType: 'application/json',
+      },
     });
     const result = await createPubChemConnector({ transport, minIntervalMs: 0 }).lookup({
       query: 'metformin',
@@ -134,7 +139,7 @@ describe('connectors with fixtures', () => {
     const exact = await createArtgConnector({
       minIntervalMs: 0,
       transport: fixtureTransport({
-        'artg': { body: readFixture('artg-search-exact.html'), contentType: 'text/html' },
+        artg: { body: readFixture('artg-search-exact.html'), contentType: 'text/html' },
       }),
     }).lookup({ query: 'metformin' });
     expect(exact.matchKind).toBe('exact');
@@ -169,7 +174,9 @@ describe('connectors with fixtures', () => {
   });
 
   it('openFDA is healthy when key-disabled and omits dosage ingestion when enabled', async () => {
-    const disabled = await createOpenFdaLabelConnector({ apiKey: null }).lookup({ query: 'metformin' });
+    const disabled = await createOpenFdaLabelConnector({ apiKey: null }).lookup({
+      query: 'metformin',
+    });
     expect(disabled.matchKind).toBe('disabled');
     expect(disabled.ok).toBe(true);
 
@@ -228,9 +235,8 @@ describe('connectors with fixtures', () => {
   });
 
   it('Drugs@FDA ZIP rejects traversal and projects Products.txt', async () => {
-    const { buildSimpleZip, projectDrugsAtFdaZip, assertSafeZipEntryPath } = await import(
-      './index.js'
-    );
+    const { buildSimpleZip, projectDrugsAtFdaZip, assertSafeZipEntryPath } =
+      await import('./index.js');
     expect(() => assertSafeZipEntryPath('../evil.txt')).toThrow(/traversal/i);
     const zip = buildSimpleZip({
       'Products.txt':

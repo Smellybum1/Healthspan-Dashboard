@@ -53,7 +53,10 @@ export type IngestOptions = {
 };
 
 function queueCrossrefDoi(db: HealthspanDb, doi: string, contentItemId: string) {
-  const normalized = doi.trim().toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, '');
+  const normalized = doi
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\/(dx\.)?doi\.org\//, '');
   if (!normalized || !normalized.includes('/')) return;
   enqueueJob(db, {
     kind: 'enrich_crossref_doi',
@@ -120,7 +123,8 @@ export async function runIngestion(opts: IngestOptions) {
   const started = now();
   const parentRunId = randomUUID();
   const connectors = buildConnectors(opts);
-  const lookbackDays = opts.lookbackDays ?? Number(process.env.HEALTHSPAN_PUBMED_INITIAL_LOOKBACK_DAYS ?? 90);
+  const lookbackDays =
+    opts.lookbackDays ?? Number(process.env.HEALTHSPAN_PUBMED_INITIAL_LOOKBACK_DAYS ?? 90);
   const recordCap = opts.recordCap ?? Number(process.env.HEALTHSPAN_FIRST_RUN_RECORD_CAP ?? 1000);
 
   opts.db
@@ -320,11 +324,19 @@ export async function runIngestion(opts: IngestOptions) {
       }
 
       for (const page of result.pages) {
-        const normalizedHash = String(page.normalized.normalizedHash ?? createHash('sha256').update(JSON.stringify(page.normalized)).digest('hex'));
+        const normalizedHash = String(
+          page.normalized.normalizedHash ??
+            createHash('sha256').update(JSON.stringify(page.normalized)).digest('hex'),
+        );
         const existingObj = opts.db
           .select()
           .from(sourceObjects)
-          .where(and(eq(sourceObjects.sourceId, connector.id), eq(sourceObjects.externalId, page.externalId)))
+          .where(
+            and(
+              eq(sourceObjects.sourceId, connector.id),
+              eq(sourceObjects.externalId, page.externalId),
+            ),
+          )
           .all()[0];
 
         let sourceObjectId = existingObj?.id;
@@ -426,7 +438,15 @@ export async function runIngestion(opts: IngestOptions) {
           .where(eq(sourceObjects.id, sourceObjectId))
           .run();
 
-        const upserted = upsertContentFromNormalized(opts.db, connector.id, sourceObjectId, versionId, page.normalized, childStart, isBaseline);
+        const upserted = upsertContentFromNormalized(
+          opts.db,
+          connector.id,
+          sourceObjectId,
+          versionId,
+          page.normalized,
+          childStart,
+          isBaseline,
+        );
         contentUpserts += upserted.content;
         changeCount += upserted.events;
         for (const contentId of upserted.contentIds) {
@@ -467,10 +487,10 @@ export async function runIngestion(opts: IngestOptions) {
           lastError: result.errorMessage ?? null,
           baselineCompletedAt:
             opts.trigger === 'reprocess'
-              ? sourceRow?.baselineCompletedAt ?? undefined
+              ? (sourceRow?.baselineCompletedAt ?? undefined)
               : result.ok && isBaseline
-                ? sourceRow?.baselineCompletedAt ?? now()
-                : sourceRow?.baselineCompletedAt ?? undefined,
+                ? (sourceRow?.baselineCompletedAt ?? now())
+                : (sourceRow?.baselineCompletedAt ?? undefined),
           updatedAt: now(),
         })
         .where(eq(sources.id, connector.id))
@@ -521,7 +541,8 @@ export async function runIngestion(opts: IngestOptions) {
     }
   }
 
-  const parentStatus = totalErrors === 0 ? 'succeeded' : totalErrors === connectors.length ? 'failed' : 'partial';
+  const parentStatus =
+    totalErrors === 0 ? 'succeeded' : totalErrors === connectors.length ? 'failed' : 'partial';
   opts.db
     .update(ingestionRuns)
     .set({
@@ -565,10 +586,18 @@ function upsertContentFromNormalized(
     const doi = normalized.doi ? String(normalized.doi) : null;
     let contentId: string | undefined;
     if (pmid) {
-      contentId = db.select().from(externalIdentifiers).where(and(eq(externalIdentifiers.scheme, 'pmid'), eq(externalIdentifiers.value, pmid))).all()[0]?.contentItemId;
+      contentId = db
+        .select()
+        .from(externalIdentifiers)
+        .where(and(eq(externalIdentifiers.scheme, 'pmid'), eq(externalIdentifiers.value, pmid)))
+        .all()[0]?.contentItemId;
     }
     if (!contentId && doi) {
-      contentId = db.select().from(externalIdentifiers).where(and(eq(externalIdentifiers.scheme, 'doi'), eq(externalIdentifiers.value, doi))).all()[0]?.contentItemId;
+      contentId = db
+        .select()
+        .from(externalIdentifiers)
+        .where(and(eq(externalIdentifiers.scheme, 'doi'), eq(externalIdentifiers.value, doi)))
+        .all()[0]?.contentItemId;
     }
     const isNew = !contentId;
     contentId = contentId ?? randomUUID();
@@ -603,13 +632,25 @@ function upsertContentFromNormalized(
         .run();
       if (pmid) {
         db.insert(externalIdentifiers)
-          .values({ id: randomUUID(), contentItemId: contentId, scheme: 'pmid', value: pmid, sourceId })
+          .values({
+            id: randomUUID(),
+            contentItemId: contentId,
+            scheme: 'pmid',
+            value: pmid,
+            sourceId,
+          })
           .onConflictDoNothing()
           .run();
       }
       if (doi) {
         db.insert(externalIdentifiers)
-          .values({ id: randomUUID(), contentItemId: contentId, scheme: 'doi', value: doi, sourceId })
+          .values({
+            id: randomUUID(),
+            contentItemId: contentId,
+            scheme: 'doi',
+            value: doi,
+            sourceId,
+          })
           .onConflictDoNothing()
           .run();
         if (sourceId === 'pubmed') {
@@ -713,17 +754,28 @@ function upsertContentFromNormalized(
           australiaLocation: Boolean(normalized.australiaLocation),
           startDate: (normalized.dates as { start?: string | null } | undefined)?.start ?? null,
           primaryCompletionDate:
-            (normalized.dates as { primaryCompletion?: string | null } | undefined)?.primaryCompletion ?? null,
-          completionDate: (normalized.dates as { completion?: string | null } | undefined)?.completion ?? null,
-          firstPostedDate: (normalized.dates as { firstPosted?: string | null } | undefined)?.firstPosted ?? null,
+            (normalized.dates as { primaryCompletion?: string | null } | undefined)
+              ?.primaryCompletion ?? null,
+          completionDate:
+            (normalized.dates as { completion?: string | null } | undefined)?.completion ?? null,
+          firstPostedDate:
+            (normalized.dates as { firstPosted?: string | null } | undefined)?.firstPosted ?? null,
           lastUpdatePostedDate:
-            (normalized.dates as { lastUpdatePosted?: string | null } | undefined)?.lastUpdatePosted ?? null,
+            (normalized.dates as { lastUpdatePosted?: string | null } | undefined)
+              ?.lastUpdatePosted ?? null,
           resultsFirstPostedDate:
-            (normalized.dates as { resultsFirstPosted?: string | null } | undefined)?.resultsFirstPosted ?? null,
+            (normalized.dates as { resultsFirstPosted?: string | null } | undefined)
+              ?.resultsFirstPosted ?? null,
         })
         .run();
       db.insert(externalIdentifiers)
-        .values({ id: randomUUID(), contentItemId: contentId, scheme: 'nct', value: nctId, sourceId })
+        .values({
+          id: randomUUID(),
+          contentItemId: contentId,
+          scheme: 'nct',
+          value: nctId,
+          sourceId,
+        })
         .run();
 
       for (const condition of (normalized.conditions as string[] | undefined) ?? []) {
@@ -731,7 +783,8 @@ function upsertContentFromNormalized(
           .values({ id: randomUUID(), trialId: contentId, name: condition })
           .run();
       }
-      for (const intervention of (normalized.interventions as Array<{ name?: string; type?: string }> | undefined) ?? []) {
+      for (const intervention of (normalized.interventions as
+        Array<{ name?: string; type?: string }> | undefined) ?? []) {
         if (!intervention.name) continue;
         db.insert(trialInterventions)
           .values({
@@ -742,7 +795,8 @@ function upsertContentFromNormalized(
           })
           .run();
       }
-      for (const outcome of (normalized.outcomes as Array<{ measure?: string; description?: string; timeFrame?: string }> | undefined) ?? []) {
+      for (const outcome of (normalized.outcomes as
+        Array<{ measure?: string; description?: string; timeFrame?: string }> | undefined) ?? []) {
         db.insert(trialOutcomes)
           .values({
             id: randomUUID(),
@@ -754,7 +808,8 @@ function upsertContentFromNormalized(
           })
           .run();
       }
-      for (const loc of (normalized.locations as Array<Record<string, string | undefined>> | undefined) ?? []) {
+      for (const loc of (normalized.locations as
+        Array<Record<string, string | undefined>> | undefined) ?? []) {
         db.insert(trialLocations)
           .values({
             id: randomUUID(),
@@ -812,13 +867,17 @@ function upsertContentFromNormalized(
           resultsPosted: Boolean(normalized.resultsPosted),
           australiaLocation: Boolean(normalized.australiaLocation),
           lastUpdatePostedDate:
-            (normalized.dates as { lastUpdatePosted?: string | null } | undefined)?.lastUpdatePosted ??
+            (normalized.dates as { lastUpdatePosted?: string | null } | undefined)
+              ?.lastUpdatePosted ??
             previous?.lastUpdatePostedDate ??
             null,
         })
         .where(eq(trials.contentItemId, contentId))
         .run();
-      db.update(contentItems).set({ lastSeenAt: at, updatedAt: at }).where(eq(contentItems.id, contentId)).run();
+      db.update(contentItems)
+        .set({ lastSeenAt: at, updatedAt: at })
+        .where(eq(contentItems.id, contentId))
+        .run();
       if (previous && previous.overallStatus !== nextStatus) {
         db.insert(trialStatusHistory)
           .values({
@@ -910,7 +969,13 @@ function upsertContentFromNormalized(
         })
         .run();
       db.insert(externalIdentifiers)
-        .values({ id: randomUUID(), contentItemId: contentId, scheme: 'tga-guid', value: guid, sourceId })
+        .values({
+          id: randomUUID(),
+          contentItemId: contentId,
+          scheme: 'tga-guid',
+          value: guid,
+          sourceId,
+        })
         .run();
       content += 1;
       contentIds.push(contentId);
@@ -936,7 +1001,10 @@ function upsertContentFromNormalized(
         events += 1;
       }
     } else {
-      db.update(contentItems).set({ lastSeenAt: at, updatedAt: at }).where(eq(contentItems.id, contentId)).run();
+      db.update(contentItems)
+        .set({ lastSeenAt: at, updatedAt: at })
+        .where(eq(contentItems.id, contentId))
+        .run();
       content += 1;
       contentIds.push(contentId);
     }

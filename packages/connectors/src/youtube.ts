@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { createHttpClient } from './http.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 function hashNormalized(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -95,7 +100,10 @@ function dayKey(d = new Date()): string {
 }
 
 export type YoutubeClient = {
-  resolveChannel: (ref: string, opts?: { allowSearchFallback?: boolean }) => Promise<{
+  resolveChannel: (
+    ref: string,
+    opts?: { allowSearchFallback?: boolean },
+  ) => Promise<{
     candidates: YoutubeChannelResolved[];
     quotaEvents: YoutubeQuotaEvent[];
     unitsSpent: number;
@@ -317,7 +325,8 @@ export function createYoutubeClient(opts: {
         baseline: Boolean(syncOpts.baseline),
       };
     }
-    const channelItems = (channelCall.json.items as Array<Record<string, unknown>> | undefined) ?? [];
+    const channelItems =
+      (channelCall.json.items as Array<Record<string, unknown>> | undefined) ?? [];
     if (!channelItems.length) {
       return {
         ok: false,
@@ -487,7 +496,9 @@ export function createYoutubeConnector(
   } = {},
 ): SourceConnector {
   const apiKey = opts.apiKey ?? process.env.YOUTUBE_API_KEY ?? null;
-  const channelIds = (opts.channelIds ?? []).filter((id) => id.startsWith('UC')).slice(0, YOUTUBE_MAX_CHANNELS_PER_SYNC);
+  const channelIds = (opts.channelIds ?? [])
+    .filter((id) => id.startsWith('UC'))
+    .slice(0, YOUTUBE_MAX_CHANNELS_PER_SYNC);
   const enabled = Boolean(apiKey) && channelIds.length > 0;
   const yt = createYoutubeClient(opts);
 
@@ -603,5 +614,3 @@ export function createYoutubeConnector(
     },
   };
 }
-
-

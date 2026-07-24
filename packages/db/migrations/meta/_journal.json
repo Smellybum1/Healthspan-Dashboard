@@ -78,6 +78,13 @@
       "when": 1784960000000,
       "tag": "0010_m4_residual_depth",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1784970000000,
+      "tag": "0011_m6_personalisation_ops",
+      "breakpoints": true
     }
   ]
 }

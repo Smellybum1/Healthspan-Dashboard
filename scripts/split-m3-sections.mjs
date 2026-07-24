@@ -3,7 +3,8 @@ import fs from 'node:fs';
 const t = fs.readFileSync('docs/milestones/M3_EXECUTION_BRIEF.md', 'utf8');
 const sections = {
   '04-m2-closure': /4\.\s+Mandatory Milestone 2 closure items([\s\S]*?)(?=\n5\.\s+)/,
-  '05-fixed-decisions': /5\.\s+Fixed Milestone 3 product-management decisions([\s\S]*?)(?=\n6\.\s+)/,
+  '05-fixed-decisions':
+    /5\.\s+Fixed Milestone 3 product-management decisions([\s\S]*?)(?=\n6\.\s+)/,
   '06-architecture': /6\.\s+Deterministic-first intelligence architecture([\s\S]*?)(?=\n7\.\s+)/,
   '08-schema': /8\.\s+Required database\/schema work([\s\S]*?)(?=\n9\.\s+)/,
   '10-packages': /10\.\s+Package requirements([\s\S]*?)(?=\n11\.\s+)/,

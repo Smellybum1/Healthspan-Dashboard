@@ -96,7 +96,7 @@ How does this intervention compare with up to three others across independent di
 The product remains a research intelligence tool. It is not a prescribing tool, peptide catalogue, supplement recommender, risk calculator, vendor directory, or personal clinical decision system.
 
 3. Non-negotiable scientific and product principles
-3.1 Entity identity is not a string match
+   3.1 Entity identity is not a string match
 
 Names can refer to:
 
@@ -322,14 +322,14 @@ Safety notice history
 Retractions and corrections
 
 4. Fixed branch, stop, and merge decisions
-Item	Decision
-Exact base	4d985d3c8e9208fadc01e529270bcf5f37f1503d
-Feature-complete M3 reference	b835278a6d18ac984d4f470f61ba3013245a61bc
-Working branch	milestone-4/interventions-peptides-regulation
-Merge to main	Not authorised in this milestone
-Create M5 branch	Not authorised
-M5 work	Prohibited
-Final action	Push M4 branch, report final hash/results, stop
+   Item Decision
+   Exact base 4d985d3c8e9208fadc01e529270bcf5f37f1503d
+   Feature-complete M3 reference b835278a6d18ac984d4f470f61ba3013245a61bc
+   Working branch milestone-4/interventions-peptides-regulation
+   Merge to main Not authorised in this milestone
+   Create M5 branch Not authorised
+   M5 work Prohibited
+   Final action Push M4 branch, report final hash/results, stop
 5. Mandatory Milestone 3 follow-ups
 
 Complete these as part of M4 before declaring the dossier layer complete.
@@ -478,7 +478,7 @@ It may not interpret spontaneous reports causally.
 It may not create a safety or efficacy recommendation.
 
 6. Fixed source decisions
-6.1 Existing sources retained
+   6.1 Existing sources retained
 
 Continue to use:
 
@@ -650,23 +650,24 @@ The orchestration model is a dependency graph, not one unsafe monolithic transac
 
 7.1 Source-independent steps
 Existing content/claims/trials/regulatory events
-    ↓
+↓
 Versioned intervention mention extraction
-    ↓
+↓
 Local alias/identifier exact matching
-    ↓
+↓
 Identity-source enrichment and candidate generation
-    ↓
+↓
 Review or deterministic acceptance
-    ↓
+↓
 Canonical entity / variant linkage
-    ↓
+↓
 Targeted regulatory and safety enrichment
-    ↓
+↓
 Dossier snapshot rebuild
-    ↓
+↓
 Change detection and UI
 7.2 Recommended connector order for a full M4 refresh
+
 1. Existing M2 source refresh
 2. Existing M3 stale intelligence refresh
 3. Intervention mention extraction
@@ -714,7 +715,7 @@ Dossier rebuilds per job: 250
 Make caps configurable and visible in run diagnostics. A cap creates a partial/capped state, never silent completeness.
 
 8. Canonical intervention identity model
-8.1 Entity types
+   8.1 Entity types
 
 Support:
 
@@ -934,7 +935,7 @@ Brand versus ingredient
 Version every normalization algorithm.
 
 9. Entity-resolution policy
-9.1 Auto-accept rules
+   9.1 Auto-accept rules
 
 Automatic mapping is permitted only for:
 
@@ -1042,7 +1043,7 @@ Comparison cache invalidation
 Review tasks for any materially changed current dossier fact
 
 10. Peptide identity policy
-10.1 Peptide classification
+    10.1 Peptide classification
 
 Support:
 
@@ -1146,7 +1147,7 @@ Circumvention of prescribing or customs rules
 Official product strength, dosage form, and route may be displayed strictly as regulator product identity, not as a user instruction.
 
 11. Regulatory semantics
-11.1 Jurisdictions
+    11.1 Jurisdictions
 
 Milestone 4 supports:
 
@@ -1301,7 +1302,7 @@ explicit_unapproved_warning_linked
 Initial source imports remain baseline and do not masquerade as fresh alerts.
 
 12. Safety semantics
-12.1 Safety evidence classes
+    12.1 Safety evidence classes
 
 Support:
 
@@ -1435,7 +1436,7 @@ Explicit regulator unapproved warning
 Reporting-pattern refreshes may appear in audit history only.
 
 13. Dossier aggregation model
-13.1 Dossier identity
+    13.1 Dossier identity
 
 A dossier belongs to one canonical intervention entity.
 
@@ -2413,7 +2414,7 @@ Claim/entity joins
 Add query-plan tests or documented EXPLAIN QUERY PLAN checks for principal list, dossier, regulatory, safety, comparison, and resolution queries.
 
 15. Package responsibilities
-15.1 packages/core
+    15.1 packages/core
 
 Add versioned Zod schemas and taxonomies for:
 
@@ -2664,7 +2665,7 @@ Desktop/mobile E2E coverage
 Demo regressions
 
 16. Connector requirements
-16.1 RxNorm
+    16.1 RxNorm
 
 Official interface:
 
@@ -3141,7 +3142,7 @@ No automatic paid AI jobs
 A material accepted mapping must enqueue downstream rebuilds transactionally or through an outbox-equivalent durable pattern.
 
 18. Backfill and baseline behaviour
-18.1 Existing data backfill
+    18.1 Existing data backfill
 
 Backfill intervention mentions from:
 
@@ -3261,8 +3262,8 @@ POST /api/interventions/compare
 Body:
 
 {
-  "entityIds": ["...", "..."],
-  "variantMode": "aggregate_reviewed_variants"
+"entityIds": ["...", "..."],
+"variantMode": "aggregate_reviewed_variants"
 }
 
 Rules:
@@ -3282,12 +3283,12 @@ Server-side aggregation
 Safe bounded response
 
 19.4 Entity resolution
-GET  /api/entity-resolution/status
-GET  /api/entity-resolution/tasks
-GET  /api/entity-resolution/tasks/:id
+GET /api/entity-resolution/status
+GET /api/entity-resolution/tasks
+GET /api/entity-resolution/tasks/:id
 POST /api/entity-resolution/runs
 POST /api/entity-resolution/tasks/:id/resolve
-GET  /api/entity-resolution/decisions
+GET /api/entity-resolution/decisions
 
 All mutations:
 
@@ -3302,12 +3303,12 @@ Append-only audited
 Return conflict when stale
 
 19.5 Regulatory and safety
-GET  /api/regulatory/products
-GET  /api/regulatory/assertions
-GET  /api/regulatory/history
-GET  /api/safety/items
-GET  /api/safety/signals
-GET  /api/safety/reporting-patterns
+GET /api/regulatory/products
+GET /api/regulatory/assertions
+GET /api/regulatory/history
+GET /api/safety/items
+GET /api/safety/signals
+GET /api/safety/reporting-patterns
 POST /api/regulatory/runs
 POST /api/safety/runs
 
@@ -3326,9 +3327,9 @@ source freshness
 match scope
 review state
 19.6 Dossiers
-GET  /api/dossiers/status
-GET  /api/dossiers/:entityId
-GET  /api/dossiers/:entityId/history
+GET /api/dossiers/status
+GET /api/dossiers/:entityId
+GET /api/dossiers/:entityId/history
 POST /api/dossiers/runs
 POST /api/dossiers/:entityId/rebuild
 
@@ -3803,6 +3804,7 @@ No command prints keys or exact paths except pnpm data:path.
 Update .env.example without secrets.
 
 # Intervention identity
+
 HEALTHSPAN_INTERVENTION_AUTO_EXTRACT=true
 HEALTHSPAN_INTERVENTION_AUTO_MATCH_MODE=exact_only
 HEALTHSPAN_INTERVENTION_MENTIONS_PER_JOB=1000
@@ -3810,6 +3812,7 @@ HEALTHSPAN_INTERVENTION_CANDIDATES_PER_RUN=200
 HEALTHSPAN_INTERVENTION_MAX_CLAIMS_PER_ITEM=12
 
 # Identity sources
+
 HEALTHSPAN_RXNORM_ENABLED=true
 HEALTHSPAN_RXNORM_REQUESTS_PER_SECOND=1
 HEALTHSPAN_GSRS_ENABLED=true
@@ -3818,6 +3821,7 @@ HEALTHSPAN_PUBCHEM_ENABLED=true
 HEALTHSPAN_PUBCHEM_REQUESTS_PER_SECOND=1
 
 # Australia
+
 HEALTHSPAN_TGA_ARTG_ENABLED=true
 HEALTHSPAN_TGA_ARTG_REQUESTS_PER_SECOND=0.5
 HEALTHSPAN_TGA_ARTG_MAX_SEARCHES_PER_RUN=50
@@ -3825,6 +3829,7 @@ HEALTHSPAN_TGA_ARTG_MAX_DETAILS_PER_RUN=100
 HEALTHSPAN_TGA_ARTG_REFRESH_DAYS=7
 
 # United States bulk regulatory data
+
 HEALTHSPAN_FDA_DRUGS_AT_FDA_ENABLED=true
 HEALTHSPAN_FDA_DRUGS_AT_FDA_REFRESH_HOURS=24
 HEALTHSPAN_FDA_PURPLE_BOOK_ENABLED=true
@@ -3833,6 +3838,7 @@ HEALTHSPAN_FDA_AEMS_SIGNALS_ENABLED=true
 HEALTHSPAN_FDA_AEMS_SIGNALS_REFRESH_DAYS=7
 
 # openFDA targeted enrichment
+
 HEALTHSPAN_OPENFDA_ENABLED=false
 HEALTHSPAN_OPENFDA_LABELS_ENABLED=false
 HEALTHSPAN_OPENFDA_EVENTS_ENABLED=false
@@ -3844,10 +3850,12 @@ HEALTHSPAN_OPENFDA_EVENT_REFRESH_DAYS=90
 OPENFDA_API_KEY=
 
 # Dossiers
+
 HEALTHSPAN_DOSSIER_RULESET=dossier-rules-v1
 HEALTHSPAN_DOSSIER_MAX_REBUILDS_PER_JOB=250
 
 # Existing optional AI remains off
+
 HEALTHSPAN_AI_ENABLED=false
 OPENAI_API_KEY=
 
@@ -3856,7 +3864,7 @@ Validate configuration.
 An intentionally disabled connector is a visible state, not a failure.
 
 23. Evaluation corpus
-23.1 Intervention identity corpus
+    23.1 Intervention identity corpus
 
 Create at least 120 licence-safe synthetic or reduced fixtures.
 
@@ -4408,7 +4416,7 @@ pnpm dossiers:doctor
 Report exact counts and skips.
 
 25. Doctors and integrity checks
-25.1 interventions:doctor
+    25.1 interventions:doctor
 
 Check:
 

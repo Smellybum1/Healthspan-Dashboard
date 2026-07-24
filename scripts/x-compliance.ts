@@ -1,11 +1,11 @@
 /**
  * One-shot X compliance reconciliation CLI (brief §24 `x:compliance`).
  */
+import { closeDatabase, openDatabase } from '@healthspan/db';
 import {
-  closeDatabase,
-  openDatabase,
-} from '@healthspan/db';
-import { runXComplianceReconciliation, getXComplianceStatus } from '../apps/api/src/x-sync-service.ts';
+  runXComplianceReconciliation,
+  getXComplianceStatus,
+} from '../apps/api/src/x-sync-service.ts';
 
 const { db, sqlite } = openDatabase({
   allowRelativeOverride: process.env.HEALTHSPAN_ALLOW_RELATIVE_DATA_DIR === '1',

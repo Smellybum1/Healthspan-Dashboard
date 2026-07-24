@@ -1,11 +1,5 @@
 import { sql } from 'drizzle-orm';
-import {
-  integer,
-  sqliteTable,
-  text,
-  uniqueIndex,
-  index,
-} from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 
 const id = () => text('id').primaryKey();
 const ts = (name: string) => integer(name, { mode: 'number' }).notNull();
@@ -204,10 +198,7 @@ export const contentItems = sqliteTable(
     createdAt: ts('created_at'),
     updatedAt: ts('updated_at'),
   },
-  (t) => [
-    index('content_items_type').on(t.type),
-    index('content_items_origin').on(t.dataOrigin),
-  ],
+  (t) => [index('content_items_type').on(t.type), index('content_items_origin').on(t.dataOrigin)],
 );
 
 export const externalIdentifiers = sqliteTable(

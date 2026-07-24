@@ -1,10 +1,4 @@
-import {
-  integer,
-  sqliteTable,
-  text,
-  uniqueIndex,
-  index,
-} from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 
 const id = () => text('id').primaryKey();
 const ts = (name: string) => integer(name, { mode: 'number' }).notNull();
@@ -221,9 +215,7 @@ export const regulatedProducts = sqliteTable(
     createdAt: ts('created_at'),
     updatedAt: ts('updated_at'),
   },
-  (t) => [
-    uniqueIndex('regulated_products_native').on(t.authority, t.sourceNativeId),
-  ],
+  (t) => [uniqueIndex('regulated_products_native').on(t.authority, t.sourceNativeId)],
 );
 
 export const regulatoryAssertions = sqliteTable('regulatory_assertions', {

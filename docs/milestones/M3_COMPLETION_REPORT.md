@@ -13,6 +13,7 @@ Healthspan Dashboard now has deterministic-first Live evidence/claim intelligenc
 ## Delivered
 
 ### M2 closure
+
 - Browser APIs redact exact local paths; `pnpm data:path` remains terminal-only
 - Shared `assertAdminMutationAllowed` on admin mutations
 - Source/feed `baselineCompletedAt` + migration backfill
@@ -22,6 +23,7 @@ Healthspan Dashboard now has deterministic-first Live evidence/claim intelligenc
 - Docs: README, ROADMAP, DATA_MODEL, ARCHITECTURE, ADR-0008
 
 ### Intelligence
+
 - Package `@healthspan/intelligence` (deterministic profiles, claims, relationships, providers)
 - Migrations `0001`–`0003` (closure, intelligence core, review/provenance)
 - Tables: runs, analyses, dependencies, content state, claims, spans, relationships, review tasks, decisions
@@ -33,16 +35,16 @@ Healthspan Dashboard now has deterministic-first Live evidence/claim intelligenc
 
 ## Quality gates
 
-| Gate | Result |
-| --- | --- |
-| `pnpm lint` | pass (0 warnings) |
-| `pnpm typecheck` | pass |
-| `pnpm test` | 58 passed |
-| `pnpm test:e2e` | 12 passed / 2 skipped (mobile-only on chromium) |
-| `pnpm build` | pass |
-| `pnpm intelligence:eval` | 73/73 + 16/16 claim pairs |
-| `pnpm intelligence:doctor` | ok |
-| `pnpm db:doctor` | ok |
+| Gate                       | Result                                          |
+| -------------------------- | ----------------------------------------------- |
+| `pnpm lint`                | pass (0 warnings)                               |
+| `pnpm typecheck`           | pass                                            |
+| `pnpm test`                | 58 passed                                       |
+| `pnpm test:e2e`            | 12 passed / 2 skipped (mobile-only on chromium) |
+| `pnpm build`               | pass                                            |
+| `pnpm intelligence:eval`   | 73/73 + 16/16 claim pairs                       |
+| `pnpm intelligence:doctor` | ok                                              |
+| `pnpm db:doctor`           | ok                                              |
 
 ## Screenshots
 
@@ -55,6 +57,7 @@ Committed under `docs/milestones/screenshots/`:
 ## Acceptance checklist (A–H)
 
 ### A. Base and M2 closure
+
 - [x] A1 Base `4a39a1c`
 - [x] A2 Branch `milestone-3/evidence-claim-intelligence`
 - [x] A3 No browser DB/raw paths
@@ -70,6 +73,7 @@ Committed under `docs/milestones/screenshots/`:
 - [x] A13 Docs current
 
 ### B. Schema and provenance
+
 - [x] B1 Forward-only migrations
 - [x] B2 Required entities implemented or equivalently mapped (see DATA_MODEL)
 - [x] B3 Live claims have primary spans
@@ -82,22 +86,28 @@ Committed under `docs/milestones/screenshots/`:
 - [x] B10 `intelligence:doctor`
 
 ### C. Deterministic evidence model
+
 - [x] C1–C15 Covered by deterministic classifier, claim builder, eval corpus, and UI caveats (protocol≠results, animal/cell≠human, biomarker≠lifespan extension, retraction override, potential hallmarks labelled as potential)
 
 ### D. Claims and relationships
+
 - [x] D1–D10 Roles/kinds/directions, spans, fingerprints, `potentially_conflicts` only, interactive review actions, immutable decisions, stale reviews on source update
 
 ### E. Optional AI
+
 - [x] E1–E14 Disabled by default; disabled/fixture/openai adapters; caps; no default network in tests; AI cannot write persistence; live path remains deterministic-first (OpenAI network path reserved / not exercised in CI)
 
 ### F. API and UI
+
 - [x] F1–F14 Status/runs/claims/review APIs; Live Today/radar; detail claims; claims workspace; review queue desktop+mobile; methodology; demo separation
 - [x] F15 New controls covered by e2e smoke + roles/labels
 
 ### G. Research activity
+
 - [x] G1–G7 Research-activity axis (not “attention”/truth/efficacy); tooltips expose formula version + raw; retraction/safety markers; reproducible formula version `research_activity.v1`
 
 ### H. Evaluation, security, quality
+
 - [x] H1–H19 Eval floors, no new connectors, no personal-health features, gates green, docs/ADRs, screenshots + this report, branch pushed, no M4 work started
 
 ## Known limitations (honest)

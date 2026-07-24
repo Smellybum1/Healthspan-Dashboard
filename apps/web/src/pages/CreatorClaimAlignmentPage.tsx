@@ -37,7 +37,11 @@ export function CreatorClaimAlignmentPage() {
     );
   }
 
-  const alignment = (claim.data.alignment as { dimensions?: Array<Record<string, unknown>>; overallLabel?: string }) ?? {};
+  const alignment =
+    (claim.data.alignment as {
+      dimensions?: Array<Record<string, unknown>>;
+      overallLabel?: string;
+    }) ?? {};
   const links = evidence.data?.links ?? [];
 
   return (
@@ -87,7 +91,10 @@ export function CreatorClaimAlignmentPage() {
           ) : (
             <ul className="space-y-2 text-xs text-[var(--muted)]">
               {links.map((l) => (
-                <li key={String(l.id)} className="rounded-lg border border-[var(--border)] px-2 py-1.5">
+                <li
+                  key={String(l.id)}
+                  className="rounded-lg border border-[var(--border)] px-2 py-1.5"
+                >
                   {String(l.targetType)} · {String(l.targetId).slice(0, 12)} · {String(l.linkState)}
                   <br />
                   {String(l.rationale ?? '')}

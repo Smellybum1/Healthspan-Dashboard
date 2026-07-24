@@ -1,10 +1,4 @@
-import {
-  integer,
-  sqliteTable,
-  text,
-  uniqueIndex,
-  index,
-} from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 
 // Re-export pattern: append M3 intelligence tables onto schema.ts via this module
 // imported from schema.ts to keep file size manageable.
@@ -67,7 +61,11 @@ export const intelligenceAnalyses = sqliteTable(
   },
   (t) => [
     index('intelligence_analyses_content').on(t.contentItemId),
-    uniqueIndex('intelligence_analyses_identity').on(t.contentItemId, t.inputHash, t.rulesetVersion),
+    uniqueIndex('intelligence_analyses_identity').on(
+      t.contentItemId,
+      t.inputHash,
+      t.rulesetVersion,
+    ),
   ],
 );
 
@@ -148,7 +146,10 @@ export const reviewDecisions = sqliteTable(
     createdAt: ts('created_at'),
     notes: text('notes'),
   },
-  (t) => [index('review_decisions_task').on(t.taskId), index('review_decisions_claim').on(t.claimId)],
+  (t) => [
+    index('review_decisions_task').on(t.taskId),
+    index('review_decisions_claim').on(t.claimId),
+  ],
 );
 
 export const analysisSourceDependencies = sqliteTable(

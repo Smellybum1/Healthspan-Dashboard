@@ -11,7 +11,9 @@ test.describe('Milestone 1 smoke', () => {
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
     await expect(page.getByText(/Demo snapshot/i).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Signal Radar' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'What changed since last visit' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'What changed since last visit' }),
+    ).toBeVisible();
     await page.screenshot({ path: path.join(shotDir, 'today.png'), fullPage: true });
   });
 
@@ -20,7 +22,10 @@ test.describe('Milestone 1 smoke', () => {
     await expect(page.getByRole('heading', { name: 'Metformin' })).toBeVisible();
     await expect(page.getByText(/Confidence rationale/i)).toBeVisible();
     await expect(page.getByText('Provenance', { exact: true })).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'intervention-metformin.png'), fullPage: true });
+    await page.screenshot({
+      path: path.join(shotDir, 'intervention-metformin.png'),
+      fullPage: true,
+    });
   });
 
   test('watchlist follow persists across refresh', async ({ page }) => {
@@ -40,11 +45,11 @@ test.describe('Milestone 1 smoke', () => {
 
   test('theme toggle switches document theme', async ({ page }) => {
     await page.goto('/');
-    const toggle = page.getByRole('button', { name: /Switch to light theme|Switch to dark theme/i });
+    const toggle = page.getByRole('button', {
+      name: /Switch to light theme|Switch to dark theme/i,
+    });
     await toggle.click();
-    await expect
-      .poll(async () => page.locator('html').getAttribute('data-theme'))
-      .toBe('light');
+    await expect.poll(async () => page.locator('html').getAttribute('data-theme')).toBe('light');
     await page.screenshot({ path: path.join(shotDir, 'theme-light.png'), fullPage: true });
   });
 
@@ -131,6 +136,9 @@ test.describe('Milestone 5 creator surfaces', () => {
     await page.getByRole('button', { name: 'Open navigation' }).click();
     await page.getByRole('link', { name: 'Creator Claims' }).click();
     await expect(page.getByRole('heading', { name: 'Creator Claims' })).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm5-mobile-creator-claims.png'), fullPage: true });
+    await page.screenshot({
+      path: path.join(shotDir, 'm5-mobile-creator-claims.png'),
+      fullPage: true,
+    });
   });
 });

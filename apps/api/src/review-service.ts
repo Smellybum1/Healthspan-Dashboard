@@ -8,19 +8,18 @@ import {
   type HealthspanDb,
 } from '@healthspan/db';
 
-export const REVIEW_ACTIONS = [
-  'accept',
-  'edit',
-  'reject',
-  'uncertain',
-  'dismiss',
-] as const;
+export const REVIEW_ACTIONS = ['accept', 'edit', 'reject', 'uncertain', 'dismiss'] as const;
 
 export type ReviewAction = (typeof REVIEW_ACTIONS)[number];
 
 export function listReviewTasks(db: HealthspanDb, opts?: { status?: string; limit?: number }) {
   const limit = Math.min(200, Math.max(1, opts?.limit ?? 100));
-  const rows = db.select().from(liveReviewTasks).orderBy(desc(liveReviewTasks.createdAt)).limit(limit).all();
+  const rows = db
+    .select()
+    .from(liveReviewTasks)
+    .orderBy(desc(liveReviewTasks.createdAt))
+    .limit(limit)
+    .all();
   return rows.filter((row) => (opts?.status ? row.status === opts.status : true));
 }
 
@@ -43,7 +42,11 @@ export function resolveReviewTask(
     expectedAnalysisId?: string | null;
   },
 ) {
-  const task = db.select().from(liveReviewTasks).where(eq(liveReviewTasks.id, opts.taskId)).all()[0];
+  const task = db
+    .select()
+    .from(liveReviewTasks)
+    .where(eq(liveReviewTasks.id, opts.taskId))
+    .all()[0];
   if (!task) {
     return { ok: false as const, status: 404 as const, error: 'Review task not found' };
   }
@@ -51,8 +54,7 @@ export function resolveReviewTask(
     return { ok: false as const, status: 409 as const, error: 'Review task is no longer open' };
   }
 
-  const expected =
-    opts.expectedAnalysisId ?? task.expectedAnalysisId ?? task.analysisId ?? null;
+  const expected = opts.expectedAnalysisId ?? task.expectedAnalysisId ?? task.analysisId ?? null;
   if (expected && task.analysisId && expected !== task.analysisId) {
     return {
       ok: false as const,
@@ -84,7 +86,11 @@ export function resolveReviewTask(
   }
 
   if (opts.action === 'edit' && !opts.editedClaimText?.trim()) {
-    return { ok: false as const, status: 400 as const, error: 'editedClaimText is required for edit' };
+    return {
+      ok: false as const,
+      status: 400 as const,
+      error: 'editedClaimText is required for edit',
+    };
   }
 
   const decisionId = randomUUID();
@@ -161,7 +167,11 @@ export function resolveReviewTask(
   };
 }
 
-export function markOpenReviewsStaleForContent(db: HealthspanDb, contentItemId: string, reason: string) {
+export function markOpenReviewsStaleForContent(
+  db: HealthspanDb,
+  contentItemId: string,
+  reason: string,
+) {
   const open = db
     .select()
     .from(liveReviewTasks)

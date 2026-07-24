@@ -34,10 +34,7 @@ const KNOWN_SUBSTANCES = [
   'caloric restriction',
 ];
 
-export function extractMentionsFromText(opts: {
-  text: string;
-  fieldPath: string;
-}): MentionDraft[] {
+export function extractMentionsFromText(opts: { text: string; fieldPath: string }): MentionDraft[] {
   const text = opts.text ?? '';
   if (!text.trim()) return [];
   const lower = text.toLowerCase();
@@ -52,7 +49,8 @@ export function extractMentionsFromText(opts: {
     out.push({
       rawText: name,
       normalizedText: normalized,
-      mentionType: name === 'exercise' || name === 'caloric restriction' ? 'class_name' : 'substance_name',
+      mentionType:
+        name === 'exercise' || name === 'caloric restriction' ? 'class_name' : 'substance_name',
       fieldPath: opts.fieldPath,
       excerpt: text.slice(0, 240),
       ruleVersion: MENTION_EXTRACTION_VERSION,

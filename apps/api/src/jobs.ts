@@ -55,9 +55,7 @@ export function claimNextJob(db: HealthspanDb) {
   // recover stale leases
   db.update(backgroundJobs)
     .set({ status: 'queued', claimedAt: null, leaseExpiresAt: null })
-    .where(
-      and(eq(backgroundJobs.status, 'running'), lte(backgroundJobs.leaseExpiresAt, now)),
-    )
+    .where(and(eq(backgroundJobs.status, 'running'), lte(backgroundJobs.leaseExpiresAt, now)))
     .run();
 
   const next = db
@@ -124,17 +122,18 @@ export function listJobs(db: HealthspanDb, limit = 50) {
 }
 
 export function stableDedupeKey(kind: string, payload: Record<string, unknown>) {
-  return createHash('sha256')
-    .update(JSON.stringify({ kind, payload }))
-    .digest('hex')
-    .slice(0, 48);
+  return createHash('sha256').update(JSON.stringify({ kind, payload })).digest('hex').slice(0, 48);
 }
 
 export type JobHandler = (job: {
   id: string;
   kind: string;
   payload: Record<string, unknown>;
-}) => Promise<{ status: 'succeeded' | 'partial' | 'failed'; relatedRunId?: string; error?: string }>;
+}) => Promise<{
+  status: 'succeeded' | 'partial' | 'failed';
+  relatedRunId?: string;
+  error?: string;
+}>;
 
 export function startJobWorker(opts: {
   db: HealthspanDb;

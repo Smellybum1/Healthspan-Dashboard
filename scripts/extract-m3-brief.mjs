@@ -18,7 +18,9 @@ walk(j);
 
 if (!text) {
   const asStr = JSON.stringify(j);
-  const m = asStr.match(/Healthspan Dashboard — Milestone 3 Execution Brief[\s\S]*?(?="\s*,\s*"len"|$)/);
+  const m = asStr.match(
+    /Healthspan Dashboard — Milestone 3 Execution Brief[\s\S]*?(?="\s*,\s*"len"|$)/,
+  );
   console.log('fallback match', !!m, asStr.slice(0, 200));
   process.exit(1);
 }

@@ -1,7 +1,16 @@
 import { createHash } from 'node:crypto';
 import { createHttpClient } from './http.js';
-import { identityResult, type IdentityConnector, type IdentityLookupQuery } from './identity-types.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import {
+  identityResult,
+  type IdentityConnector,
+  type IdentityLookupQuery,
+} from './identity-types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 function hashNormalized(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -90,41 +99,39 @@ export function createGsrsConnector(
         });
       }
 
-      const pages: ConnectorPage[] = substances.slice(0, Math.min(args.recordCap ?? 10, 10)).map((s) => {
-        const preferred =
-          s.names?.find((n) => n.preferred)?.name ?? s.names?.[0]?.name ?? s.unii ?? 'unknown';
-        const sequence = s.protein?.subunits?.[0]?.sequence ?? null;
-        const normalized = {
-          type: 'identity',
-          scheme: 'unii',
-          source: 'gsrs',
-          unii: s.unii ?? null,
-          uuid: s.uuid ?? null,
-          preferredName: preferred,
-          substanceClass: s.substanceClass ?? null,
-          molecularFormula: s.structure?.formula ?? null,
-          molecularWeight: s.structure?.molWeight != null ? String(s.structure.molWeight) : null,
-          sequenceProvided: Boolean(sequence),
-          sequence: sequence,
-          approvalInferred: false,
-          note: 'GSRS/UNII presence is substance identity only — not approval. Sequence stored only when source-supplied.',
-        };
-        return {
-          externalId: s.unii ?? s.uuid ?? preferred,
-          canonicalUrl: s.unii
-            ? `https://gsrs.ncats.nih.gov/ginas/app/ui/substances/${s.unii}`
-            : undefined,
-          payload: s,
-          normalized: { ...normalized, normalizedHash: hashNormalized(normalized) },
-        };
-      });
+      const pages: ConnectorPage[] = substances
+        .slice(0, Math.min(args.recordCap ?? 10, 10))
+        .map((s) => {
+          const preferred =
+            s.names?.find((n) => n.preferred)?.name ?? s.names?.[0]?.name ?? s.unii ?? 'unknown';
+          const sequence = s.protein?.subunits?.[0]?.sequence ?? null;
+          const normalized = {
+            type: 'identity',
+            scheme: 'unii',
+            source: 'gsrs',
+            unii: s.unii ?? null,
+            uuid: s.uuid ?? null,
+            preferredName: preferred,
+            substanceClass: s.substanceClass ?? null,
+            molecularFormula: s.structure?.formula ?? null,
+            molecularWeight: s.structure?.molWeight != null ? String(s.structure.molWeight) : null,
+            sequenceProvided: Boolean(sequence),
+            sequence: sequence,
+            approvalInferred: false,
+            note: 'GSRS/UNII presence is substance identity only — not approval. Sequence stored only when source-supplied.',
+          };
+          return {
+            externalId: s.unii ?? s.uuid ?? preferred,
+            canonicalUrl: s.unii
+              ? `https://gsrs.ncats.nih.gov/ginas/app/ui/substances/${s.unii}`
+              : undefined,
+            payload: s,
+            normalized: { ...normalized, normalizedHash: hashNormalized(normalized) },
+          };
+        });
 
       const exactUnii = args.mode === 'unii' || /^[A-Z0-9]{10}$/i.test(q);
-      const matchKind = exactUnii
-        ? 'exact'
-        : pages.length === 1
-          ? 'exact'
-          : 'ambiguous';
+      const matchKind = exactUnii ? 'exact' : pages.length === 1 ? 'exact' : 'ambiguous';
 
       return identityResult({
         connectorId: 'gsrs',
@@ -135,7 +142,9 @@ export function createGsrsConnector(
         pages,
         rawBodies,
         warnings: !exactUnii
-          ? ['Name-only GSRS hits are candidates until uniqueness and type compatibility are reviewed.']
+          ? [
+              'Name-only GSRS hits are candidates until uniqueness and type compatibility are reviewed.',
+            ]
           : undefined,
       });
     } catch (err) {

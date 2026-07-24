@@ -6,12 +6,7 @@ export type DataOrigin = z.infer<typeof DataOriginSchema>;
 export const DataModeSchema = z.enum(['demo', 'live']);
 export type DataMode = z.infer<typeof DataModeSchema>;
 
-export const SourceFamilyIdSchema = z.enum([
-  'pubmed',
-  'clinicaltrials-gov',
-  'crossref',
-  'tga',
-]);
+export const SourceFamilyIdSchema = z.enum(['pubmed', 'clinicaltrials-gov', 'crossref', 'tga']);
 export type SourceFamilyId = z.infer<typeof SourceFamilyIdSchema>;
 
 export const SourceHealthStateSchema = z.enum([

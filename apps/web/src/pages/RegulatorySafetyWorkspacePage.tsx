@@ -34,7 +34,10 @@ export function RegulatorySafetyWorkspacePage() {
   async function loadTab(next: Tab = tab) {
     setError(null);
     const q = new URLSearchParams({ limit: '50' });
-    if (jurisdiction !== 'all' && (next === 'products' || next === 'assertions' || next === 'items')) {
+    if (
+      jurisdiction !== 'all' &&
+      (next === 'products' || next === 'assertions' || next === 'items')
+    ) {
       q.set('jurisdiction', jurisdiction);
     }
     const path =
@@ -125,7 +128,12 @@ export function RegulatorySafetyWorkspacePage() {
             <option value="US">United States (US)</option>
           </select>
         </label>
-        <button type="button" className="btn" disabled={busy} onClick={() => void run('regulatory')}>
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={() => void run('regulatory')}
+        >
           Run regulatory refresh
         </button>
         <button type="button" className="btn" disabled={busy} onClick={() => void run('safety')}>
@@ -186,7 +194,12 @@ export function RegulatorySafetyWorkspacePage() {
               rows.map((row, i) => {
                 const r = row as Record<string, unknown>;
                 const title = String(
-                  r.productName ?? r.title ?? r.productOrClass ?? r.normalizedStanding ?? r.id ?? `#${i}`,
+                  r.productName ??
+                    r.title ??
+                    r.productOrClass ??
+                    r.normalizedStanding ??
+                    r.id ??
+                    `#${i}`,
                 );
                 const detail = JSON.stringify(r);
                 return (

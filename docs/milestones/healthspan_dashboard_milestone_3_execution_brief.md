@@ -83,7 +83,7 @@ Which parts were extracted deterministically, assisted by AI, or reviewed by the
 The product must support curiosity while resisting hype. Evidence maturity, study quality signals, result direction, outcome relevance, safety, research activity, and model extraction confidence are separate dimensions.
 
 3. Non-negotiable product and scientific principles
-3.1 No single composite truth score
+   3.1 No single composite truth score
 
 Do not create or display any single number that purports to combine:
 
@@ -264,10 +264,10 @@ Raw stack traces
 Return safe values such as:
 
 {
-  "database": {
-    "status": "healthy",
-    "migrationVersion": "..."
-  }
+"database": {
+"status": "healthy",
+"migrationVersion": "..."
+}
 }
 
 Exact local paths remain available through:
@@ -422,7 +422,7 @@ Decision log references the new M3 ADRs.
 Do not rewrite the historical M2 completion report except to correct an objectively wrong link or typo; preserve it as a historical record.
 
 5. Fixed Milestone 3 product-management decisions
-5.1 Live source scope
+   5.1 Live source scope
 
 Milestone 3 intelligence may use only the sources already ingested during M2:
 
@@ -614,22 +614,22 @@ For plotting only, map the ordered categories to a documented ordinal. Never sho
 Support:
 
 organism_level:
-  in_vitro
-  ex_vivo
-  animal
-  human
-  mixed
-  not_applicable
-  unknown
+in_vitro
+ex_vivo
+animal
+human
+mixed
+not_applicable
+unknown
 
 population_context:
-  healthy
-  disease_specific
-  frailty_or_age_related_condition
-  mixed
-  not_reported
-  not_applicable
-  unknown
+healthy
+disease_specific
+frailty_or_age_related_condition
+mixed
+not_reported
+not_applicable
+unknown
 
 Preserve age range, sex eligibility, sample size, condition, and healthy-volunteer status only when explicit.
 
@@ -864,27 +864,27 @@ Those belong to Milestone 4.
 Use the following pipeline:
 
 Current source-record version
-    ↓
+↓
 Material input builder
-    ↓
+↓
 Versioned evidence text segments
-    ↓
+↓
 Deterministic study/profile extraction
-    ↓
+↓
 Deterministic evidence maturity and gap rules
-    ↓
+↓
 Deterministic source-fact claim candidates
-    ↓
+↓
 Optional AI enrichment for unresolved fields
-    ↓
+↓
 Strict schema and policy validation
-    ↓
+↓
 Immutable analysis package
-    ↓
+↓
 Review tasks for ambiguity/high-impact cases
-    ↓
+↓
 Current intelligence projection
-    ↓
+↓
 API, UI, history, and research-activity radar
 6.1 Analysis inputs
 
@@ -1005,9 +1005,9 @@ AI is optional and disabled by default.
 Define a provider-neutral interface similar to:
 
 interface IntelligenceProvider {
-  readonly providerId: string;
+readonly providerId: string;
 
-  analyze(input: IntelligenceProviderInput): Promise<IntelligenceProviderOutput>;
+analyze(input: IntelligenceProviderInput): Promise<IntelligenceProviderOutput>;
 }
 
 Implement:
@@ -1145,7 +1145,7 @@ Do not store raw hidden reasoning.
 Validated structured output and concise source-grounded rationale may be stored as analysis provenance.
 
 7. Versioning, staleness, and review precedence
-7.1 Immutable analysis packages
+   7.1 Immutable analysis packages
 
 Each completed analysis package is immutable.
 
@@ -1185,11 +1185,11 @@ Never silently copy a human-reviewed result onto materially changed source text.
 For each field, current display precedence is:
 
 valid human-reviewed decision
-    ↓
+↓
 validated deterministic source fact
-    ↓
+↓
 validated AI-assisted extraction
-    ↓
+↓
 unknown / not assessed
 
 A human decision can explicitly accept, edit, reject, or mark uncertain. It cannot delete source history.
@@ -1909,7 +1909,7 @@ Demo V1 types may remain for backward compatibility, but Live mode must use a cl
 Do not silently reinterpret old Demo fields as Live V2 fields.
 
 10. Package requirements
-10.1 packages/core
+    10.1 packages/core
 
 Add:
 
@@ -2005,9 +2005,9 @@ packages/intelligence/src/
 ├─ activity/
 ├─ review/
 ├─ providers/
-│  ├─ disabled/
-│  ├─ fixture/
-│  └─ openai/
+│ ├─ disabled/
+│ ├─ fixture/
+│ └─ openai/
 ├─ prompts/
 ├─ policy/
 ├─ evaluation/
@@ -2123,7 +2123,7 @@ AssessmentHistoryTimeline
 Do not over-generalize components that are specific to one screen.
 
 11. Evidence and claim processing rules
-11.1 Paper processing
+    11.1 Paper processing
 
 For PubMed/Crossref-linked papers:
 
@@ -2226,7 +2226,7 @@ Do not expose full raw snapshots.
 Internal analysis segments may contain the source-provided abstract/registry text already lawfully ingested under the documented source policy; browser display remains bounded and attributed.
 
 12. Review workflow
-12.1 Review Queue
+    12.1 Review Queue
 
 Add a dedicated Live-mode Review Queue.
 
@@ -2370,20 +2370,20 @@ Retain the M2 response envelope and strict Live/Demo separation.
 All list endpoints require server-side pagination and validated filters.
 
 14.1 Intelligence status and runs
-GET  /api/intelligence/status
-GET  /api/intelligence/runs
-GET  /api/intelligence/runs/:id
+GET /api/intelligence/status
+GET /api/intelligence/runs
+GET /api/intelligence/runs/:id
 POST /api/intelligence/runs
 POST /api/items/:id/reassess
 
 Suggested run body:
 
 {
-  "scope": "stale",
-  "itemIds": [],
-  "includeAi": false,
-  "force": false,
-  "maxItems": 100
+"scope": "stale",
+"itemIds": [],
+"includeAi": false,
+"force": false,
+"maxItems": 100
 }
 
 Rules:
@@ -2436,11 +2436,11 @@ date range
 has claims
 has potential conflict
 14.4 Review API
-GET   /api/review-tasks
-GET   /api/review-tasks/:id
+GET /api/review-tasks
+GET /api/review-tasks/:id
 PATCH /api/review-tasks/:id
-POST  /api/review-tasks/:id/resolve
-GET   /api/review-decisions
+POST /api/review-tasks/:id/resolve
+GET /api/review-decisions
 
 Review writes require:
 
@@ -2479,16 +2479,16 @@ These are local-admin mutations.
 Include where relevant:
 
 {
-  dataMode: "live" | "demo";
-  generatedAt: string;
-  partial: boolean;
-  stale?: boolean;
-  rulesetVersion?: string;
-  analysisVersion?: string;
-  sourceVersionIds?: string[];
-  extractionMethod?: "deterministic" | "ai_assisted" | "human_reviewed";
-  provider?: string;
-  model?: string;
+dataMode: "live" | "demo";
+generatedAt: string;
+partial: boolean;
+stale?: boolean;
+rulesetVersion?: string;
+analysisVersion?: string;
+sourceVersionIds?: string[];
+extractionMethod?: "deterministic" | "ai_assisted" | "human_reviewed";
+provider?: string;
+model?: string;
 }
 
 Never return:
@@ -2779,12 +2779,14 @@ Existing M2 commands remain functional.
 Add to .env.example without secrets:
 
 # Evidence intelligence
+
 HEALTHSPAN_INTELLIGENCE_AUTO_RUN=true
 HEALTHSPAN_INTELLIGENCE_RULESET=evidence-rules-v1
 HEALTHSPAN_INTELLIGENCE_MAX_ITEMS_PER_JOB=100
 HEALTHSPAN_INTELLIGENCE_JOB_LEASE_SECONDS=300
 
 # Optional AI
+
 HEALTHSPAN_AI_ENABLED=false
 HEALTHSPAN_AI_PROVIDER=openai
 HEALTHSPAN_AI_MODEL=
@@ -2795,6 +2797,7 @@ HEALTHSPAN_AI_STORE=false
 OPENAI_API_KEY=
 
 # Existing local scheduler
+
 HEALTHSPAN_SCHEDULER_ENABLED=true
 HEALTHSPAN_REFRESH_CRON=0 6 * * *
 HEALTHSPAN_TIME_ZONE=Australia/Brisbane
@@ -2802,6 +2805,7 @@ HEALTHSPAN_STARTUP_CATCHUP_ENABLED=true
 HEALTHSPAN_STALE_AFTER_HOURS=24
 
 # Local administration boundary
+
 HEALTHSPAN_ALLOW_REMOTE_ADMIN=false
 
 Validate configuration at startup.

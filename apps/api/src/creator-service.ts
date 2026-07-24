@@ -117,7 +117,11 @@ function persistClaimAlignment(
 export function bootstrapCreatorCatalog(db: HealthspanDb) {
   const now = Date.now();
   for (const row of BOOTSTRAP) {
-    const existing = db.select().from(creatorEntities).where(eq(creatorEntities.id, row.id)).all()[0];
+    const existing = db
+      .select()
+      .from(creatorEntities)
+      .where(eq(creatorEntities.id, row.id))
+      .all()[0];
     if (existing) continue;
     db.insert(creatorEntities)
       .values({
@@ -127,7 +131,8 @@ export function bootstrapCreatorCatalog(db: HealthspanDb) {
         creatorKind: row.kind,
         lifecycleState: 'active',
         identityConfidence: 'medium',
-        neutralDescription: 'Bootstrap curated creator profile for M5 Live demos (claims assessed, not people).',
+        neutralDescription:
+          'Bootstrap curated creator profile for M5 Live demos (claims assessed, not people).',
         dataOrigin: 'live',
         createdAt: now,
         updatedAt: now,
@@ -148,20 +153,44 @@ export function bootstrapCreatorCatalog(db: HealthspanDb) {
   }
 
   const policies = [
-    { id: 'policy-youtube-metadata', platform: 'youtube', policyKey: 'metadata_not_claim_evidence', status: 'enforced' },
-    { id: 'policy-youtube-no-scrape', platform: 'youtube', policyKey: 'no_unofficial_captions_or_media', status: 'enforced' },
-    { id: 'policy-x-optional', platform: 'x', policyKey: 'disabled_by_default_budget_cap', status: 'disabled' },
-    { id: 'policy-x-no-external-ai', platform: 'x', policyKey: 'no_external_ai', status: 'enforced' },
+    {
+      id: 'policy-youtube-metadata',
+      platform: 'youtube',
+      policyKey: 'metadata_not_claim_evidence',
+      status: 'enforced',
+    },
+    {
+      id: 'policy-youtube-no-scrape',
+      platform: 'youtube',
+      policyKey: 'no_unofficial_captions_or_media',
+      status: 'enforced',
+    },
+    {
+      id: 'policy-x-optional',
+      platform: 'x',
+      policyKey: 'disabled_by_default_budget_cap',
+      status: 'disabled',
+    },
+    {
+      id: 'policy-x-no-external-ai',
+      platform: 'x',
+      policyKey: 'no_external_ai',
+      status: 'enforced',
+    },
   ];
   for (const p of policies) {
-    if (db.select().from(platformPolicyState).where(eq(platformPolicyState.id, p.id)).all()[0]) continue;
+    if (db.select().from(platformPolicyState).where(eq(platformPolicyState.id, p.id)).all()[0])
+      continue;
     db.insert(platformPolicyState)
       .values({ ...p, detailJson: '{}', updatedAt: now })
       .run();
   }
 }
 
-export function listCreators(db: HealthspanDb, opts?: { page?: number; pageSize?: number; q?: string }) {
+export function listCreators(
+  db: HealthspanDb,
+  opts?: { page?: number; pageSize?: number; q?: string },
+) {
   bootstrapCreatorCatalog(db);
   const page = Math.max(1, opts?.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, opts?.pageSize ?? 25));
@@ -200,7 +229,11 @@ export function importCreatorDocument(
   },
 ) {
   bootstrapCreatorCatalog(db);
-  const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, opts.creatorId)).all()[0];
+  const creator = db
+    .select()
+    .from(creatorEntities)
+    .where(eq(creatorEntities.id, opts.creatorId))
+    .all()[0];
   if (!creator) return { ok: false as const, status: 404 as const, error: 'Creator not found' };
 
   const claimEligible = opts.claimEligible ?? true;
@@ -225,12 +258,17 @@ export function importCreatorDocument(
       .from(creatorDocuments)
       .all()
       .find((d) => d.id === opts.replacesDocumentId && d.creatorId === opts.creatorId);
-    if (!prior) return { ok: false as const, status: 404 as const, error: 'Document to replace not found' };
+    if (!prior)
+      return { ok: false as const, status: 404 as const, error: 'Document to replace not found' };
     db.update(creatorDocuments)
       .set({ lifecycleState: 'superseded' })
       .where(eq(creatorDocuments.id, prior.id))
       .run();
-    for (const claim of db.select().from(creatorClaims).all().filter((c) => c.documentId === prior.id)) {
+    for (const claim of db
+      .select()
+      .from(creatorClaims)
+      .all()
+      .filter((c) => c.documentId === prior.id)) {
       db.update(creatorClaims)
         .set({ lifecycleState: 'stale_replaced', reviewStatus: 'stale' })
         .where(eq(creatorClaims.id, claim.id))
@@ -398,7 +436,11 @@ export function deleteCreatorDocument(
   db: HealthspanDb,
   opts: { documentId: string; dataDir?: string },
 ) {
-  const doc = db.select().from(creatorDocuments).all().find((d) => d.id === opts.documentId);
+  const doc = db
+    .select()
+    .from(creatorDocuments)
+    .all()
+    .find((d) => d.id === opts.documentId);
   if (!doc) return { ok: false as const, status: 404 as const, error: 'Document not found' };
   if (doc.lifecycleState === 'deleted') {
     return { ok: true as const, alreadyDeleted: true, staleClaims: 0 };
@@ -438,7 +480,11 @@ export function deleteCreatorDocument(
     .run();
 
   let staleClaims = 0;
-  for (const claim of db.select().from(creatorClaims).all().filter((c) => c.documentId === doc.id)) {
+  for (const claim of db
+    .select()
+    .from(creatorClaims)
+    .all()
+    .filter((c) => c.documentId === doc.id)) {
     db.update(creatorClaims)
       .set({
         active: false,
@@ -597,12 +643,20 @@ export function getCreatorDetail(db: HealthspanDb, id: string) {
 }
 
 /** Parse YouTube channel URL, @handle, or UC… channel id. */
-export function parseYoutubeChannelRef(input: string): { externalAccountId: string; handle: string | null; canonicalUrl: string } {
+export function parseYoutubeChannelRef(input: string): {
+  externalAccountId: string;
+  handle: string | null;
+  canonicalUrl: string;
+} {
   const raw = input.trim();
   const channelMatch = raw.match(/(UC[\w-]{22})/);
   if (channelMatch) {
     const id = channelMatch[1]!;
-    return { externalAccountId: id, handle: null, canonicalUrl: `https://www.youtube.com/channel/${id}` };
+    return {
+      externalAccountId: id,
+      handle: null,
+      canonicalUrl: `https://www.youtube.com/channel/${id}`,
+    };
   }
   const handleMatch = raw.match(/@([\w.-]+)/) ?? raw.match(/^([\w.-]+)$/);
   if (handleMatch) {
@@ -621,13 +675,21 @@ export function addYoutubeAccount(
   opts: { creatorId: string; channelRef: string; monitored?: boolean },
 ) {
   bootstrapCreatorCatalog(db);
-  const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, opts.creatorId)).all()[0];
+  const creator = db
+    .select()
+    .from(creatorEntities)
+    .where(eq(creatorEntities.id, opts.creatorId))
+    .all()[0];
   if (!creator) return { ok: false as const, status: 404 as const, error: 'Creator not found' };
   let parsed: ReturnType<typeof parseYoutubeChannelRef>;
   try {
     parsed = parseYoutubeChannelRef(opts.channelRef);
   } catch (err) {
-    return { ok: false as const, status: 400 as const, error: err instanceof Error ? err.message : 'Invalid channel' };
+    return {
+      ok: false as const,
+      status: 400 as const,
+      error: err instanceof Error ? err.message : 'Invalid channel',
+    };
   }
   const existing = db
     .select()
@@ -662,7 +724,11 @@ export function addXAccount(
   opts: { creatorId: string; username: string; monitored?: boolean },
 ) {
   bootstrapCreatorCatalog(db);
-  const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, opts.creatorId)).all()[0];
+  const creator = db
+    .select()
+    .from(creatorEntities)
+    .where(eq(creatorEntities.id, opts.creatorId))
+    .all()[0];
   if (!creator) return { ok: false as const, status: 404 as const, error: 'Creator not found' };
   const handle = opts.username.replace(/^@/, '').trim();
   if (!handle) return { ok: false as const, status: 400 as const, error: 'Username required' };
@@ -711,11 +777,19 @@ export function createManualCreatorClaim(
   },
 ) {
   bootstrapCreatorCatalog(db);
-  const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, opts.creatorId)).all()[0];
+  const creator = db
+    .select()
+    .from(creatorEntities)
+    .where(eq(creatorEntities.id, opts.creatorId))
+    .all()[0];
   if (!creator) return { ok: false as const, status: 404 as const, error: 'Creator not found' };
   const text = redactActionableDosing(opts.claimText.trim());
   if (text.length < 12 || text.length > 500) {
-    return { ok: false as const, status: 400 as const, error: 'claimText must be 12–500 characters' };
+    return {
+      ok: false as const,
+      status: 400 as const,
+      error: 'claimText must be 12–500 characters',
+    };
   }
   const role =
     (opts.assertionRole as
@@ -778,7 +852,11 @@ export function creatorWatchItems(db: HealthspanDb, limit = 12) {
 
 export function ensureXBudgetRow(db: HealthspanDb) {
   const periodKey = new Date().toISOString().slice(0, 7);
-  const existing = db.select().from(xBudgetLedger).all().find((r) => r.periodKey === periodKey);
+  const existing = db
+    .select()
+    .from(xBudgetLedger)
+    .all()
+    .find((r) => r.periodKey === periodKey);
   if (existing) return existing;
   const cap = Number(process.env.HEALTHSPAN_X_BUDGET_CAP_MICROS ?? 0);
   const id = randomUUID();
@@ -796,5 +874,9 @@ export function ensureXBudgetRow(db: HealthspanDb) {
 }
 
 export function listMonitoredAccounts(db: HealthspanDb) {
-  return db.select().from(creatorPlatformAccounts).all().filter((a) => a.monitored && a.enabled);
+  return db
+    .select()
+    .from(creatorPlatformAccounts)
+    .all()
+    .filter((a) => a.monitored && a.enabled);
 }

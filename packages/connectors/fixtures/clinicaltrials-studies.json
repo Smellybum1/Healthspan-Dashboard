@@ -1,1 +1,20 @@
-{"studies":[{"protocolSection":{"identificationModule":{"nctId":"NCT01234567","briefTitle":"Example aging trial"},"statusModule":{"overallStatus":"RECRUITING","lastUpdatePostDateStruct":{"date":"2026-01-01"}},"conditionsModule":{"conditions":["Aging"]},"armsInterventionsModule":{"interventions":[{"name":"Metformin"}]},"outcomesModule":{"primaryOutcomes":[{"measure":"Change in gait speed"}]},"contactsLocationsModule":{"locations":[{"country":"Australia","city":"Sydney"}]},"sponsorCollaboratorsModule":{"leadSponsor":{"name":"Example Org"}},"designModule":{"studyType":"INTERVENTIONAL","phases":["PHASE2"]}},"hasResults":false}]}
+{
+  "studies": [
+    {
+      "protocolSection": {
+        "identificationModule": { "nctId": "NCT01234567", "briefTitle": "Example aging trial" },
+        "statusModule": {
+          "overallStatus": "RECRUITING",
+          "lastUpdatePostDateStruct": { "date": "2026-01-01" }
+        },
+        "conditionsModule": { "conditions": ["Aging"] },
+        "armsInterventionsModule": { "interventions": [{ "name": "Metformin" }] },
+        "outcomesModule": { "primaryOutcomes": [{ "measure": "Change in gait speed" }] },
+        "contactsLocationsModule": { "locations": [{ "country": "Australia", "city": "Sydney" }] },
+        "sponsorCollaboratorsModule": { "leadSponsor": { "name": "Example Org" } },
+        "designModule": { "studyType": "INTERVENTIONAL", "phases": ["PHASE2"] }
+      },
+      "hasResults": false
+    }
+  ]
+}

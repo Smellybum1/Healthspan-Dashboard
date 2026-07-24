@@ -1,10 +1,4 @@
-import {
-  integer,
-  sqliteTable,
-  text,
-  uniqueIndex,
-  index,
-} from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 
 const id = () => text('id').primaryKey();
 const ts = (name: string) => integer(name, { mode: 'number' }).notNull();
@@ -333,9 +327,7 @@ export const platformQuotaLedgers = sqliteTable(
     updatedAt: ts('updated_at'),
     createdAt: ts('created_at'),
   },
-  (t) => [
-    index('platform_quota_period_method').on(t.platform, t.periodKey, t.methodOrResource),
-  ],
+  (t) => [index('platform_quota_period_method').on(t.platform, t.periodKey, t.methodOrResource)],
 );
 
 export const platformPriceTables = sqliteTable(

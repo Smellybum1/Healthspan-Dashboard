@@ -11,18 +11,18 @@ Delivered a local pnpm monorepo with a React/Vite UI, Hono API, Zod-backed domai
 
 ## 2. Acceptance-criteria checklist
 
-| # | Criterion | Status |
-| --- | --- | --- |
-| 1 | New developer can clone, follow README, run locally | Pass |
-| 2 | All required routes + convincing seeded content | Pass |
-| 3 | Today page communicates differentiator quickly | Pass |
-| 4 | Evidence / confidence / attention / safety / regulatory visually distinct | Pass |
-| 5 | Demo assessments expose rationale + provenance | Pass |
-| 6 | Watchlists/preferences survive refresh | Pass (e2e) |
-| 7 | Usable on desktop and 375px | Pass (e2e mobile project) |
-| 8 | `pnpm lint`, `typecheck`, `test`, `test:e2e`, `build` pass | Pass |
-| 9 | Documentation reflects implementation | Pass |
-| 10 | Completion report with screenshots + commit hash | Pass (this file) |
+| #   | Criterion                                                                 | Status                    |
+| --- | ------------------------------------------------------------------------- | ------------------------- |
+| 1   | New developer can clone, follow README, run locally                       | Pass                      |
+| 2   | All required routes + convincing seeded content                           | Pass                      |
+| 3   | Today page communicates differentiator quickly                            | Pass                      |
+| 4   | Evidence / confidence / attention / safety / regulatory visually distinct | Pass                      |
+| 5   | Demo assessments expose rationale + provenance                            | Pass                      |
+| 6   | Watchlists/preferences survive refresh                                    | Pass (e2e)                |
+| 7   | Usable on desktop and 375px                                               | Pass (e2e mobile project) |
+| 8   | `pnpm lint`, `typecheck`, `test`, `test:e2e`, `build` pass                | Pass                      |
+| 9   | Documentation reflects implementation                                     | Pass                      |
+| 10  | Completion report with screenshots + commit hash                          | Pass (this file)          |
 
 ## 3. Screenshots of principal screens
 

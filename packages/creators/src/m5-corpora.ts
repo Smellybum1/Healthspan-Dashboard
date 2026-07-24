@@ -7,7 +7,10 @@
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function variants<T extends string>(prefix: string, items: T[]): Array<{ label: string; value: T }> {
+function variants<T extends string>(
+  prefix: string,
+  items: T[],
+): Array<{ label: string; value: T }> {
   return items.map((value, i) => ({ label: `${prefix}${i + 1}`, value }));
 }
 
@@ -350,7 +353,8 @@ export type ClaimCorpusCase = {
   id: string;
   category: string;
   claimText: string;
-  assertionRole?: 'assertion' | 'question' | 'hypothetical' | 'quotation' | 'correction' | 'disclosure';
+  assertionRole?:
+    'assertion' | 'question' | 'hypothetical' | 'quotation' | 'correction' | 'disclosure';
   sourceStyle: 'document' | 'x' | 'manual';
   expectRole?: ClaimCorpusCase['assertionRole'];
 };
@@ -875,9 +879,7 @@ export type ComplianceCorpusCase = {
   };
 };
 
-const COMPLIANCE_SPECS: Array<
-  Omit<ComplianceCorpusCase, 'id'> & { variants?: number }
-> = [
+const COMPLIANCE_SPECS: Array<Omit<ComplianceCorpusCase, 'id'> & { variants?: number }> = [
   {
     category: 'youtube_under_25d',
     platform: 'youtube',
@@ -1029,7 +1031,9 @@ export const COMPLIANCE_RETENTION_CORPUS: ComplianceCorpusCase[] = buildComplian
 // Aggregate evaluation
 // ---------------------------------------------------------------------------
 
-const REQUIRED_IDENTITY_CATEGORIES = Object.keys(IDENTITY_SCENARIOS) as IdentityCorpusCase['category'][];
+const REQUIRED_IDENTITY_CATEGORIES = Object.keys(
+  IDENTITY_SCENARIOS,
+) as IdentityCorpusCase['category'][];
 const REQUIRED_DOCUMENT_CATEGORIES = [
   'vtt',
   'srt',
@@ -1088,9 +1092,7 @@ function structuralClaimOk(corpus: ClaimCorpusCase[]): boolean {
 }
 
 function structuralRecurrenceOk(corpus: RecurrenceCorpusGroup[]): boolean {
-  return corpus.every(
-    (c) => Boolean(c.id && c.category && c.claims?.length >= 2 && c.expect),
-  );
+  return corpus.every((c) => Boolean(c.id && c.category && c.claims?.length >= 2 && c.expect));
 }
 
 function structuralComplianceOk(corpus: ComplianceCorpusCase[]): boolean {

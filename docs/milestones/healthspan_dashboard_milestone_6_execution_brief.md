@@ -111,16 +111,16 @@ not a hosted service
 
 # 3. Fixed branch, merge, and stop decisions
 
-| Item | Decision |
-|---|---|
-| Exact M6 base | `575489cf913812291f75266975e77c8953058968` |
-| M5 feature-complete reference | `f21a55343035c69708fc1349ab4435352147ea48` |
-| Working branch | `milestone-6/personalisation-production-hardening` |
-| Merge to `main` | Not authorised |
-| Create M7 branch | Not authorised |
-| Hosted deployment | Prohibited |
-| Personal health companion | Prohibited |
-| Final action | Push M6 branch, report exact results, stop |
+| Item                          | Decision                                           |
+| ----------------------------- | -------------------------------------------------- |
+| Exact M6 base                 | `575489cf913812291f75266975e77c8953058968`         |
+| M5 feature-complete reference | `f21a55343035c69708fc1349ab4435352147ea48`         |
+| Working branch                | `milestone-6/personalisation-production-hardening` |
+| Merge to `main`               | Not authorised                                     |
+| Create M7 branch              | Not authorised                                     |
+| Hosted deployment             | Prohibited                                         |
+| Personal health companion     | Prohibited                                         |
+| Final action                  | Push M6 branch, report exact results, stop         |
 
 ---
 
@@ -804,6 +804,7 @@ The M6 completion report must record:
 - Any explicitly accepted project-manager rescope
 
 After this commit exists and the gate passes, continue automatically with Section 6. Do not request routine approval.
+
 # 6. Supported runtime and dependency baseline
 
 ## 6.1 Node.js
@@ -1387,12 +1388,14 @@ low
 Fixed default grouping:
 
 **Urgent**
+
 - Official suspension, withdrawal, cancellation, or active market action linked to a watched object
 - Explicit official unapproved-product warning linked to a watched object
 - Database-integrity failure
 - Required platform-compliance purge failure
 
 **High**
+
 - Official label boxed-warning/warning/contraindication change
 - Regulator potential signal
 - Retraction of watched evidence
@@ -1400,6 +1403,7 @@ Fixed default grouping:
 - Backup verification failure
 
 **Normal**
+
 - Trial status change
 - Paper correction
 - Evidence/dossier change
@@ -1407,6 +1411,7 @@ Fixed default grouping:
 - Creator correction/alignment change
 
 **Low**
+
 - Routine source-health recovery
 - Informational source/indexing change
 
@@ -2322,24 +2327,24 @@ Do not expose exact path in browser API.
 
 Recommended defaults:
 
-| Data class | Default |
-|---|---|
-| User watchlists/searches/settings | Retain until user deletes |
-| Reading/dismissal state | Retain while target/history is retained |
-| Visit sessions | 180 days |
-| Daily briefs | 180 days |
-| Weekly reviews | 730 days |
-| Alerts resolved/dismissed | 365 days |
-| Operational logs | 14 days / 256 MiB |
-| High-resolution metrics | 90 days |
-| Daily metric aggregates | 365 days |
-| Completed job detail | 180 days |
-| Sanitized job errors | 365 days |
-| Unreferenced temp files | 24 hours |
-| Unreferenced raw snapshots | 30 days after proven unreferenced |
-| Platform data | Current platform policy |
-| User-owned creator documents | Until user deletes |
-| Recovery backups | 7 daily + protected checkpoints |
+| Data class                        | Default                                 |
+| --------------------------------- | --------------------------------------- |
+| User watchlists/searches/settings | Retain until user deletes               |
+| Reading/dismissal state           | Retain while target/history is retained |
+| Visit sessions                    | 180 days                                |
+| Daily briefs                      | 180 days                                |
+| Weekly reviews                    | 730 days                                |
+| Alerts resolved/dismissed         | 365 days                                |
+| Operational logs                  | 14 days / 256 MiB                       |
+| High-resolution metrics           | 90 days                                 |
+| Daily metric aggregates           | 365 days                                |
+| Completed job detail              | 180 days                                |
+| Sanitized job errors              | 365 days                                |
+| Unreferenced temp files           | 24 hours                                |
+| Unreferenced raw snapshots        | 30 days after proven unreferenced       |
+| Platform data                     | Current platform policy                 |
+| User-owned creator documents      | Until user deletes                      |
+| Recovery backups                  | 7 daily + protected checkpoints         |
 
 ## 20.2 Safety rules
 

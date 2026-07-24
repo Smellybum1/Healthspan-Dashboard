@@ -1,7 +1,16 @@
 import { createHash } from 'node:crypto';
 import { createHttpClient } from './http.js';
-import { identityResult, type IdentityConnector, type IdentityLookupQuery } from './identity-types.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import {
+  identityResult,
+  type IdentityConnector,
+  type IdentityLookupQuery,
+} from './identity-types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 function hashNormalized(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -23,7 +32,10 @@ export type ArtgParsedProduct = {
 };
 
 function parseArtgSearchHtml(html: string): ArtgParsedProduct[] {
-  if (!REQUIRED_MARKERS.some((m) => html.toLowerCase().includes(m.toLowerCase())) && !html.includes('data-artg-id')) {
+  if (
+    !REQUIRED_MARKERS.some((m) => html.toLowerCase().includes(m.toLowerCase())) &&
+    !html.includes('data-artg-id')
+  ) {
     throw new Error('ARTG HTML contract markers missing — parser_contract_failure');
   }
 
@@ -71,7 +83,8 @@ function normalizeLicenceStanding(raw: string | null | undefined): string {
   if (!s) return 'unknown_source_status';
   if (s.includes('cancelled')) return 'cancelled';
   if (s.includes('suspended')) return 'suspended';
-  if (s.includes('active') || s.includes('registered') || s.includes('listed')) return 'included_or_authorised';
+  if (s.includes('active') || s.includes('registered') || s.includes('listed'))
+    return 'included_or_authorised';
   return 'source_native_unmapped';
 }
 
@@ -160,34 +173,37 @@ export function createArtgConnector(
         });
       }
 
-      const pages: ConnectorPage[] = products.slice(0, Math.min(args.recordCap ?? 10, 20)).map((p) => {
-        const normalized = {
-          type: 'regulated_product',
-          authority: 'tga_artg',
-          jurisdiction: 'AU',
-          scheme: 'artg_id',
-          artgId: p.artgId,
-          productName: p.productName,
-          sponsor: p.sponsor ?? null,
-          licenceStatusRaw: p.licenceStatus ?? null,
-          licenceStandingNormalized: normalizeLicenceStanding(p.licenceStatus),
-          registrationType: p.registrationType ?? null,
-          ingredients: p.ingredients ?? null,
-          officialUrl: p.officialUrl,
-          piUrl: p.piUrl ?? null,
-          cmiUrl: p.cmiUrl ?? null,
-          approvalInferred: false,
-          note: 'ARTG inclusion is product/register scoped and is not longevity evidence.',
-        };
-        return {
-          externalId: p.artgId,
-          canonicalUrl: p.officialUrl,
-          payload: p,
-          normalized: { ...normalized, normalizedHash: hashNormalized(normalized) },
-        };
-      });
+      const pages: ConnectorPage[] = products
+        .slice(0, Math.min(args.recordCap ?? 10, 20))
+        .map((p) => {
+          const normalized = {
+            type: 'regulated_product',
+            authority: 'tga_artg',
+            jurisdiction: 'AU',
+            scheme: 'artg_id',
+            artgId: p.artgId,
+            productName: p.productName,
+            sponsor: p.sponsor ?? null,
+            licenceStatusRaw: p.licenceStatus ?? null,
+            licenceStandingNormalized: normalizeLicenceStanding(p.licenceStatus),
+            registrationType: p.registrationType ?? null,
+            ingredients: p.ingredients ?? null,
+            officialUrl: p.officialUrl,
+            piUrl: p.piUrl ?? null,
+            cmiUrl: p.cmiUrl ?? null,
+            approvalInferred: false,
+            note: 'ARTG inclusion is product/register scoped and is not longevity evidence.',
+          };
+          return {
+            externalId: p.artgId,
+            canonicalUrl: p.officialUrl,
+            payload: p,
+            normalized: { ...normalized, normalizedHash: hashNormalized(normalized) },
+          };
+        });
 
-      const matchKind = isId && pages.length === 1 ? 'exact' : pages.length === 1 ? 'exact' : 'ambiguous';
+      const matchKind =
+        isId && pages.length === 1 ? 'exact' : pages.length === 1 ? 'exact' : 'ambiguous';
 
       return identityResult({
         connectorId: 'artg',
@@ -223,7 +239,8 @@ export function createArtgConnector(
     lookup,
     async fetchWindow({ cursor, recordCap }): Promise<ConnectorFetchResult> {
       const query = String(cursor.query ?? cursor.artgId ?? '');
-      const mode = (cursor.mode as IdentityLookupQuery['mode']) ?? (cursor.artgId ? 'artg_id' : 'exact_name');
+      const mode =
+        (cursor.mode as IdentityLookupQuery['mode']) ?? (cursor.artgId ? 'artg_id' : 'exact_name');
       const result = await lookup({ query, mode, recordCap });
       return {
         connectorId: 'artg',

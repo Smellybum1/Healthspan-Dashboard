@@ -32,7 +32,14 @@ export function listContentItems(db: HealthspanDb, query: ContentListQuery) {
         : desc(contentItems.updatedAt);
 
   const rows = where
-    ? db.select().from(contentItems).where(where).orderBy(order).limit(pageSize).offset(offset).all()
+    ? db
+        .select()
+        .from(contentItems)
+        .where(where)
+        .orderBy(order)
+        .limit(pageSize)
+        .offset(offset)
+        .all()
     : db.select().from(contentItems).orderBy(order).limit(pageSize).offset(offset).all();
 
   const countRow = where
@@ -41,7 +48,10 @@ export function listContentItems(db: HealthspanDb, query: ContentListQuery) {
         .from(contentItems)
         .where(where)
         .all()[0]
-    : db.select({ count: sql<number>`count(*)` }).from(contentItems).all()[0];
+    : db
+        .select({ count: sql<number>`count(*)` })
+        .from(contentItems)
+        .all()[0];
 
   return {
     page,

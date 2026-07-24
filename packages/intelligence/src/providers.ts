@@ -65,12 +65,14 @@ const OpenAiSuggestionSchema = z.object({
  * Strict structured output, storage disabled where supported, no tools,
  * minimal public-source segments only, deterministic fallback on failure.
  */
-export function createOpenAIResponsesIntelligenceProvider(opts: {
-  apiKey?: string;
-  enabled?: boolean;
-  model?: string;
-  fetchImpl?: typeof fetch;
-} = {}): IntelligenceProvider {
+export function createOpenAIResponsesIntelligenceProvider(
+  opts: {
+    apiKey?: string;
+    enabled?: boolean;
+    model?: string;
+    fetchImpl?: typeof fetch;
+  } = {},
+): IntelligenceProvider {
   return {
     id: 'openai',
     async analyze(request) {
@@ -152,7 +154,10 @@ export function createOpenAIResponsesIntelligenceProvider(opts: {
         };
         const text =
           json.output_text ??
-          json.output?.flatMap((o) => o.content ?? []).map((c) => c.text ?? '').join('') ??
+          json.output
+            ?.flatMap((o) => o.content ?? [])
+            .map((c) => c.text ?? '')
+            .join('') ??
           '';
         const parsed = OpenAiSuggestionSchema.safeParse(JSON.parse(text || '{}'));
         if (!parsed.success) {

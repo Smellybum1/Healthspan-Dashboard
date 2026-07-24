@@ -1,13 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Activity,
-  Menu,
-  Moon,
-  Search,
-  Sun,
-  X,
-} from 'lucide-react';
+import { Activity, Menu, Moon, Search, Sun, X } from 'lucide-react';
 import { NAV_ITEMS, formatWhen } from '../lib/nav';
 import { usePreferences } from '../state/PreferencesContext';
 import { searchApi } from '../lib/api';
@@ -27,7 +20,11 @@ export function AppShell() {
     if (!sources.length) return 'unknown';
     if (sources.some((s) => s.health === 'error' || s.health === 'failed')) return 'error';
     if (sources.some((s) => s.health === 'degraded' || s.health === 'running')) return 'degraded';
-    if (sources.every((s) => s.health === 'unknown' || s.health === 'never_run' || s.health === 'disabled'))
+    if (
+      sources.every(
+        (s) => s.health === 'unknown' || s.health === 'never_run' || s.health === 'disabled',
+      )
+    )
       return 'unknown';
     return 'healthy';
   }, [dash.data]);
@@ -95,14 +92,24 @@ export function AppShell() {
           </button>
 
           <div className="min-w-0">
-            <p className="display truncate text-lg font-semibold leading-tight">Healthspan Dashboard</p>
-            <p className="truncate text-xs text-[var(--muted)]">Longevity intelligence, evidence first.</p>
+            <p className="display truncate text-lg font-semibold leading-tight">
+              Healthspan Dashboard
+            </p>
+            <p className="truncate text-xs text-[var(--muted)]">
+              Longevity intelligence, evidence first.
+            </p>
           </div>
 
-          <form onSubmit={onSearch} className="ml-auto hidden min-w-[220px] flex-1 md:block md:max-w-md">
+          <form
+            onSubmit={onSearch}
+            className="ml-auto hidden min-w-[220px] flex-1 md:block md:max-w-md"
+          >
             <label className="relative block">
               <span className="sr-only">Global search</span>
-              <Search className="pointer-events-none absolute left-3 top-2.5 text-[var(--muted)]" size={16} />
+              <Search
+                className="pointer-events-none absolute left-3 top-2.5 text-[var(--muted)]"
+                size={16}
+              />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -147,7 +154,12 @@ export function AppShell() {
         </aside>
 
         {mobileOpen ? (
-          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+          <div
+            className="fixed inset-0 z-50 lg:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+          >
             <button
               type="button"
               className="absolute inset-0 bg-black/50"
@@ -157,7 +169,11 @@ export function AppShell() {
             <div className="absolute left-0 top-0 flex h-full w-72 flex-col bg-[var(--bg)] shadow-xl">
               <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-3">
                 <p className="font-semibold">Navigate</p>
-                <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)}>
+                <button
+                  type="button"
+                  aria-label="Close navigation"
+                  onClick={() => setMobileOpen(false)}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -177,8 +193,9 @@ export function AppShell() {
         <main id="main" className="min-w-0 flex-1 px-3 py-4 sm:px-5">
           <Outlet />
           <footer className="mt-10 border-t border-[var(--border)] py-4 text-xs text-[var(--muted)]">
-            Informational only — not medical advice, dosing guidance, or a prescribing tool. Personal health
-            records belong in a separate My Healthspan module (not part of this dashboard).
+            Informational only — not medical advice, dosing guidance, or a prescribing tool.
+            Personal health records belong in a separate My Healthspan module (not part of this
+            dashboard).
           </footer>
         </main>
       </div>

@@ -33,7 +33,11 @@ export function ReviewQueuePage() {
   const [message, setMessage] = useState<string | null>(null);
   const [editText, setEditText] = useState<Record<string, string>>({});
 
-  async function resolve(taskId: string, action: (typeof ACTIONS)[number], expectedAnalysisId?: string) {
+  async function resolve(
+    taskId: string,
+    action: (typeof ACTIONS)[number],
+    expectedAnalysisId?: string,
+  ) {
     setBusyId(taskId);
     setMessage(null);
     try {
@@ -117,7 +121,11 @@ export function ReviewQueuePage() {
                       </>
                     ) : null}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={`Resolve creator ${id}`}>
+                  <div
+                    className="mt-2 flex flex-wrap gap-2"
+                    role="group"
+                    aria-label={`Resolve creator ${id}`}
+                  >
                     {CREATOR_ACTIONS.map((action) => (
                       <button
                         key={action}
@@ -169,7 +177,11 @@ export function ReviewQueuePage() {
                       onChange={(e) => setEditText((prev) => ({ ...prev, [id]: e.target.value }))}
                     />
                   </label>
-                  <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={`Resolve ${id}`}>
+                  <div
+                    className="mt-2 flex flex-wrap gap-2"
+                    role="group"
+                    aria-label={`Resolve ${id}`}
+                  >
                     {ACTIONS.map((action) => (
                       <button
                         key={action}

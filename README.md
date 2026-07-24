@@ -4,13 +4,13 @@ Longevity intelligence, evidence first.
 
 Local-first research intelligence dashboard for longevity and healthspan.
 
-**Current work:** Milestone 6 on `milestone-6/personalisation-production-hardening` (mandatory M4→M3→M2 entry gate, then personalisation/hardening).
+**Current work:** Milestone 6 on `milestone-6/personalisation-production-hardening` (personalisation, briefings, production-local hardening).
 **Completed:** Milestone 1–5 (prototype → Live ingestion → evidence/claims → interventions/regulatory → creator/social claim intelligence)
 
 ## Requirements
 
-- Node.js 20+
-- [pnpm](https://pnpm.io/) 9+
+- Node.js 24 LTS (`engines.node`: `>=24 <25`)
+- [pnpm](https://pnpm.io/) 11.x (see `packageManager`)
 
 ## Quick start
 
@@ -21,8 +21,15 @@ pnpm db:migrate
 pnpm dev
 ```
 
-- Web: http://127.0.0.1:5173
-- API: http://127.0.0.1:8787/health
+Production-local single origin (after build):
+
+```bash
+pnpm build
+pnpm start
+```
+
+- Dev web: http://127.0.0.1:5173
+- API / production-local: http://127.0.0.1:8787
 
 The Vite dev server proxies `/api` and `/health` to the API.
 

@@ -107,9 +107,7 @@ describe('x compliance reconciliation', () => {
     const prev = process.env.HEALTHSPAN_X_ENABLED;
     process.env.HEALTHSPAN_X_ENABLED = 'true';
     try {
-      expect(
-        isXComplianceOverdue({ enabled: true, lastReconciledAt: null }),
-      ).toBe(true);
+      expect(isXComplianceOverdue({ enabled: true, lastReconciledAt: null })).toBe(true);
       expect(
         isXComplianceOverdue({
           enabled: true,

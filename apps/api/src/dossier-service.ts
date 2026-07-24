@@ -38,7 +38,12 @@ const BOOTSTRAP: Array<{
   aliases?: string[];
   peptide?: boolean;
 }> = [
-  { id: 'ent-metformin', name: 'Metformin', entityType: 'substance', aliases: ['metformin hydrochloride'] },
+  {
+    id: 'ent-metformin',
+    name: 'Metformin',
+    entityType: 'substance',
+    aliases: ['metformin hydrochloride'],
+  },
   { id: 'ent-rapamycin', name: 'Rapamycin', entityType: 'substance', aliases: ['sirolimus'] },
   { id: 'ent-nmn', name: 'NMN', entityType: 'substance', aliases: ['nicotinamide mononucleotide'] },
   { id: 'ent-exercise', name: 'Exercise', entityType: 'behaviour' },
@@ -116,7 +121,12 @@ export function bootstrapInterventionCatalog(db: HealthspanDb) {
 
 export function runMentionExtractionAndResolution(db: HealthspanDb, limit = 100) {
   bootstrapInterventionCatalog(db);
-  const items = db.select().from(contentItems).orderBy(desc(contentItems.lastSeenAt)).limit(limit).all();
+  const items = db
+    .select()
+    .from(contentItems)
+    .orderBy(desc(contentItems.lastSeenAt))
+    .limit(limit)
+    .all();
   const entities = db.select().from(interventionEntities).all();
   const aliases = db.select().from(interventionAliases).all();
   const identifiers = db.select().from(interventionIdentifiers).all();
@@ -273,7 +283,11 @@ export function buildDossierSnapshot(
   },
 ) {
   bootstrapInterventionCatalog(db);
-  const entity = db.select().from(interventionEntities).where(eq(interventionEntities.id, entityId)).all()[0];
+  const entity = db
+    .select()
+    .from(interventionEntities)
+    .where(eq(interventionEntities.id, entityId))
+    .all()[0];
   if (!entity) return null;
 
   const mappings = db
@@ -329,7 +343,11 @@ export function buildDossierSnapshot(
     }
   }
 
-  const peptide = db.select().from(peptideProfiles).where(eq(peptideProfiles.entityId, entityId)).all()[0];
+  const peptide = db
+    .select()
+    .from(peptideProfiles)
+    .where(eq(peptideProfiles.entityId, entityId))
+    .all()[0];
   const assertions = db
     .select()
     .from(regulatoryAssertions)
@@ -355,7 +373,8 @@ export function buildDossierSnapshot(
           note: 'Sequence is never invented from a marketing name.',
         }
       : null,
-    provenanceNote: 'Evidence cells link to M3 analysis/claim IDs; text is not copied into an untraceable summary.',
+    provenanceNote:
+      'Evidence cells link to M3 analysis/claim IDs; text is not copied into an untraceable summary.',
     regulatoryVsEvidenceNote:
       'Regulatory register inclusion and scientific evidence maturity are separate dimensions. Trial registration is not authorisation.',
   };
@@ -421,7 +440,11 @@ export function buildDossierSnapshot(
     .digest('hex');
 
   const prior = entity.currentDossierSnapshotId
-    ? db.select().from(dossierSnapshots).where(eq(dossierSnapshots.id, entity.currentDossierSnapshotId)).all()[0]
+    ? db
+        .select()
+        .from(dossierSnapshots)
+        .where(eq(dossierSnapshots.id, entity.currentDossierSnapshotId))
+        .all()[0]
     : null;
   if (prior && prior.inputHash === inputHash) {
     return { reused: true, snapshotId: prior.id, summary, evidenceMap, regulatoryMatrix, safety };
@@ -512,8 +535,16 @@ export function buildDossierSnapshot(
 export function getDossier(db: HealthspanDb, entityId: string) {
   const built = buildDossierSnapshot(db, entityId);
   if (!built) return null;
-  const entity = db.select().from(interventionEntities).where(eq(interventionEntities.id, entityId)).all()[0]!;
-  const aliases = db.select().from(interventionAliases).where(eq(interventionAliases.entityId, entityId)).all();
+  const entity = db
+    .select()
+    .from(interventionEntities)
+    .where(eq(interventionEntities.id, entityId))
+    .all()[0]!;
+  const aliases = db
+    .select()
+    .from(interventionAliases)
+    .where(eq(interventionAliases.entityId, entityId))
+    .all();
   const identifiers = db
     .select()
     .from(interventionIdentifiers)

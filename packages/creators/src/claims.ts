@@ -5,7 +5,8 @@ export const ALIGNMENT_RULES_VERSION = 'm5.alignment.11.1';
 
 export type CreatorClaimDraft = {
   claimText: string;
-  assertionRole: 'assertion' | 'question' | 'hypothetical' | 'quotation' | 'correction' | 'disclosure';
+  assertionRole:
+    'assertion' | 'question' | 'hypothetical' | 'quotation' | 'correction' | 'disclosure';
   excerpt: string;
   fieldPath: string;
   confidence: 'high' | 'medium' | 'low';
@@ -30,7 +31,10 @@ const CITATION = /\b(doi:|pmid|nct\d+|study|trial|paper|meta-analysis)\b/i;
  * Deterministic creator-claim extraction from user-supplied / authorised text only.
  * Questions are not silently converted into assertions.
  */
-export function extractCreatorClaimsFromText(text: string, fieldPath = 'document.text'): CreatorClaimDraft[] {
+export function extractCreatorClaimsFromText(
+  text: string,
+  fieldPath = 'document.text',
+): CreatorClaimDraft[] {
   const chunks = text
     .split(/(?<=[.!?])\s+|\n+/)
     .map((s) => s.trim())
@@ -157,16 +161,25 @@ export function alignCreatorClaim(opts: {
   hasRegulatoryLink: boolean;
   hasInterventionLink: boolean;
   evidence?: AlignmentEvidenceHints;
-}): { dimensions: AlignmentDimension[]; overallLabel: string; rulesVersion: string; findings: string[] } {
+}): {
+  dimensions: AlignmentDimension[];
+  overallLabel: string;
+  rulesVersion: string;
+  findings: string[];
+} {
   const text = opts.claimText;
   const ev = opts.evidence ?? {};
   const nonAssertion = opts.assertionRole !== 'assertion' && opts.assertionRole !== 'correction';
-  const animal = ANIMAL.test(text) || ev.claimOrganism === 'animal' || ev.evidenceOrganism === 'animal';
+  const animal =
+    ANIMAL.test(text) || ev.claimOrganism === 'animal' || ev.evidenceOrganism === 'animal';
   const human = HUMAN.test(text) || ev.claimOrganism === 'human' || ev.evidenceOrganism === 'human';
   const mixedOrganism =
     ev.evidenceOrganism === 'mixed' ||
     ev.claimOrganism === 'mixed' ||
-    (animal && human && (ev.evidenceOrganism === 'animal' || /mice and humans|mouse and human|interchangeable/i.test(text)));
+    (animal &&
+      human &&
+      (ev.evidenceOrganism === 'animal' ||
+        /mice and humans|mouse and human|interchangeable/i.test(text)));
   const speciesMismatch =
     (ev.evidenceOrganism === 'animal' && (ev.claimOrganism === 'human' || HUMAN.test(text))) ||
     (/human|people|patients?/i.test(text) && /mice|mouse|rat|rodent|animal/i.test(text));
@@ -188,7 +201,10 @@ export function alignCreatorClaim(opts: {
   if (ev.retracted) extraFindings.push('superseded_or_corrected');
   if (ev.potentialConflict) extraFindings.push('potentially_conflicts_with_current_evidence');
   if (ev.protocolOnly) extraFindings.push('protocol_as_result');
-  if (ev.biomarkerOnly && (ev.healthOutcomeClaimed || /lifespan|healthspan|mortality/i.test(text))) {
+  if (
+    ev.biomarkerOnly &&
+    (ev.healthOutcomeClaimed || /lifespan|healthspan|mortality/i.test(text))
+  ) {
     extraFindings.push('biomarker_to_health_outcome_overreach');
   }
   if (ev.regulatoryMismatch) extraFindings.push('regulatory_scope_overreach');
@@ -338,13 +354,15 @@ export function alignCreatorClaim(opts: {
     dim(
       'causality',
       'Causality',
-      causal ? 'overstated' : HYPOTHETICAL.test(text) ? 'partially_aligned' : 'insufficient_information',
+      causal
+        ? 'overstated'
+        : HYPOTHETICAL.test(text)
+          ? 'partially_aligned'
+          : 'insufficient_information',
       causal
         ? 'Strong causal wording — do not upgrade linked associations into causation.'
         : 'Causal strength not asserted strongly in text.',
-      causal
-        ? { requiresHumanReview: true, candidateFinding: 'overstates_causality' }
-        : undefined,
+      causal ? { requiresHumanReview: true, candidateFinding: 'overstates_causality' } : undefined,
     ),
     dim(
       'timeframe',
@@ -369,7 +387,8 @@ export function alignCreatorClaim(opts: {
         : regulatory || ev.regulatoryMismatch
           ? 'Regulatory wording exceeds linked jurisdiction/indication scope.'
           : 'No regulatory claim scope detected.',
-      ev.regulatoryMismatch || (regulatory && (!opts.hasRegulatoryLink || /aging|longevity|healthspan/i.test(text)))
+      ev.regulatoryMismatch ||
+        (regulatory && (!opts.hasRegulatoryLink || /aging|longevity|healthspan/i.test(text)))
         ? { requiresHumanReview: true, candidateFinding: 'regulatory_scope_overreach' }
         : undefined,
     ),

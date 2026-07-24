@@ -68,7 +68,10 @@ export function EntityResolutionPage() {
                   {task.proposedEntityId ? (
                     <>
                       {' · '}
-                      <Link className="underline" to={`/interventions/${String(task.proposedEntityId)}`}>
+                      <Link
+                        className="underline"
+                        to={`/interventions/${String(task.proposedEntityId)}`}
+                      >
                         proposed entity
                       </Link>
                     </>
@@ -82,7 +85,11 @@ export function EntityResolutionPage() {
                     onChange={(e) => setNewNames((prev) => ({ ...prev, [id]: e.target.value }))}
                   />
                 </label>
-                <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={`Resolve ${id}`}>
+                <div
+                  className="mt-2 flex flex-wrap gap-2"
+                  role="group"
+                  aria-label={`Resolve ${id}`}
+                >
                   {ACTIONS.map((action) => (
                     <button
                       key={action}

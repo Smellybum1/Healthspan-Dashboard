@@ -65,7 +65,8 @@ export function rebuildClaimRecurrence(db: HealthspanDb, opts?: { creatorId?: st
           sourceClaimId: rel.sourceClaimId,
           targetClaimId: rel.targetClaimId,
           relationshipType: rel.relationshipType,
-          relationshipState: rel.relationshipType === 'potential_paraphrase' ? 'candidate' : 'accepted',
+          relationshipState:
+            rel.relationshipType === 'potential_paraphrase' ? 'candidate' : 'accepted',
           similarityFeaturesJson: JSON.stringify({ similarity: rel.similarity }),
           scopeCompatibility: 'monitored_sources',
           createdAt: now,

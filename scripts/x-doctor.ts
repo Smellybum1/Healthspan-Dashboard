@@ -20,12 +20,19 @@ const x = await createXConnector({}).fetchWindow({ cursor: {}, lookbackDays: 1, 
 
 const enabled = process.env.HEALTHSPAN_X_ENABLED === 'true';
 const budget = db.select().from(xBudgetLedger).all()[0];
-const content = db.select().from(creatorContentItems).all().filter((c) => c.platform === 'x');
+const content = db
+  .select()
+  .from(creatorContentItems)
+  .all()
+  .filter((c) => c.platform === 'x');
 const current = db.select().from(platformContentCurrent).all();
 const tombstones = db.select().from(platformContentTombstones).all();
 const lastRaw =
-  db.select().from(appMeta).all().find((r) => r.key === 'x_compliance_last_reconciled_at')?.value ??
-  null;
+  db
+    .select()
+    .from(appMeta)
+    .all()
+    .find((r) => r.key === 'x_compliance_last_reconciled_at')?.value ?? null;
 const lastReconciledAt = lastRaw && Number.isFinite(Number(lastRaw)) ? Number(lastRaw) : null;
 const maxAgeMs = Number(process.env.HEALTHSPAN_X_COMPLIANCE_MAX_AGE_HOURS ?? 24) * 60 * 60 * 1000;
 const overdue = enabled && (lastReconciledAt == null || Date.now() - lastReconciledAt > maxAgeMs);

@@ -38,8 +38,10 @@ describe('deterministic intelligence', () => {
     });
     expect(result.profile.evidenceAvailability).toBe('regulatory_statement');
     expect(result.profile.evidenceMaturity).not.toBe('regulatory_or_guideline_supported');
-    expect(result.profile.methodologicalSignals.some((s) => s.code === 'regulator_notice_not_evidence_maturity')).toBe(
-      true,
-    );
+    expect(
+      result.profile.methodologicalSignals.some(
+        (s) => s.code === 'regulator_notice_not_evidence_maturity',
+      ),
+    ).toBe(true);
   });
 });

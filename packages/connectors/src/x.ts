@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { createHttpClient } from './http.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 /** Local fence — X content must never be routed to external AI from this connector. */
 function assertNoExternalAiForX(): void {
@@ -28,7 +33,12 @@ export const X_DISPLAY_MAX_AGE_DAYS = 30;
 
 export type XBudgetGate =
   | { allowed: true; estimatedMicros: number; remainingMicros: number }
-  | { allowed: false; reason: 'budget_blocked' | 'not_configured' | 'disabled'; estimatedMicros: number; remainingMicros: number };
+  | {
+      allowed: false;
+      reason: 'budget_blocked' | 'not_configured' | 'disabled';
+      estimatedMicros: number;
+      remainingMicros: number;
+    };
 
 export type XUserResolved = {
   userId: string;
@@ -62,12 +72,7 @@ export type XComplianceAction = {
 export type XSyncResult = {
   ok: boolean;
   status:
-    | 'healthy'
-    | 'disabled'
-    | 'not_configured'
-    | 'budget_blocked'
-    | 'permission_error'
-    | 'failed';
+    'healthy' | 'disabled' | 'not_configured' | 'budget_blocked' | 'permission_error' | 'failed';
   user: XUserResolved | null;
   posts: XPostMetadata[];
   estimatedCostMicros: number;
@@ -183,7 +188,10 @@ export function createXClient(opts: {
     },
 
     async fetchUserTimeline(timelineOpts) {
-      const maxPosts = Math.min(timelineOpts.maxPosts ?? X_MAX_POSTS_PER_ACCOUNT, X_MAX_POSTS_PER_ACCOUNT);
+      const maxPosts = Math.min(
+        timelineOpts.maxPosts ?? X_MAX_POSTS_PER_ACCOUNT,
+        X_MAX_POSTS_PER_ACCOUNT,
+      );
       const lookbackDays = timelineOpts.lookbackDays ?? X_DEFAULT_LOOKBACK_DAYS;
       const cutoff = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
       const posts: XPostMetadata[] = [];
@@ -192,7 +200,8 @@ export function createXClient(opts: {
         while (posts.length < maxPosts) {
           const params = new URLSearchParams({
             max_results: '100',
-            'tweet.fields': 'created_at,conversation_id,referenced_tweets,edit_history_tweet_ids,withheld',
+            'tweet.fields':
+              'created_at,conversation_id,referenced_tweets,edit_history_tweet_ids,withheld',
             exclude: [
               timelineOpts.includeReplies ? '' : 'replies',
               timelineOpts.includeReposts ? '' : 'retweets',
@@ -272,7 +281,12 @@ export function createXConnector(
   const monitored = opts.monitoredUserIds ?? [];
   const usernames = opts.usernames ?? [];
   const enabled =
-    enabledEnv && Boolean(token) && acknowledged && cap > 0 && spent < cap && (monitored.length > 0 || usernames.length > 0);
+    enabledEnv &&
+    Boolean(token) &&
+    acknowledged &&
+    cap > 0 &&
+    spent < cap &&
+    (monitored.length > 0 || usernames.length > 0);
   const client = createXClient({ transport: opts.transport, bearerToken: token });
 
   return {
@@ -375,11 +389,18 @@ export function createXConnector(
   };
 }
 
-export function applyXComplianceActionsLocally(posts: XPostMetadata[], actions: XComplianceAction[]) {
+export function applyXComplianceActionsLocally(
+  posts: XPostMetadata[],
+  actions: XComplianceAction[],
+) {
   const byId = new Map(posts.map((p) => [p.postId, { ...p }]));
   const purged: string[] = [];
   for (const action of actions) {
-    if (action.action === 'delete' || action.action === 'withhold' || action.action === 'account_unavailable') {
+    if (
+      action.action === 'delete' ||
+      action.action === 'withhold' ||
+      action.action === 'account_unavailable'
+    ) {
       byId.delete(action.postId);
       purged.push(action.postId);
     }

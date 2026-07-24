@@ -75,25 +75,32 @@ export function DetailPage() {
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-xs text-[var(--muted)]">Evidence maturity</dt>
-              <dd>{String((data.liveAnalysis as { evidenceMaturity: string }).evidenceMaturity)}</dd>
+              <dd>
+                {String((data.liveAnalysis as { evidenceMaturity: string }).evidenceMaturity)}
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-[var(--muted)]">Evidence availability</dt>
               <dd>
-                {String((data.liveAnalysis as { evidenceAvailability: string }).evidenceAvailability)}
+                {String(
+                  (data.liveAnalysis as { evidenceAvailability: string }).evidenceAvailability,
+                )}
               </dd>
             </div>
             <div>
               <dt className="text-xs text-[var(--muted)]">Classification confidence</dt>
               <dd>
                 {String(
-                  (data.liveAnalysis as { classificationConfidence: string }).classificationConfidence,
+                  (data.liveAnalysis as { classificationConfidence: string })
+                    .classificationConfidence,
                 )}
               </dd>
             </div>
             <div>
               <dt className="text-xs text-[var(--muted)]">Research activity</dt>
-              <dd>{String((data.liveAnalysis as { researchActivity: number }).researchActivity)}</dd>
+              <dd>
+                {String((data.liveAnalysis as { researchActivity: number }).researchActivity)}
+              </dd>
             </div>
           </dl>
           <div>
@@ -113,7 +120,10 @@ export function DetailPage() {
           <h2 className="text-sm font-semibold">Live claims</h2>
           <ul className="space-y-2">
             {(data.liveClaims as Array<Record<string, unknown>>).map((claim) => (
-              <li key={String(claim.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
+              <li
+                key={String(claim.id)}
+                className="rounded-lg border border-[var(--border)] px-3 py-2"
+              >
                 <p className="text-sm font-medium">{String(claim.claimText)}</p>
                 <p className="text-xs text-[var(--muted)]">
                   {String(claim.assertionRole)} · {String(claim.classificationConfidence)} ·{' '}
@@ -181,7 +191,12 @@ export function DetailPage() {
                 <div>
                   <dt className="text-xs text-[var(--muted)]">Registry</dt>
                   <dd>
-                    <a className="underline" href={item.registryUrl} target="_blank" rel="noreferrer">
+                    <a
+                      className="underline"
+                      href={item.registryUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       {item.registryId}
                     </a>
                   </dd>
@@ -222,7 +237,8 @@ export function DetailPage() {
             {item.claimedPurpose ? (
               <div className="mt-4 space-y-2 text-sm">
                 <p>
-                  <span className="text-[var(--muted)]">Claimed purpose:</span> {item.claimedPurpose}
+                  <span className="text-[var(--muted)]">Claimed purpose:</span>{' '}
+                  {item.claimedPurpose}
                 </p>
                 <p>
                   <span className="text-[var(--muted)]">Demonstrated indications:</span>{' '}
@@ -260,7 +276,10 @@ export function DetailPage() {
 
             <div className="mt-4 flex flex-wrap gap-2">
               {item.tags.map((tag) => (
-                <span key={tag} className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-xs text-[var(--muted)]">
+                <span
+                  key={tag}
+                  className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-xs text-[var(--muted)]"
+                >
                   {tag}
                 </span>
               ))}

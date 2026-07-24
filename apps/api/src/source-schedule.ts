@@ -39,11 +39,15 @@ export function fdaBulkSourceSchedules(fromMs = Date.now()): SourceScheduleInfo[
       sourceId: 'purple-book',
       cadence: 'weekly_sunday_0600_brisbane',
       nextRunAt: iso,
-      notes: 'Weekly Purple Book CSV refresh due wiring. No interchangeability or peptide inference.',
+      notes:
+        'Weekly Purple Book CSV refresh due wiring. No interchangeability or peptide inference.',
     },
   ];
 }
 
-export function scheduleForSource(sourceId: string, fromMs = Date.now()): SourceScheduleInfo | null {
+export function scheduleForSource(
+  sourceId: string,
+  fromMs = Date.now(),
+): SourceScheduleInfo | null {
   return fdaBulkSourceSchedules(fromMs).find((s) => s.sourceId === sourceId) ?? null;
 }

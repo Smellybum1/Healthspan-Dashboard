@@ -5,7 +5,10 @@
  */
 export function isLoopbackHost(host: string | undefined): boolean {
   if (!host) return true;
-  const h = host.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  const h = host
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '');
   return (
     h === '127.0.0.1' ||
     h === '::1' ||
@@ -15,14 +18,17 @@ export function isLoopbackHost(host: string | undefined): boolean {
   );
 }
 
-export function adminMutationsAllowed(opts: {
-  bindHost?: string;
-  allowRemoteAdmin?: boolean | string;
-} = {}): { allowed: boolean; reason: string } {
+export function adminMutationsAllowed(
+  opts: {
+    bindHost?: string;
+    allowRemoteAdmin?: boolean | string;
+  } = {},
+): { allowed: boolean; reason: string } {
   const bindHost = opts.bindHost ?? process.env.API_HOST ?? '127.0.0.1';
   const allowRemote =
-    String(opts.allowRemoteAdmin ?? process.env.HEALTHSPAN_ALLOW_REMOTE_ADMIN ?? '')
-      .toLowerCase() === 'true';
+    String(
+      opts.allowRemoteAdmin ?? process.env.HEALTHSPAN_ALLOW_REMOTE_ADMIN ?? '',
+    ).toLowerCase() === 'true';
 
   if (isLoopbackHost(bindHost)) {
     return { allowed: true, reason: 'loopback_bind' };

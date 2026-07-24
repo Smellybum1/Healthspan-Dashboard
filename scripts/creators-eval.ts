@@ -132,28 +132,30 @@ const checks = {
     sourceKind: 'x_content',
     segmentCharCount: 20,
   }).allowed,
-  claimTaxonomy: classifyCreatorClaimTaxonomy(assertions[0]?.claimText ?? 'x improves y', 'assertion')
-    .claimKind.length > 0,
-  recurrenceFormula: computeClaimRecurrence([
-    {
-      id: 'a',
-      recurrenceKey: 'k',
-      claimText: 'Rapamycin extends healthspan in adults.',
-      reviewStatus: 'accepted',
-      active: true,
-      sourceKey: 's1',
-      firstObservedAt: 1,
-    },
-    {
-      id: 'b',
-      recurrenceKey: 'k',
-      claimText: 'Rapamycin extends healthspan in adults.',
-      reviewStatus: 'accepted',
-      active: true,
-      sourceKey: 's2',
-      firstObservedAt: 2,
-    },
-  ])[0]?.distinctMonitoredSourceCount === 2,
+  claimTaxonomy:
+    classifyCreatorClaimTaxonomy(assertions[0]?.claimText ?? 'x improves y', 'assertion').claimKind
+      .length > 0,
+  recurrenceFormula:
+    computeClaimRecurrence([
+      {
+        id: 'a',
+        recurrenceKey: 'k',
+        claimText: 'Rapamycin extends healthspan in adults.',
+        reviewStatus: 'accepted',
+        active: true,
+        sourceKey: 's1',
+        firstObservedAt: 1,
+      },
+      {
+        id: 'b',
+        recurrenceKey: 'k',
+        claimText: 'Rapamycin extends healthspan in adults.',
+        reviewStatus: 'accepted',
+        active: true,
+        sourceKey: 's2',
+        firstObservedAt: 2,
+      },
+    ])[0]?.distinctMonitoredSourceCount === 2,
 };
 
 const report = {

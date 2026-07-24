@@ -17,10 +17,7 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: [
-            'packages/**/src/**/*.{test,spec}.ts',
-            'apps/api/src/**/*.{test,spec}.ts',
-          ],
+          include: ['packages/**/src/**/*.{test,spec}.ts', 'apps/api/src/**/*.{test,spec}.ts'],
           exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
         },
       },

@@ -2,6 +2,13 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { desc, eq } from 'drizzle-orm';
 import {
+  APP_VERSION,
+  SCHEMA_VERSION,
+  SecurityHeaders,
+  isLoopbackHost,
+  originAllowed,
+} from '@healthspan/operations';
+import {
   createSeedRepository,
   openDatabase,
   seedOperationalSources,
@@ -37,12 +44,42 @@ import {
 } from './jobs.js';
 import { createLocalScheduler } from './local-scheduler.js';
 import { createPlatformScheduler } from './platform-scheduler.js';
+import { buildSafeCreatorExportBundle, stripForbiddenExportFields } from './safe-response.js';
 import {
-  buildSafeCreatorExportBundle,
-  stripForbiddenExportFields,
-} from './safe-response.js';
-import { liveRadarPoints, runIntelligenceAnalysis, intelligenceStatus, listIntelligenceRuns, getIntelligenceRun, listLiveClaims, getLiveClaim } from './intelligence-service.js';
+  liveRadarPoints,
+  runIntelligenceAnalysis,
+  intelligenceStatus,
+  listIntelligenceRuns,
+  getIntelligenceRun,
+  listLiveClaims,
+  getLiveClaim,
+} from './intelligence-service.js';
 import { listContentItems } from './content-service.js';
+import {
+  addWatchlistItem,
+  createMuteRule,
+  createSavedSearch,
+  createWatchlist,
+  ensureLocalOwnerProfile,
+  evaluateDeterministicAlerts,
+  generateBrief,
+  importLegacyPreferencesPreview,
+  listAlerts,
+  listBriefs,
+  listSavedSearches,
+  listWatchlistItems,
+  listWatchlists,
+  personalisationExport,
+  recordVisit,
+  setReadingState,
+  sinceLastVisit,
+} from './personalization-service.js';
+import {
+  createBackup,
+  recordRestoreAttempt,
+  restorePreflight,
+  storageUsage,
+} from './backup-service.js';
 import {
   listReviewTasks,
   listReviewDecisions,
@@ -118,15 +155,13 @@ import {
   redactProfileSnapshot,
 } from './creator-identity-service.js';
 import { rebuildClaimRecurrence, listRecurrenceSnapshots } from './creator-recurrence-service.js';
+import { linkCreatorClaimEvidence, listClaimEvidenceLinks } from './creator-evidence-service.js';
+import { runPlatformPolicyAudit, getPlatformSourceHealth } from './platform-policy-service.js';
 import {
-  linkCreatorClaimEvidence,
-  listClaimEvidenceLinks,
-} from './creator-evidence-service.js';
-import {
-  runPlatformPolicyAudit,
-  getPlatformSourceHealth,
-} from './platform-policy-service.js';
-import { creatorAiPolicyNotes, gateCreatorAiSegment, isCreatorAiEnabled } from '@healthspan/creators';
+  creatorAiPolicyNotes,
+  gateCreatorAiSegment,
+  isCreatorAiEnabled,
+} from '@healthspan/creators';
 import { fdaBulkSourceSchedules, scheduleForSource } from './source-schedule.js';
 
 type DataMode = 'demo' | 'live';
@@ -205,12 +240,7 @@ export function createApp() {
       if (job.kind === 'ingestion') {
         const sourceId =
           (job.payload.sourceId as
-            | 'pubmed'
-            | 'clinicaltrials-gov'
-            | 'crossref'
-            | 'tga'
-            | 'all'
-            | undefined) ?? 'all';
+            'pubmed' | 'clinicaltrials-gov' | 'crossref' | 'tga' | 'all' | undefined) ?? 'all';
         const result = await runIngestion({
           db: live.db,
           rawStore,
@@ -327,13 +357,51 @@ export function createApp() {
   });
 
   const app = new Hono();
+  const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+  app.use('*', async (c, next) => {
+    for (const [k, v] of Object.entries(SecurityHeaders)) {
+      c.header(k, v);
+    }
+    const host = c.req.header('host');
+    if (
+      host &&
+      !isLoopbackHost(host.split(':')[0]) &&
+      process.env.HEALTHSPAN_ALLOW_REMOTE_BIND !== 'true'
+    ) {
+      return c.json({ error: 'Host not allowed' }, 403);
+    }
+    const origin = c.req.header('origin');
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.req.method) && !originAllowed(origin, host)) {
+      return c.json({ error: 'Origin not allowed' }, 403);
+    }
+    const ip = host ?? 'local';
+    const bucket = rateBuckets.get(ip) ?? { count: 0, resetAt: Date.now() + 60_000 };
+    if (Date.now() > bucket.resetAt) {
+      bucket.count = 0;
+      bucket.resetAt = Date.now() + 60_000;
+    }
+    bucket.count += 1;
+    rateBuckets.set(ip, bucket);
+    if (bucket.count > Number(process.env.HEALTHSPAN_RATE_LIMIT_PER_MIN ?? 600)) {
+      return c.json({ error: 'Rate limit exceeded' }, 429);
+    }
+    await next();
+  });
 
   app.use(
     '*',
     cors({
-      origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
+      origin: [
+        'http://127.0.0.1:5173',
+        'http://localhost:5173',
+        'http://127.0.0.1:8787',
+        'http://localhost:8787',
+      ],
     }),
   );
+
+  ensureLocalOwnerProfile(live.db);
 
   app.get('/health', (c) => {
     const doctor = databaseDoctor(live.sqlite);
@@ -347,12 +415,23 @@ export function createApp() {
         status: doctor.ok ? 'healthy' : 'degraded',
         integrity: doctor.integrity,
         journalMode: doctor.journalMode,
-        migrationVersion: '0008_m5_document_lifecycle',
+        migrationVersion: `00${SCHEMA_VERSION}_m6_personalisation_ops`,
       },
       scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),
     });
   });
+
+  app.get('/api/version', (c) =>
+    c.json({
+      version: APP_VERSION,
+      commit: process.env.HEALTHSPAN_BUILD_COMMIT ?? null,
+      builtAt: process.env.HEALTHSPAN_BUILD_TIME ?? null,
+      schemaVersion: SCHEMA_VERSION,
+      runtimeMajor: Number(process.versions.node.split('.')[0]),
+      dataMode: currentMode(),
+    }),
+  );
 
   app.get('/api/mode', (c) => c.json({ dataMode: currentMode(), mode: currentMode() }));
 
@@ -462,10 +541,7 @@ export function createApp() {
           : null,
       trialPulse: recentTrials.map((item) => {
         const t = trialMeta.get(item.id);
-        return toBrief(
-          item,
-          t ? `${t.overallStatus}${t.nctId ? ` · ${t.nctId}` : ''}` : undefined,
-        );
+        return toBrief(item, t ? `${t.overallStatus}${t.nctId ? ` · ${t.nctId}` : ''}` : undefined);
       }),
       interventionWatch: (() => {
         bootstrapInterventionCatalog(live.db);
@@ -569,7 +645,8 @@ export function createApp() {
     const q = c.req.query('q') ?? undefined;
     const page = Number(c.req.query('page') ?? 1);
     const pageSize = Number(c.req.query('pageSize') ?? 25);
-    const sort = (c.req.query('sort') as 'updated' | 'title' | 'published' | undefined) ?? 'updated';
+    const sort =
+      (c.req.query('sort') as 'updated' | 'title' | 'published' | undefined) ?? 'updated';
     const result = listContentItems(live.db, { type, q, page, pageSize, sort });
     return c.json({
       count: result.total,
@@ -974,7 +1051,14 @@ export function createApp() {
 
   app.get('/api/claim-relationships', (c) => {
     if (currentMode() === 'demo') {
-      return c.json({ dataMode: 'demo', items: [], page: 1, pageSize: 50, total: 0, totalPages: 1 });
+      return c.json({
+        dataMode: 'demo',
+        items: [],
+        page: 1,
+        pageSize: 50,
+        total: 0,
+        totalPages: 1,
+      });
     }
     const page = Math.max(1, Number(c.req.query('page') ?? 1) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(c.req.query('pageSize') ?? 50) || 50));
@@ -1142,9 +1226,12 @@ export function createApp() {
 
   app.get('/api/interventions/compare', (c) => {
     if (currentMode() === 'demo') {
-      return c.json({
-        error: 'Live comparison uses Live dossiers; switch to Live mode.',
-      }, 400);
+      return c.json(
+        {
+          error: 'Live comparison uses Live dossiers; switch to Live mode.',
+        },
+        400,
+      );
     }
     const ids = (c.req.query('ids') ?? '')
       .split(',')
@@ -1221,7 +1308,12 @@ export function createApp() {
     if (currentMode() === 'demo') {
       const found = demoRepo.getItemById(c.req.param('id'));
       if (!found || found.item.type !== 'creator') return c.json({ error: 'Not found' }, 404);
-      return c.json({ ...found.item, assessment: found.assessment, dataMode: 'demo', dataOrigin: 'demo' });
+      return c.json({
+        ...found.item,
+        assessment: found.assessment,
+        dataMode: 'demo',
+        dataOrigin: 'demo',
+      });
     }
     const detail = getCreatorDetail(live.db, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
@@ -1263,7 +1355,10 @@ export function createApp() {
       return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
     }
     if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
-    const body = (await c.req.json().catch(() => ({}))) as { baseline?: boolean; lookbackDays?: number };
+    const body = (await c.req.json().catch(() => ({}))) as {
+      baseline?: boolean;
+      lookbackDays?: number;
+    };
     const payload = {
       creatorId: c.req.param('id'),
       baseline: body.baseline ?? false,
@@ -1318,7 +1413,10 @@ export function createApp() {
       return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
     }
     if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
-    const body = (await c.req.json().catch(() => ({}))) as { baseline?: boolean; lookbackDays?: number };
+    const body = (await c.req.json().catch(() => ({}))) as {
+      baseline?: boolean;
+      lookbackDays?: number;
+    };
     const payload = {
       creatorId: c.req.param('id'),
       baseline: body.baseline ?? false,
@@ -1368,11 +1466,18 @@ export function createApp() {
     }
     if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as {
-      actions?: Array<{ postId: string; action: 'delete' | 'withhold' | 'edit' | 'account_unavailable'; reason: string }>;
+      actions?: Array<{
+        postId: string;
+        action: 'delete' | 'withhold' | 'edit' | 'account_unavailable';
+        reason: string;
+      }>;
       sync?: boolean;
     };
     // Immediate apply path for explicit action batches (tests + operators).
-    if (body.sync === true || (body.actions?.length && body.sync !== false && body.actions.length <= 50)) {
+    if (
+      body.sync === true ||
+      (body.actions?.length && body.sync !== false && body.actions.length <= 50)
+    ) {
       if (body.actions?.length) {
         const applied = applyXComplianceBatch(live.db, body.actions);
         const reconciled = runXComplianceReconciliation(live.db, {
@@ -1617,7 +1722,14 @@ export function createApp() {
       expectedRevision: body.expectedRevision,
       notes: body.notes,
     });
-    if (!result.ok) return c.json({ error: result.error, currentRevision: (result as { currentRevision?: number }).currentRevision }, result.status);
+    if (!result.ok)
+      return c.json(
+        {
+          error: result.error,
+          currentRevision: (result as { currentRevision?: number }).currentRevision,
+        },
+        result.status,
+      );
     return c.json({ accepted: true, ...result });
   });
 
@@ -1640,7 +1752,14 @@ export function createApp() {
       provenanceState: body.provenanceState,
       expectedRevision: body.expectedRevision,
     });
-    if (!result.ok) return c.json({ error: result.error, currentRevision: (result as { currentRevision?: number }).currentRevision }, result.status);
+    if (!result.ok)
+      return c.json(
+        {
+          error: result.error,
+          currentRevision: (result as { currentRevision?: number }).currentRevision,
+        },
+        result.status,
+      );
     rebuildCreatorProfileSnapshot(live.db, c.req.param('id'));
     return c.json({ accepted: true, ...result });
   });
@@ -1694,7 +1813,10 @@ export function createApp() {
 
   app.get('/api/creators/:id/recurrence', (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', groups: [] });
-    return c.json({ dataMode: 'live', ...rebuildClaimRecurrence(live.db, { creatorId: c.req.param('id') }) });
+    return c.json({
+      dataMode: 'live',
+      ...rebuildClaimRecurrence(live.db, { creatorId: c.req.param('id') }),
+    });
   });
 
   app.get('/api/claim-recurrence', (c) => {
@@ -1721,7 +1843,10 @@ export function createApp() {
 
   app.get('/api/interventions/:id/dossier', (c) => {
     if (currentMode() === 'demo') {
-      return c.json({ error: 'Live dossiers are Live-only; use Demo detail pages for seed dossiers.' }, 400);
+      return c.json(
+        { error: 'Live dossiers are Live-only; use Demo detail pages for seed dossiers.' },
+        400,
+      );
     }
     const dossier = getDossier(live.db, c.req.param('id'));
     if (!dossier) return c.json({ error: 'Not found' }, 404);
@@ -1929,7 +2054,10 @@ export function createApp() {
       newEntityType?: string;
     };
     if (!body.action || !(ENTITY_RESOLUTION_ACTIONS as readonly string[]).includes(body.action)) {
-      return c.json({ error: `action must be one of: ${ENTITY_RESOLUTION_ACTIONS.join(', ')}` }, 400);
+      return c.json(
+        { error: `action must be one of: ${ENTITY_RESOLUTION_ACTIONS.join(', ')}` },
+        400,
+      );
     }
     const result = resolveEntityResolutionTask(live.db, {
       taskId: c.req.param('id'),
@@ -2038,6 +2166,180 @@ export function createApp() {
         reviewTasks: seed.reviewTasks.length,
       },
     });
+  });
+
+  // —— M6 personalisation / ops (Live SQLite only) ——
+  app.get('/api/profile', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', profile: null });
+    return c.json({ dataMode: 'live', profile: ensureLocalOwnerProfile(live.db) });
+  });
+
+  app.get('/api/watchlists', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [] });
+    return c.json({ dataMode: 'live', items: listWatchlists(live.db) });
+  });
+
+  app.post('/api/watchlists', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo')
+      return c.json({ error: 'Demo mode is read-only for watchlists' }, 400);
+    const body = await c.req.json<{ name?: string; description?: string }>();
+    if (!body.name?.trim()) return c.json({ error: 'name required' }, 400);
+    const item = createWatchlist(live.db, body.name.trim(), body.description);
+    return c.json({ dataMode: 'live', item }, 201);
+  });
+
+  app.get('/api/watchlists/:id', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const id = c.req.param('id');
+    const wl = listWatchlists(live.db).find((w) => w.id === id);
+    if (!wl) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', item: wl, entries: listWatchlistItems(live.db, id) });
+  });
+
+  app.post('/api/watchlists/:id/items', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const body = await c.req.json<{
+      targetType?: string;
+      targetId?: string;
+      displayTitle?: string;
+    }>();
+    if (!body.targetType || !body.targetId)
+      return c.json({ error: 'targetType and targetId required' }, 400);
+    const watchable = addWatchlistItem(live.db, c.req.param('id'), {
+      targetType: body.targetType,
+      targetId: body.targetId,
+      displayTitle: body.displayTitle,
+    });
+    return c.json({ dataMode: 'live', watchable }, 201);
+  });
+
+  app.get('/api/saved-searches', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [] });
+    return c.json({ dataMode: 'live', items: listSavedSearches(live.db) });
+  });
+
+  app.post('/api/saved-searches', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const body = await c.req.json<{ name?: string; query?: unknown }>();
+    if (!body.name || !body.query) return c.json({ error: 'name and query required' }, 400);
+    const item = createSavedSearch(live.db, body.name, body.query);
+    return c.json({ dataMode: 'live', item }, 201);
+  });
+
+  app.post('/api/reading-states', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const body = await c.req.json<{
+      watchableId?: string;
+      readingState?: 'unread' | 'opened' | 'dismissed';
+    }>();
+    if (!body.watchableId || !body.readingState)
+      return c.json({ error: 'watchableId and readingState required' }, 400);
+    const id = setReadingState(live.db, body.watchableId, body.readingState);
+    return c.json({ dataMode: 'live', id });
+  });
+
+  app.post('/api/mute-rules', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const body = await c.req.json<{ scopeType?: string; scopeId?: string; reason?: string }>();
+    if (!body.scopeType) return c.json({ error: 'scopeType required' }, 400);
+    const item = createMuteRule(live.db, body.scopeType, body.scopeId, body.reason);
+    return c.json({ dataMode: 'live', item }, 201);
+  });
+
+  app.post('/api/visits', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', visit: null });
+    const body = await c.req.json<{ clientInstallationId?: string }>().catch(() => ({}));
+    const visit = recordVisit(
+      live.db,
+      (body as { clientInstallationId?: string }).clientInstallationId,
+    );
+    return c.json({ dataMode: 'live', visit }, 201);
+  });
+
+  app.get('/api/since-last-visit', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [] });
+    return c.json({ dataMode: 'live', ...sinceLastVisit(live.db) });
+  });
+
+  app.get('/api/alerts', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [] });
+    return c.json({ dataMode: 'live', items: listAlerts(live.db) });
+  });
+
+  app.post('/api/alerts/evaluate', (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    return c.json({ dataMode: 'live', ...evaluateDeterministicAlerts(live.db) });
+  });
+
+  app.get('/api/briefs', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [] });
+    return c.json({ dataMode: 'live', items: listBriefs(live.db) });
+  });
+
+  app.post('/api/briefs/generate', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const body = await c.req
+      .json<{ kind?: 'daily' | 'weekly' }>()
+      .catch(() => ({ kind: 'daily' as const }));
+    const kind = body.kind === 'weekly' ? 'weekly' : 'daily';
+    return c.json({ dataMode: 'live', ...generateBrief(live.db, kind) }, 201);
+  });
+
+  app.get('/api/personalisation/export', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Live only' }, 400);
+    return c.json({ dataMode: 'live', export: personalisationExport(live.db) });
+  });
+
+  app.post('/api/personalisation/import-preview', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Live only' }, 400);
+    const body = await c.req.json<{ preferences?: unknown; browserIdentityHash?: string }>();
+    const result = importLegacyPreferencesPreview(
+      live.db,
+      body.preferences ?? body,
+      body.browserIdentityHash ?? 'unknown',
+    );
+    return c.json({ dataMode: 'live', ...result });
+  });
+
+  app.post('/api/ops/backup', (c) => {
+    assertAdminMutationAllowed();
+    const result = createBackup({
+      db: live.db,
+      dataDir: live.paths.dataDir,
+      dbPath: live.paths.dbPath,
+    });
+    return c.json({
+      dataMode: 'live',
+      id: result.id,
+      byteLength: result.byteLength,
+      manifest: result.manifest,
+      // Do not return absolute paths to the browser.
+      archiveName: result.archivePath.split(/[/\\]/).pop(),
+    });
+  });
+
+  app.post('/api/ops/restore/preflight', async (c) => {
+    assertAdminMutationAllowed();
+    const body = await c.req.json<{ archiveName?: string }>();
+    if (!body.archiveName) return c.json({ error: 'archiveName required' }, 400);
+    const archivePath = `${live.paths.dataDir}/backups/${body.archiveName}`.replace(/\\/g, '/');
+    const preflight = restorePreflight({ archivePath });
+    recordRestoreAttempt(live.db, null, preflight, preflight.ok);
+    return c.json({ dataMode: 'live', preflight });
+  });
+
+  app.get('/api/ops/storage', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', categories: [] });
+    return c.json({ dataMode: 'live', categories: storageUsage(live.paths.dataDir) });
   });
 
   app.onError((err, c) => {

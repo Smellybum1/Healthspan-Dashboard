@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ALIGNMENT_PAIR_CORPUS,
-  evaluateAlignmentPairCorpus,
-} from './alignment-corpus.js';
+import { ALIGNMENT_PAIR_CORPUS, evaluateAlignmentPairCorpus } from './alignment-corpus.js';
 
 describe('alignment-pair corpus', () => {
   it('has at least 72 cases across required categories', () => {

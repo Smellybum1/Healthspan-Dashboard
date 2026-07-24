@@ -62,7 +62,13 @@ export type {
   YoutubeQuotaEvent,
   YoutubeVideoMetadata,
 } from './youtube.js';
-export { createXConnector, createXClient, gateXBudget, estimateXTimelineJobMicros, applyXComplianceActionsLocally } from './x.js';
+export {
+  createXConnector,
+  createXClient,
+  gateXBudget,
+  estimateXTimelineJobMicros,
+  applyXComplianceActionsLocally,
+} from './x.js';
 export {
   X_DEFAULT_LOOKBACK_DAYS,
   X_DEFAULT_POST_READ_MICROS,

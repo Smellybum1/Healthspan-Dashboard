@@ -10,10 +10,10 @@
 
 ## Current
 
-- Milestone 6 — Personalisation, briefings & production hardening (`milestone-6/personalisation-production-hardening`)
+- Milestone 6 — Personalisation, briefings & production hardening (`milestone-6/personalisation-production-hardening`) — **feature-complete pending final report hash**
   - Controlling brief: `docs/milestones/healthspan_dashboard_milestone_6_execution_brief.md`
-  - Status: AUTHORISED; M2–M4 official-brief entry gate closed → Section 6+ features
-  - Closure reports: `M2_OFFICIAL_BRIEF_CLOSURE_REPORT.md`, `M3_OFFICIAL_BRIEF_CLOSURE_REPORT.md`, `M4_OFFICIAL_BRIEF_CLOSURE_REPORT.md`
+  - Entry-gate commit: `36a281015176ea73fc24fde6344bfc15bfe22308`
+  - Completion report: `docs/milestones/M6_COMPLETION_REPORT.md`
 
 ## Later
 

@@ -21,9 +21,17 @@ const yt = await createYoutubeConnector({ apiKey: null }).fetchWindow({
   recordCap: 1,
 });
 
-const content = db.select().from(creatorContentItems).all().filter((c) => c.platform === 'youtube');
+const content = db
+  .select()
+  .from(creatorContentItems)
+  .all()
+  .filter((c) => c.platform === 'youtube');
 const current = db.select().from(platformContentCurrent).all();
-const quota = db.select().from(platformQuotaLedgers).all().filter((r) => r.platform === 'youtube');
+const quota = db
+  .select()
+  .from(platformQuotaLedgers)
+  .all()
+  .filter((r) => r.platform === 'youtube');
 const policies = db.select().from(platformPolicyState).all();
 const claims = db.select().from(creatorClaims).all();
 
@@ -59,10 +67,14 @@ const deletedStillDisplayed = content.filter((item) => {
 if (!(yt.ok && (yt.warnings?.some((w) => /never claim evidence/i.test(w)) ?? false))) {
   failures.push('disabled YouTube connector must warn that metadata is never claim evidence');
 }
-if (engagementFieldsPersisted) failures.push('engagement metrics must not be persisted for YouTube');
-if (metadataDerivedClaims.length > 0) failures.push('YouTube metadata must not produce scientific claims');
-if (staleDisplayed.length > 0) failures.push('expired YouTube content must not remain display-eligible');
-if (deletedStillDisplayed.length > 0) failures.push('deleted/private YouTube content must not remain displayed');
+if (engagementFieldsPersisted)
+  failures.push('engagement metrics must not be persisted for YouTube');
+if (metadataDerivedClaims.length > 0)
+  failures.push('YouTube metadata must not produce scientific claims');
+if (staleDisplayed.length > 0)
+  failures.push('expired YouTube content must not remain display-eligible');
+if (deletedStillDisplayed.length > 0)
+  failures.push('deleted/private YouTube content must not remain displayed');
 
 const report = {
   suite: 'youtube:doctor',

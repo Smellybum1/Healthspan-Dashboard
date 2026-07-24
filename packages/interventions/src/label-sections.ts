@@ -12,7 +12,10 @@ export const ALLOWED_PRODUCT_LABEL_SECTIONS = [
 export type AllowedProductLabelSection = (typeof ALLOWED_PRODUCT_LABEL_SECTIONS)[number];
 
 /** Explicitly excluded from display (actionable dosing). */
-export const EXCLUDED_PRODUCT_LABEL_SECTIONS = ['dosage_and_administration', 'dosage_forms_and_strengths'] as const;
+export const EXCLUDED_PRODUCT_LABEL_SECTIONS = [
+  'dosage_and_administration',
+  'dosage_forms_and_strengths',
+] as const;
 
 export function isAllowedLabelSection(section: string): boolean {
   const n = section.toLowerCase().replace(/[\s-]+/g, '_');

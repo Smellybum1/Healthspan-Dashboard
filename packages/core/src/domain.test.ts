@@ -31,7 +31,9 @@ describe('domain schemas', () => {
     expect(seed.papers.some((p) => p.peerReviewStatus === 'preprint')).toBe(true);
     expect(seed.papers.some((p) => p.isCorrectionOrRetraction)).toBe(true);
     expect(seed.papers.some((p) => p.findingDirection === 'null')).toBe(true);
-    expect(seed.trials.some((t) => t.status === 'terminated' || t.status === 'withdrawn')).toBe(true);
+    expect(seed.trials.some((t) => t.status === 'terminated' || t.status === 'withdrawn')).toBe(
+      true,
+    );
     expect(seed.trials.some((t) => t.locations.some((l) => l.australiaRelevant))).toBe(true);
     expect(seed.regulatoryEvents.some((r) => r.jurisdiction === 'AU')).toBe(true);
     expect(seed.peptides.some((p) => p.unapprovedWarning)).toBe(true);

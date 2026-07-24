@@ -64,7 +64,10 @@ export function linkCreatorClaimEvidence(db: HealthspanDb, claimId: string) {
   let created = 0;
   for (const link of links.slice(0, 10)) {
     const compatibility = [
-      { dimension: 'intervention_identity', state: link.targetType === 'intervention_entity' ? 'aligned' : 'unresolved' },
+      {
+        dimension: 'intervention_identity',
+        state: link.targetType === 'intervention_entity' ? 'aligned' : 'unresolved',
+      },
       { dimension: 'species_or_organism', state: 'unresolved' },
     ];
     db.insert(creatorClaimEvidenceLinks)
@@ -126,7 +129,11 @@ export function markCreatorAlignmentStaleForEvidence(
     .filter((l) => l.targetType === opts.targetType && l.targetId === opts.targetId);
   let marked = 0;
   for (const link of links) {
-    const claim = db.select().from(creatorClaims).where(eq(creatorClaims.id, link.creatorClaimId)).all()[0];
+    const claim = db
+      .select()
+      .from(creatorClaims)
+      .where(eq(creatorClaims.id, link.creatorClaimId))
+      .all()[0];
     if (!claim) continue;
     for (const assessment of db
       .select()

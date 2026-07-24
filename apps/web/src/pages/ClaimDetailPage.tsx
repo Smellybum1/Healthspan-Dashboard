@@ -35,11 +35,14 @@ export function ClaimDetailPage() {
   const claim = data.claim;
   return (
     <div className="space-y-4">
-      <PageHeader title="Claim provenance" description="Source-grounded excerpt spans for this Live claim." />
+      <PageHeader
+        title="Claim provenance"
+        description="Source-grounded excerpt spans for this Live claim."
+      />
       <p className="text-lg font-medium">{String(claim.claimText)}</p>
       <p className="text-sm text-[var(--muted)]">
-        {String(claim.claimKind)} · {String(claim.assertionRole)} · {String(claim.direction)} · review{' '}
-        {String(claim.reviewStatus)}
+        {String(claim.claimKind)} · {String(claim.assertionRole)} · {String(claim.direction)} ·
+        review {String(claim.reviewStatus)}
       </p>
       {data.item ? (
         <p className="text-sm">
@@ -50,10 +53,15 @@ export function ClaimDetailPage() {
         </p>
       ) : null}
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">Provenance spans</h2>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Provenance spans
+        </h2>
         <ul className="space-y-2">
           {data.spans.map((span) => (
-            <li key={String(span.id)} className="rounded border border-[var(--border)] px-3 py-2 text-sm">
+            <li
+              key={String(span.id)}
+              className="rounded border border-[var(--border)] px-3 py-2 text-sm"
+            >
               <p className="text-xs text-[var(--muted)]">{String(span.fieldPath)}</p>
               <p>{String(span.excerpt)}</p>
             </li>

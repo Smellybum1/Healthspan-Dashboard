@@ -79,9 +79,7 @@ export function recordYoutubeQuotaEvents(db: HealthspanDb, events: YoutubeQuotaE
       .all()
       .find(
         (r) =>
-          r.platform === 'youtube' &&
-          r.periodKey === key &&
-          r.methodOrResource === event.method,
+          r.platform === 'youtube' && r.periodKey === key && r.methodOrResource === event.method,
       );
     const nextUnits = (existing?.unitsOrReads ?? 0) + event.units;
     const remaining = Math.max(0, YOUTUBE_APP_DAILY_QUOTA_CAP - nextUnits);
@@ -172,7 +170,9 @@ function upsertVideoMetadata(
       })
       .where(eq(creatorContentItems.id, existing.id))
       .run();
-    db.delete(platformContentCurrent).where(eq(platformContentCurrent.contentItemId, existing.id)).run();
+    db.delete(platformContentCurrent)
+      .where(eq(platformContentCurrent.contentItemId, existing.id))
+      .run();
     db.insert(platformContentTombstones)
       .values({
         id: randomUUID(),
@@ -181,7 +181,9 @@ function upsertVideoMetadata(
         contentIdHash: opts.video.videoId,
         unavailabilityReason: opts.video.statusText ?? 'unavailable',
         purgedAt: opts.at,
-        auditMetadataJson: JSON.stringify({ note: 'Purged current YouTube metadata; user transcripts unaffected' }),
+        auditMetadataJson: JSON.stringify({
+          note: 'Purged current YouTube metadata; user transcripts unaffected',
+        }),
         createdAt: opts.at,
       })
       .run();
@@ -425,7 +427,9 @@ export function listCreatorYoutubeVideos(db: HealthspanDb, creatorId: string, li
     .select()
     .from(creatorContentItems)
     .all()
-    .filter((c) => c.creatorId === creatorId && c.platform === 'youtube' && c.currentState === 'current')
+    .filter(
+      (c) => c.creatorId === creatorId && c.platform === 'youtube' && c.currentState === 'current',
+    )
     .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0))
     .slice(0, limit);
   return items.map((item) => {
@@ -450,7 +454,9 @@ export function listCreatorYoutubeVideos(db: HealthspanDb, creatorId: string, li
       displayEligible,
       claimEvidence: false as const,
       metadataOnly: true as const,
-      refreshDeadlineAt: item.refreshDeadlineAt ? new Date(item.refreshDeadlineAt).toISOString() : null,
+      refreshDeadlineAt: item.refreshDeadlineAt
+        ? new Date(item.refreshDeadlineAt).toISOString()
+        : null,
       note: expired
         ? 'retention_refresh_due: metadata older than display window — refresh required'
         : 'YouTube API metadata is operational context only — not claim evidence',

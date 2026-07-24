@@ -34,7 +34,8 @@ if (deletedWithBytes.length > 0) {
 const missingRights = documents.filter(
   (d) => d.lifecycleState !== 'deleted' && !d.deletedAt && !d.rightsBasis,
 );
-if (missingRights.length > 0) failures.push(`documents missing rightsBasis: ${missingRights.length}`);
+if (missingRights.length > 0)
+  failures.push(`documents missing rightsBasis: ${missingRights.length}`);
 
 const fullTranscriptExposed = documents.some(
   (d) =>
@@ -54,10 +55,7 @@ const report = {
   missingRights: missingRights.length,
   ok: failures.length === 0,
   failures,
-  notes: [
-    'No full transcript browser export.',
-    'Deleted documents must purge bytes and segments.',
-  ],
+  notes: ['No full transcript browser export.', 'Deleted documents must purge bytes and segments.'],
 };
 
 console.log(JSON.stringify(report, null, 2));

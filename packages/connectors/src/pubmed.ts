@@ -24,18 +24,17 @@ export function parsePubmedEfetchXml(
     const title =
       articleXml.match(/<ArticleTitle>([\s\S]*?)<\/ArticleTitle>/)?.[1]?.replace(/<[^>]+>/g, '') ??
       `PubMed ${pmid}`;
-    const abstractParts = [...articleXml.matchAll(/<AbstractText[^>]*>([\s\S]*?)<\/AbstractText>/g)].map(
-      (m) => m[1]?.replace(/<[^>]+>/g, '') ?? '',
-    );
+    const abstractParts = [
+      ...articleXml.matchAll(/<AbstractText[^>]*>([\s\S]*?)<\/AbstractText>/g),
+    ].map((m) => m[1]?.replace(/<[^>]+>/g, '') ?? '');
     const abstract = abstractParts.filter(Boolean).join('\n\n') || null;
     const doiMatch = articleXml.match(/<ArticleId IdType="doi">([^<]+)<\/ArticleId>/)?.[1];
     const journal = articleXml.match(/<Title>([\s\S]*?)<\/Title>/)?.[1] ?? null;
     const funding = [...articleXml.matchAll(/<Agency>([\s\S]*?)<\/Agency>/g)].map((m) =>
       (m[1] ?? '').replace(/<[^>]+>/g, ''),
     );
-    const isCorrectionOrRetraction = /<PublicationType>.*(Retraction|Correction|Erratum).*<\/PublicationType>/i.test(
-      articleXml,
-    );
+    const isCorrectionOrRetraction =
+      /<PublicationType>.*(Retraction|Correction|Erratum).*<\/PublicationType>/i.test(articleXml);
     const normalized = {
       type: 'paper',
       pmid,
@@ -80,12 +79,14 @@ export function reparsePubmedRaw(bytes: Buffer, recordCap = 1000): ConnectorFetc
 }
 
 /** PubMed connector — ESearch (paginated / WebEnv) + batched EFetch. Fixture transport supported. */
-export function createPubmedConnector(opts: {
-  tool?: string;
-  email?: string;
-  apiKey?: string;
-  transport?: FetchTransport;
-} = {}): SourceConnector {
+export function createPubmedConnector(
+  opts: {
+    tool?: string;
+    email?: string;
+    apiKey?: string;
+    transport?: FetchTransport;
+  } = {},
+): SourceConnector {
   const client = createHttpClient({
     transport: opts.transport,
     userAgent: `HealthspanDashboard/0.2 (${opts.tool ?? 'healthspan_dashboard'}; ${opts.email ?? 'local@invalid'})`,
@@ -187,7 +188,11 @@ export function createPubmedConnector(opts: {
           const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${fetchParams}`;
           const fetchRes = await client.request(fetchUrl);
           const xml = await fetchRes.text();
-          rawBodies.push({ bytes: Buffer.from(xml, 'utf8'), mediaType: 'application/xml', ext: 'xml' });
+          rawBodies.push({
+            bytes: Buffer.from(xml, 'utf8'),
+            mediaType: 'application/xml',
+            ext: 'xml',
+          });
           pages.push(...parsePubmedEfetchXml(xml, recordCap - pages.length));
         }
 

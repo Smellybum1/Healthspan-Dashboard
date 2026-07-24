@@ -21,7 +21,13 @@ async function fetchCompare(ids: string[]) {
     dimensions: Array<{
       id: string;
       label: string;
-      cells: Array<{ entityId: string; value: string; comparable: boolean; note?: string; detailHref?: string }>;
+      cells: Array<{
+        entityId: string;
+        value: string;
+        comparable: boolean;
+        note?: string;
+        detailHref?: string;
+      }>;
     }>;
     caveat: string;
     rules: Record<string, boolean>;
@@ -91,16 +97,21 @@ export function ComparisonPage() {
         <div className="space-y-4">
           <p className="text-sm text-[var(--muted)]">{compare.data.caveat}</p>
           <p className="text-xs text-[var(--muted)]">
-            Rules: no winner · no recommendation · no rank · no stacking · no spontaneous-report ranking
+            Rules: no winner · no recommendation · no rank · no stacking · no spontaneous-report
+            ranking
           </p>
           {compare.data.dimensions.map((dim) => (
             <section key={dim.id} className="rounded-lg border border-[var(--border)] p-3">
               <h3 className="mb-2 text-sm font-semibold">{dim.label}</h3>
               <ul className="grid gap-2 md:grid-cols-2">
                 {dim.cells.map((cell) => (
-                  <li key={`${dim.id}-${cell.entityId}`} className="rounded border border-[var(--border)] px-2 py-2 text-sm">
+                  <li
+                    key={`${dim.id}-${cell.entityId}`}
+                    className="rounded border border-[var(--border)] px-2 py-2 text-sm"
+                  >
                     <p className="font-medium">
-                      {compare.data?.entities.find((e) => e.id === cell.entityId)?.preferredName ?? cell.entityId}
+                      {compare.data?.entities.find((e) => e.id === cell.entityId)?.preferredName ??
+                        cell.entityId}
                     </p>
                     <p>{cell.value}</p>
                     {!cell.comparable ? (

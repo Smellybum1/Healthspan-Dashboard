@@ -1,9 +1,5 @@
 export type ClaimRelationshipKind =
-  | 'supports'
-  | 'extends'
-  | 'potentially_conflicts'
-  | 'updates'
-  | 'retracts';
+  'supports' | 'extends' | 'potentially_conflicts' | 'updates' | 'retracts';
 
 export type ClaimLike = {
   fingerprint: string;
@@ -28,10 +24,7 @@ export type RelationshipCandidate = {
 /**
  * Conservative relationship detector — never emits definitive contradiction.
  */
-export function detectClaimRelationship(
-  a: ClaimLike,
-  b: ClaimLike,
-): RelationshipCandidate | null {
+export function detectClaimRelationship(a: ClaimLike, b: ClaimLike): RelationshipCandidate | null {
   if (a.fingerprint === b.fingerprint) return null;
 
   const sameOutcome =
@@ -63,7 +56,8 @@ export function detectClaimRelationship(
       confidence: 'low',
       rationale:
         'Opposite reported directions on overlapping outcome language. Comparability not established — labelled potentially_conflicts only.',
-      populationCompatible: a.population == null || b.population == null || a.population === b.population,
+      populationCompatible:
+        a.population == null || b.population == null || a.population === b.population,
       interventionCompatible:
         a.intervention == null || b.intervention == null || a.intervention === b.intervention,
       outcomeCompatible: true,

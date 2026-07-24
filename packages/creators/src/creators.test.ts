@@ -31,7 +31,8 @@ describe('creator claims', () => {
 
   it('alignment never invents trust scores and covers all §11 dimensions', () => {
     const aligned = alignCreatorClaim({
-      claimText: 'Metformin causes dramatic lifespan extension in mice and is FDA approved for aging.',
+      claimText:
+        'Metformin causes dramatic lifespan extension in mice and is FDA approved for aging.',
       assertionRole: 'assertion',
       linkedEvidenceCount: 0,
       hasRegulatoryLink: false,
@@ -45,7 +46,8 @@ describe('creator claims', () => {
   });
 
   it('refuses to send X content to external AI', async () => {
-    const { assertXContentNotSentToExternalAi, isExternalAiAllowedForX } = await import('./x-ai-policy.js');
+    const { assertXContentNotSentToExternalAi, isExternalAiAllowedForX } =
+      await import('./x-ai-policy.js');
     expect(isExternalAiAllowedForX()).toBe(false);
     expect(() =>
       assertXContentNotSentToExternalAi({ provider: 'openai', includesXContent: true }),

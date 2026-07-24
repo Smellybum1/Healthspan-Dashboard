@@ -13,6 +13,8 @@
     "@healthspan/connectors": "workspace:*",
     "@healthspan/core": "workspace:*",
     "@healthspan/db": "workspace:*",
+    "@healthspan/personalization": "workspace:*",
+    "@healthspan/operations": "workspace:*",
     "@hono/node-server": "^1.14.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.7.4",

@@ -1,6 +1,15 @@
 import { createHash } from 'node:crypto';
-import { identityResult, type IdentityConnector, type IdentityLookupQuery } from './identity-types.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import {
+  identityResult,
+  type IdentityConnector,
+  type IdentityLookupQuery,
+} from './identity-types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 function hashNormalized(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');

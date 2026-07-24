@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import {
-  CREATOR_ROLES,
-  ROLE_PROVENANCE_STATES,
-  type CreatorRole,
-} from '@healthspan/creators';
+import { CREATOR_ROLES, ROLE_PROVENANCE_STATES, type CreatorRole } from '@healthspan/creators';
 import {
   creatorEntities,
   creatorIdentityDecisions,
@@ -42,10 +38,18 @@ export function addCreatorRole(
     expectedRevision?: number;
   },
 ) {
-  const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, opts.creatorId)).all()[0];
+  const creator = db
+    .select()
+    .from(creatorEntities)
+    .where(eq(creatorEntities.id, opts.creatorId))
+    .all()[0];
   if (!creator) return { ok: false as const, status: 404 as const, error: 'Creator not found' };
   if (!CREATOR_ROLES.includes(opts.role as CreatorRole)) {
-    return { ok: false as const, status: 400 as const, error: `role must be one of ${CREATOR_ROLES.join(',')}` };
+    return {
+      ok: false as const,
+      status: 400 as const,
+      error: `role must be one of ${CREATOR_ROLES.join(',')}`,
+    };
   }
   const provenance = opts.provenanceState ?? 'declared';
   if (!ROLE_PROVENANCE_STATES.includes(provenance as (typeof ROLE_PROVENANCE_STATES)[number])) {
@@ -95,7 +99,11 @@ export function addCommercialStatement(
   db: HealthspanDb,
   opts: { creatorId: string; subject: string; text: string; sourceUrl?: string },
 ) {
-  const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, opts.creatorId)).all()[0];
+  const creator = db
+    .select()
+    .from(creatorEntities)
+    .where(eq(creatorEntities.id, opts.creatorId))
+    .all()[0];
   if (!creator) return { ok: false as const, status: 404 as const, error: 'Creator not found' };
   if (!opts.text.trim() || !opts.subject.trim()) {
     return { ok: false as const, status: 400 as const, error: 'subject and text required' };
@@ -114,7 +122,11 @@ export function addCommercialStatement(
       createdAt: now,
     })
     .run();
-  return { ok: true as const, statementId: id, note: 'Commercial relationships require explicit source/review — never inferred.' };
+  return {
+    ok: true as const,
+    statementId: id,
+    note: 'Commercial relationships require explicit source/review — never inferred.',
+  };
 }
 
 export function listIdentityTasks(db: HealthspanDb, limit = 50) {
@@ -198,14 +210,22 @@ export function resolveIdentityTask(
     notes?: string;
   },
 ) {
-  const task = db.select().from(creatorIdentityTasks).where(eq(creatorIdentityTasks.id, opts.taskId)).all()[0];
+  const task = db
+    .select()
+    .from(creatorIdentityTasks)
+    .where(eq(creatorIdentityTasks.id, opts.taskId))
+    .all()[0];
   if (!task) return { ok: false as const, status: 404 as const, error: 'Task not found' };
   if (task.reviewStatus !== 'pending') {
     return { ok: false as const, status: 409 as const, error: 'Task already resolved' };
   }
   const creatorId = task.proposedCreatorId;
   if (creatorId && opts.expectedRevision != null) {
-    const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, creatorId)).all()[0];
+    const creator = db
+      .select()
+      .from(creatorEntities)
+      .where(eq(creatorEntities.id, creatorId))
+      .all()[0];
     if (creator && creator.identityRevision !== opts.expectedRevision) {
       return {
         ok: false as const,
@@ -239,7 +259,11 @@ export function resolveIdentityTask(
     })
     .run();
   if (creatorId) {
-    const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, creatorId)).all()[0];
+    const creator = db
+      .select()
+      .from(creatorEntities)
+      .where(eq(creatorEntities.id, creatorId))
+      .all()[0];
     if (creator) {
       db.update(creatorEntities)
         .set({ identityRevision: creator.identityRevision + 1, updatedAt: now })
@@ -251,7 +275,11 @@ export function resolveIdentityTask(
 }
 
 export function rebuildCreatorProfileSnapshot(db: HealthspanDb, creatorId: string) {
-  const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, creatorId)).all()[0];
+  const creator = db
+    .select()
+    .from(creatorEntities)
+    .where(eq(creatorEntities.id, creatorId))
+    .all()[0];
   if (!creator) return null;
   const now = Date.now();
   const roles = listCreatorRoles(db, creatorId);
@@ -285,7 +313,9 @@ export function rebuildCreatorProfileSnapshot(db: HealthspanDb, creatorId: strin
       countsJson: JSON.stringify({ roles: roles.length, statements: statements.length }),
       rulesetVersion: 'm5.profile.1',
       status: 'ready',
-      policyRedactionState: statements.some((s) => s.reviewState !== 'accepted') ? 'partial' : 'none',
+      policyRedactionState: statements.some((s) => s.reviewState !== 'accepted')
+        ? 'partial'
+        : 'none',
       createdAt: now,
     })
     .run();
@@ -338,9 +368,9 @@ export function redactProfileSnapshot(db: HealthspanDb, snapshotId: string) {
     summary = {};
   }
   if (Array.isArray(summary.commercialStatements)) {
-    summary.commercialStatements = (summary.commercialStatements as Array<Record<string, unknown>>).map(
-      (s) => ({ ...s, text: null }),
-    );
+    summary.commercialStatements = (
+      summary.commercialStatements as Array<Record<string, unknown>>
+    ).map((s) => ({ ...s, text: null }));
   }
   db.update(creatorProfileSnapshots)
     .set({

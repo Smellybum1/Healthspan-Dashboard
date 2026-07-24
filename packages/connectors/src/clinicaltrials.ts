@@ -74,7 +74,9 @@ export function normalizeClinicalTrialStudy(
   const locations = p.contactsLocationsModule?.locations ?? [];
   const primaryOutcomes = p.outcomesModule?.primaryOutcomes ?? [];
   const secondaryOutcomes = p.outcomesModule?.secondaryOutcomes ?? [];
-  const resultsPosted = Boolean(study.hasResults || p.statusModule?.resultsFirstPostDateStruct?.date);
+  const resultsPosted = Boolean(
+    study.hasResults || p.statusModule?.resultsFirstPostDateStruct?.date,
+  );
   const materialChangeHints = {
     status: p.statusModule?.overallStatus ?? null,
     resultsPosted,
@@ -125,11 +127,17 @@ export function normalizeClinicalTrialStudy(
 }
 
 /** Re-parse stored ClinicalTrials.gov API v2 JSON without network. */
-export function reparseClinicalTrialsRaw(bytes: Buffer, recordCap = 1000, lookbackDays = 365): ConnectorFetchResult {
+export function reparseClinicalTrialsRaw(
+  bytes: Buffer,
+  recordCap = 1000,
+  lookbackDays = 365,
+): ConnectorFetchResult {
   const fetchedAt = new Date().toISOString();
   try {
     const json = JSON.parse(bytes.toString('utf8')) as { studies?: CtStudy[] };
-    const pages = (json.studies ?? []).slice(0, recordCap).map((s) => normalizeClinicalTrialStudy(s, lookbackDays));
+    const pages = (json.studies ?? [])
+      .slice(0, recordCap)
+      .map((s) => normalizeClinicalTrialStudy(s, lookbackDays));
     return {
       connectorId: 'clinicaltrials-gov',
       fetchedAt,
@@ -149,9 +157,11 @@ export function reparseClinicalTrialsRaw(bytes: Buffer, recordCap = 1000, lookba
   }
 }
 
-export function createClinicalTrialsConnector(opts: {
-  transport?: FetchTransport;
-} = {}): SourceConnector {
+export function createClinicalTrialsConnector(
+  opts: {
+    transport?: FetchTransport;
+  } = {},
+): SourceConnector {
   const client = createHttpClient({
     transport: opts.transport,
     userAgent: 'HealthspanDashboard/0.2 (clinicaltrials-gov)',
@@ -185,7 +195,9 @@ export function createClinicalTrialsConnector(opts: {
             mediaType: 'application/json',
             ext: 'json',
           });
-          const batch = (json.studies ?? []).map((s) => normalizeClinicalTrialStudy(s, lookbackDays));
+          const batch = (json.studies ?? []).map((s) =>
+            normalizeClinicalTrialStudy(s, lookbackDays),
+          );
           pages.push(...batch);
           pagesFetched += 1;
           pageToken = json.nextPageToken;

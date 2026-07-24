@@ -52,10 +52,15 @@ export function AssessmentPanel({ assessment }: { assessment: EvidenceAssessment
       {assessment.regulatoryStatuses.length ? (
         <div className="flex flex-wrap gap-2">
           {assessment.regulatoryStatuses.map((reg) => (
-            <span key={`${reg.jurisdiction}-${reg.status}-${reg.indication ?? ''}`} className="inline-flex items-center gap-1">
+            <span
+              key={`${reg.jurisdiction}-${reg.status}-${reg.indication ?? ''}`}
+              className="inline-flex items-center gap-1"
+            >
               <span className="text-xs text-[var(--muted)]">{reg.jurisdiction}</span>
               <RegulatoryBadge status={reg.status} />
-              {reg.indication ? <span className="text-xs text-[var(--muted)]">({reg.indication})</span> : null}
+              {reg.indication ? (
+                <span className="text-xs text-[var(--muted)]">({reg.indication})</span>
+              ) : null}
             </span>
           ))}
         </div>
@@ -139,7 +144,9 @@ export function PageHeader({
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 className="display text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
-        {description ? <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">{description}</p> : null}
+        {description ? (
+          <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">{description}</p>
+        ) : null}
       </div>
       {actions}
     </div>

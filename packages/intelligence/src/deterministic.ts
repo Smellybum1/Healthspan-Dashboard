@@ -96,9 +96,7 @@ export function classifyStudyProfile(record: NormalizedLiveRecord): StudyProfile
 
   if (type === 'trial') {
     evidenceAvailability = resultsPresent ? 'results_posted_registry' : 'protocol_only';
-    evidenceMaturity = resultsPresent
-      ? 'early_human_interventional'
-      : 'early_human_interventional';
+    evidenceMaturity = resultsPresent ? 'early_human_interventional' : 'early_human_interventional';
     organismLevel = 'human';
     if (!resultsPresent) {
       translationGaps.push('protocol_to_results');
@@ -160,7 +158,8 @@ export function classifyStudyProfile(record: NormalizedLiveRecord): StudyProfile
   const summary = `${record.title ?? ''} ${record.summary ?? ''}`.toLowerCase();
   let populationContext: string | null = null;
   if (summary.includes('adult')) populationContext = 'adults';
-  else if (summary.includes('older') || summary.includes('elderly')) populationContext = 'older_adults';
+  else if (summary.includes('older') || summary.includes('elderly'))
+    populationContext = 'older_adults';
   else if (organismLevel === 'human') populationContext = 'human_unspecified';
   else if (organismLevel === 'unknown') populationContext = null;
   else populationContext = organismLevel;
@@ -183,7 +182,8 @@ export function classifyStudyProfile(record: NormalizedLiveRecord): StudyProfile
           {
             code: 'retraction_or_correction',
             state: 'present',
-            explanation: 'Correction/retraction signal overrides ordinary presentation until reviewed.',
+            explanation:
+              'Correction/retraction signal overrides ordinary presentation until reviewed.',
           },
         ]
       : methodologicalSignals,
@@ -270,7 +270,8 @@ export function buildClaims(
   for (const segment of uniqueSegments) {
     const text = segment.text.toLowerCase();
     let outcomeFamily: string | null = null;
-    if (text.includes('lifespan') || text.includes('mortality')) outcomeFamily = 'lifespan_mortality';
+    if (text.includes('lifespan') || text.includes('mortality'))
+      outcomeFamily = 'lifespan_mortality';
     else if (text.includes('biomarker') || text.includes('hdl') || text.includes('crp')) {
       outcomeFamily = 'biomarker';
     } else if (text.includes('function') || text.includes('gait') || text.includes('vo2')) {
@@ -281,7 +282,10 @@ export function buildClaims(
       record.type === 'trial' && !profile.resultsPresent && segment.kind === 'title'
         ? `Registry protocol/plan: ${record.title ?? 'Untitled trial'} (results not posted).`
         : segment.text.slice(0, 280);
-    if (outcomeFamily === 'biomarker' && /lifespan extension|extends lifespan|prolongs life/i.test(claimText)) {
+    if (
+      outcomeFamily === 'biomarker' &&
+      /lifespan extension|extends lifespan|prolongs life/i.test(claimText)
+    ) {
       claimText = `${claimText.slice(0, 200)} [biomarker-only; not demonstrated lifespan extension]`;
     }
     if (profile.organismLevel === 'animal' || profile.organismLevel === 'cell') {
@@ -289,7 +293,10 @@ export function buildClaims(
     }
 
     let direction = 'unspecified';
-    if (/\b(improv|increas|benefit|positiv)/i.test(text) && !/\b(worsen|decreas|reduc)/i.test(text)) {
+    if (
+      /\b(improv|increas|benefit|positiv)/i.test(text) &&
+      !/\b(worsen|decreas|reduc)/i.test(text)
+    ) {
       direction = 'positive';
     } else if (/\b(worsen|adverse|harm)/i.test(text)) {
       direction = 'negative';

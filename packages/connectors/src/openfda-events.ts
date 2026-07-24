@@ -1,7 +1,16 @@
 import { createHash } from 'node:crypto';
 import { createHttpClient } from './http.js';
-import { identityResult, type IdentityConnector, type IdentityLookupQuery } from './identity-types.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import {
+  identityResult,
+  type IdentityConnector,
+  type IdentityLookupQuery,
+} from './identity-types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 function hashNormalized(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -29,7 +38,8 @@ export function createOpenFdaEventAggregateConnector(
 ): IdentityConnector & SourceConnector {
   const apiKey = opts.apiKey ?? process.env.OPENFDA_API_KEY ?? null;
   const enabled =
-    (process.env.HEALTHSPAN_OPENFDA_ENABLED === 'true' && Boolean(apiKey)) || opts.enableWithoutKey === true;
+    (process.env.HEALTHSPAN_OPENFDA_ENABLED === 'true' && Boolean(apiKey)) ||
+    opts.enableWithoutKey === true;
 
   const client = createHttpClient({
     transport: opts.transport,
@@ -83,7 +93,11 @@ export function createOpenFdaEventAggregateConnector(
       const res = await client.request(url);
       const json = (await res.json()) as EventResponse;
       const rawBodies: ConnectorFetchResult['rawBodies'] = [
-        { bytes: Buffer.from(JSON.stringify(json), 'utf8'), mediaType: 'application/json', ext: 'json' },
+        {
+          bytes: Buffer.from(JSON.stringify(json), 'utf8'),
+          mediaType: 'application/json',
+          ext: 'json',
+        },
       ];
 
       const terms = (json.results ?? [])

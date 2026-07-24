@@ -199,7 +199,10 @@ export function applyIdentityLookupToEntity(
         .select()
         .from(regulatedProducts)
         .where(
-          and(eq(regulatedProducts.authority, authority), eq(regulatedProducts.sourceNativeId, nativeId)),
+          and(
+            eq(regulatedProducts.authority, authority),
+            eq(regulatedProducts.sourceNativeId, nativeId),
+          ),
         )
         .all()[0];
       const productId = existingProduct?.id ?? randomUUID();

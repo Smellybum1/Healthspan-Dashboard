@@ -27,7 +27,10 @@ export type ParsedDocument = {
 
 const MAX_BYTES = 2 * 1024 * 1024;
 
-export function detectDocumentKind(filename: string, mediaType?: string): ImportedDocumentKind | null {
+export function detectDocumentKind(
+  filename: string,
+  mediaType?: string,
+): ImportedDocumentKind | null {
   const lower = filename.toLowerCase();
   if (lower.endsWith('.vtt') || mediaType?.includes('vtt')) return 'vtt';
   if (lower.endsWith('.srt')) return 'srt';
@@ -41,7 +44,10 @@ export function validateDocumentBytes(bytes: Buffer): void {
   if (bytes.length > MAX_BYTES) throw new Error(`Document exceeds ${MAX_BYTES} byte cap`);
 }
 
-function segmentsFromLines(lines: string[], kind: DocumentSegmentDraft['segmentKind']): {
+function segmentsFromLines(
+  lines: string[],
+  kind: DocumentSegmentDraft['segmentKind'],
+): {
   text: string;
   segments: DocumentSegmentDraft[];
 } {
@@ -117,7 +123,8 @@ export function parseTranscriptDocument(opts: {
     const cues: string[] = [];
     let buf: string[] = [];
     const isTiming = (line: string) =>
-      /\d{2}:\d{2}:\d{2}[.,]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}/.test(line) || /^\d+$/.test(line.trim());
+      /\d{2}:\d{2}:\d{2}[.,]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}/.test(line) ||
+      /^\d+$/.test(line.trim());
     for (const line of lines) {
       if (line.startsWith('WEBVTT') || line.startsWith('NOTE')) continue;
       if (!line.trim()) {
@@ -137,9 +144,18 @@ export function parseTranscriptDocument(opts: {
   }
 
   const text = raw.trim();
-  const paragraphs = text.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+  const paragraphs = text
+    .split(/\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   const built = segmentsFromLines(paragraphs.length ? paragraphs : [text], 'paragraph');
-  return { kind: 'txt', text: built.text, cueCount: built.segments.length, warnings, segments: built.segments };
+  return {
+    kind: 'txt',
+    text: built.text,
+    cueCount: built.segments.length,
+    warnings,
+    segments: built.segments,
+  };
 }
 
 export const DOCUMENT_PROHIBITIONS = [

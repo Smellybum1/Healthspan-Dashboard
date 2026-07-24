@@ -1,4 +1,9 @@
-import { createYoutubeConnector, createXConnector, projectDrugsAtFdaZip, buildSimpleZip } from '@healthspan/connectors';
+import {
+  createYoutubeConnector,
+  createXConnector,
+  projectDrugsAtFdaZip,
+  buildSimpleZip,
+} from '@healthspan/connectors';
 import { describe, expect, it } from 'vitest';
 
 describe('M4 hardening + M5 platform connectors', () => {

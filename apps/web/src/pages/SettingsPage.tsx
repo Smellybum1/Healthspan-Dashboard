@@ -69,8 +69,8 @@ export function SettingsPage() {
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
         <h2 className="text-sm font-semibold">Data mode</h2>
         <p className="text-sm text-[var(--muted)]">
-          Live uses SQLite-ingested primary sources. Demo preserves the Milestone 1 showcase. Modes never
-          mix in the same response.
+          Live uses SQLite-ingested primary sources. Demo preserves the Milestone 1 showcase. Modes
+          never mix in the same response.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -121,7 +121,11 @@ export function SettingsPage() {
           Run Live intelligence analysis
         </button>
         <p className="text-xs text-[var(--muted)]">
-          See also <Link className="underline" to="/sources">Source Health</Link>.
+          See also{' '}
+          <Link className="underline" to="/sources">
+            Source Health
+          </Link>
+          .
         </p>
       </section>
 

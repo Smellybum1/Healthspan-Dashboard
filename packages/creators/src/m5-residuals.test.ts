@@ -81,9 +81,12 @@ describe('recurrence formula', () => {
       { id: 'b', claimText: 'Rapamycin extends healthspan among adults.', recurrenceKey: 'k2' },
     );
     expect(rel.relationshipType).not.toBe('plagiarism' as never);
-    expect(['exact_duplicate', 'reviewed_paraphrase', 'potential_paraphrase', 'unrelated']).toContain(
-      rel.relationshipType,
-    );
+    expect([
+      'exact_duplicate',
+      'reviewed_paraphrase',
+      'potential_paraphrase',
+      'unrelated',
+    ]).toContain(rel.relationshipType);
   });
 });
 

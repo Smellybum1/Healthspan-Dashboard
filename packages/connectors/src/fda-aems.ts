@@ -1,7 +1,16 @@
 import { createHash } from 'node:crypto';
 import { createHttpClient } from './http.js';
-import { identityResult, type IdentityConnector, type IdentityLookupQuery } from './identity-types.js';
-import type { ConnectorFetchResult, ConnectorPage, FetchTransport, SourceConnector } from './types.js';
+import {
+  identityResult,
+  type IdentityConnector,
+  type IdentityLookupQuery,
+} from './identity-types.js';
+import type {
+  ConnectorFetchResult,
+  ConnectorPage,
+  FetchTransport,
+  SourceConnector,
+} from './types.js';
 
 function hashNormalized(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -46,7 +55,9 @@ export function parseAemsHtml(html: string, quarterHint?: string): AemsSignal[] 
 
   // Fallback list items
   if (signals.length === 0) {
-    for (const m of html.matchAll(/<li[^>]*class="[^"]*aems-signal[^"]*"[^>]*>([\s\S]*?)<\/li>/gi)) {
+    for (const m of html.matchAll(
+      /<li[^>]*class="[^"]*aems-signal[^"]*"[^>]*>([\s\S]*?)<\/li>/gi,
+    )) {
       const block = m[1]!;
       const product = block.match(/Product\/class:\s*([^<\n]+)/i)?.[1]?.trim();
       const signal = block.match(/Potential signal:\s*([^<\n]+)/i)?.[1]?.trim();
@@ -138,8 +149,7 @@ export function createFdaAemsConnector(
       }
 
       const hits = signals.filter(
-        (s) =>
-          s.productOrClass.toLowerCase().includes(q) || s.signalText.toLowerCase().includes(q),
+        (s) => s.productOrClass.toLowerCase().includes(q) || s.signalText.toLowerCase().includes(q),
       );
 
       if (hits.length === 0) {
@@ -154,30 +164,32 @@ export function createFdaAemsConnector(
         });
       }
 
-      const pages: ConnectorPage[] = hits.slice(0, Math.min(args.recordCap ?? 20, 50)).map((s, i) => {
-        const normalized = {
-          type: 'potential_signal',
-          authority: 'fda_aems',
-          jurisdiction: 'US',
-          scheme: 'aems_signal',
-          quarter: s.quarter,
-          publishedAt: s.publishedAt ?? null,
-          productOrClass: s.productOrClass,
-          signalText: s.signalText,
-          additionalInformation: s.additionalInformation ?? null,
-          officialUrl: s.officialUrl ?? null,
-          provenCausality: false,
-          incidenceEstablished: false,
-          approvalInferred: false,
-          note: 'FDA AEMS potential signals are regulator-identified potential signals / new safety information — not proven causality and not incidence rates.',
-        };
-        return {
-          externalId: `${s.quarter}:${i}:${s.productOrClass}`.slice(0, 180),
-          canonicalUrl: s.officialUrl ?? undefined,
-          payload: s,
-          normalized: { ...normalized, normalizedHash: hashNormalized(normalized) },
-        };
-      });
+      const pages: ConnectorPage[] = hits
+        .slice(0, Math.min(args.recordCap ?? 20, 50))
+        .map((s, i) => {
+          const normalized = {
+            type: 'potential_signal',
+            authority: 'fda_aems',
+            jurisdiction: 'US',
+            scheme: 'aems_signal',
+            quarter: s.quarter,
+            publishedAt: s.publishedAt ?? null,
+            productOrClass: s.productOrClass,
+            signalText: s.signalText,
+            additionalInformation: s.additionalInformation ?? null,
+            officialUrl: s.officialUrl ?? null,
+            provenCausality: false,
+            incidenceEstablished: false,
+            approvalInferred: false,
+            note: 'FDA AEMS potential signals are regulator-identified potential signals / new safety information — not proven causality and not incidence rates.',
+          };
+          return {
+            externalId: `${s.quarter}:${i}:${s.productOrClass}`.slice(0, 180),
+            canonicalUrl: s.officialUrl ?? undefined,
+            payload: s,
+            normalized: { ...normalized, normalizedHash: hashNormalized(normalized) },
+          };
+        });
 
       return identityResult({
         connectorId: 'fda-aems',

@@ -55,7 +55,12 @@ function parseRssItems(xml: string) {
 }
 
 function tag(block: string, name: string): string | null {
-  const m = block.match(new RegExp(`<${name}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${name}>|<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`, 'i'));
+  const m = block.match(
+    new RegExp(
+      `<${name}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${name}>|<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`,
+      'i',
+    ),
+  );
   if (!m) return null;
   return (m[1] ?? m[2] ?? '').trim() || null;
 }
@@ -110,10 +115,12 @@ export function reparseTgaRaw(bytes: Buffer, recordCap = 1000): ConnectorFetchRe
   };
 }
 
-export function createTgaConnector(opts: {
-  transport?: FetchTransport;
-  feeds?: typeof TGA_FEEDS;
-} = {}): SourceConnector {
+export function createTgaConnector(
+  opts: {
+    transport?: FetchTransport;
+    feeds?: typeof TGA_FEEDS;
+  } = {},
+): SourceConnector {
   const client = createHttpClient({
     transport: opts.transport,
     userAgent: 'HealthspanDashboard/0.2 (tga-rss)',

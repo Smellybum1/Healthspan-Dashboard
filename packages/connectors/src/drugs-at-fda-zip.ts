@@ -27,7 +27,10 @@ export function assertSafeZipEntryPath(name: string): string {
  * Minimal ZIP reader (store + deflate) with zip-slip and size guards.
  * Used for Drugs@FDA bulk ZIP fixtures and local extracts.
  */
-export function safeExtractZip(buffer: Buffer, opts?: { maxFiles?: number; maxTotalBytes?: number; maxEntryBytes?: number }): ZipEntry[] {
+export function safeExtractZip(
+  buffer: Buffer,
+  opts?: { maxFiles?: number; maxTotalBytes?: number; maxEntryBytes?: number },
+): ZipEntry[] {
   const maxFiles = opts?.maxFiles ?? MAX_FILES;
   const maxTotal = opts?.maxTotalBytes ?? MAX_TOTAL_BYTES;
   const maxEntry = opts?.maxEntryBytes ?? MAX_ENTRY_BYTES;
@@ -45,14 +48,16 @@ export function safeExtractZip(buffer: Buffer, opts?: { maxFiles?: number; maxTo
 
   const totalEntries = buffer.readUInt16LE(eocd + 10);
   const centralOffset = buffer.readUInt32LE(eocd + 16);
-  if (totalEntries > maxFiles) throw new Error(`ZIP file count ${totalEntries} exceeds cap ${maxFiles}`);
+  if (totalEntries > maxFiles)
+    throw new Error(`ZIP file count ${totalEntries} exceeds cap ${maxFiles}`);
 
   const out: ZipEntry[] = [];
   let totalBytes = 0;
   let offset = centralOffset;
 
   for (let i = 0; i < totalEntries; i += 1) {
-    if (buffer.readUInt32LE(offset) !== 0x02014b50) throw new Error('Invalid central directory signature');
+    if (buffer.readUInt32LE(offset) !== 0x02014b50)
+      throw new Error('Invalid central directory signature');
     const compression = buffer.readUInt16LE(offset + 10);
     const compressedSize = buffer.readUInt32LE(offset + 20);
     const uncompressedSize = buffer.readUInt32LE(offset + 24);
@@ -69,7 +74,8 @@ export function safeExtractZip(buffer: Buffer, opts?: { maxFiles?: number; maxTo
     totalBytes += uncompressedSize;
     if (totalBytes > maxTotal) throw new Error('ZIP total uncompressed size exceeds cap');
 
-    if (buffer.readUInt32LE(localHeaderOffset) !== 0x04034b50) throw new Error('Invalid local file header');
+    if (buffer.readUInt32LE(localHeaderOffset) !== 0x04034b50)
+      throw new Error('Invalid local file header');
     const localNameLen = buffer.readUInt16LE(localHeaderOffset + 26);
     const localExtraLen = buffer.readUInt16LE(localHeaderOffset + 28);
     const dataStart = localHeaderOffset + 30 + localNameLen + localExtraLen;
@@ -105,7 +111,15 @@ export function parseDrugsAtFdaProductsTxt(text: string): Array<{
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
   const header = lines[0]!.split('\t').map((h) => h.trim().toLowerCase());
-  const required = ['applno', 'productno', 'form', 'strength', 'drugname', 'activeingredient', 'marketingstatus'];
+  const required = [
+    'applno',
+    'productno',
+    'form',
+    'strength',
+    'drugname',
+    'activeingredient',
+    'marketingstatus',
+  ];
   for (const col of required) {
     if (!header.includes(col)) {
       throw new Error(`Drugs@FDA Products.txt missing required column: ${col}`);

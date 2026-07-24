@@ -51,6 +51,8 @@ export interface IdentityConnector {
   lookup(args: IdentityLookupQuery): Promise<IdentityLookupResult>;
 }
 
-export function identityResult(base: Omit<IdentityLookupResult, 'approvalNeverInferred'>): IdentityLookupResult {
+export function identityResult(
+  base: Omit<IdentityLookupResult, 'approvalNeverInferred'>,
+): IdentityLookupResult {
   return { ...base, approvalNeverInferred: true };
 }

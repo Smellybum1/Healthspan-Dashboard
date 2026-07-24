@@ -18,10 +18,7 @@ export const ConnectorIdSchema = z.enum([
 ]);
 export type ConnectorId = z.infer<typeof ConnectorIdSchema>;
 
-export type FetchTransport = (
-  input: string | URL,
-  init?: RequestInit,
-) => Promise<Response>;
+export type FetchTransport = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
 export type ConnectorPage = {
   externalId: string;

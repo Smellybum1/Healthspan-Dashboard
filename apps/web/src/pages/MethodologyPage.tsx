@@ -79,7 +79,10 @@ export function MethodologyPage() {
       <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} />
       <div className="space-y-3">
         {SECTIONS.map((section) => (
-          <section key={section.title} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <section
+            key={section.title}
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+          >
             <h2 className="text-base font-semibold">{section.title}</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{section.body}</p>
           </section>

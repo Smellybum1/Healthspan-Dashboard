@@ -1,7 +1,13 @@
 import { z } from 'zod';
 
 /** Backward-compatible Milestone 1 contracts kept for existing imports/tests. */
-export const ConnectorHealthSchema = z.enum(['healthy', 'degraded', 'error', 'disabled', 'unknown']);
+export const ConnectorHealthSchema = z.enum([
+  'healthy',
+  'degraded',
+  'error',
+  'disabled',
+  'unknown',
+]);
 export type ConnectorHealth = z.infer<typeof ConnectorHealthSchema>;
 
 export const ConnectorFetchResultSchema = z.object({

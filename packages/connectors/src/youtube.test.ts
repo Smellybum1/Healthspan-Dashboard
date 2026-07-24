@@ -116,9 +116,9 @@ describe('YouTube connector depth', () => {
     expect(sync.videos.every((v) => v.mediaDownloaded === false)).toBe(true);
     expect(sync.videos[0]?.captionAvailable).toBe(true);
     expect(sync.videos[1]?.paidPlacementDeclared).toBe(true);
-    expect(sync.quotaEvents.every((e) => e.costTableVersion === YOUTUBE_QUOTA_COST_TABLE_VERSION)).toBe(
-      true,
-    );
+    expect(
+      sync.quotaEvents.every((e) => e.costTableVersion === YOUTUBE_QUOTA_COST_TABLE_VERSION),
+    ).toBe(true);
     // channels.list + playlistItems.list + videos.list
     expect(sync.unitsSpent).toBe(
       YOUTUBE_METHOD_COSTS['channels.list'] +

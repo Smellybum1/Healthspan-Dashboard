@@ -33,7 +33,11 @@ export function listAssessments(
       .where(eq(intelligenceAnalyses.id, state.currentAnalysisId))
       .all()[0];
     if (!analysis || analysis.supersededAt) continue;
-    const item = db.select().from(contentItems).where(eq(contentItems.id, state.contentItemId)).all()[0];
+    const item = db
+      .select()
+      .from(contentItems)
+      .where(eq(contentItems.id, state.contentItemId))
+      .all()[0];
     if (!item) continue;
 
     const hallmarks = safeJsonArray(analysis.hallmarksJson);
@@ -50,7 +54,10 @@ export function listAssessments(
       ) || Boolean(analysis.status === 'retracted');
 
     if (query.evidenceMaturity && analysis.evidenceMaturity !== query.evidenceMaturity) continue;
-    if (query.evidenceAvailability && analysis.evidenceAvailability !== query.evidenceAvailability) {
+    if (
+      query.evidenceAvailability &&
+      analysis.evidenceAvailability !== query.evidenceAvailability
+    ) {
       continue;
     }
     if (query.studyDesign && analysis.studyDesign !== query.studyDesign) continue;
@@ -59,7 +66,10 @@ export function listAssessments(
     if (query.retractionOrCorrection === 'false' && retraction) continue;
     if (query.q) {
       const q = query.q.toLowerCase();
-      if (!item.title.toLowerCase().includes(q) && !(item.summary ?? '').toLowerCase().includes(q)) {
+      if (
+        !item.title.toLowerCase().includes(q) &&
+        !(item.summary ?? '').toLowerCase().includes(q)
+      ) {
         continue;
       }
     }
@@ -105,7 +115,11 @@ export function getAssessment(db: HealthspanDb, analysisId: string) {
     .where(eq(intelligenceAnalyses.id, analysisId))
     .all()[0];
   if (!analysis) return null;
-  const item = db.select().from(contentItems).where(eq(contentItems.id, analysis.contentItemId)).all()[0];
+  const item = db
+    .select()
+    .from(contentItems)
+    .where(eq(contentItems.id, analysis.contentItemId))
+    .all()[0];
   const history = db
     .select()
     .from(intelligenceAnalyses)

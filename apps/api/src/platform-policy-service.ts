@@ -26,7 +26,11 @@ export type PolicyAuditTask = {
 const AUDIT_META_KEY = 'platform_policy_audit_queue';
 
 function readQueue(db: HealthspanDb): PolicyAuditTask[] {
-  const raw = db.select().from(appMeta).all().find((r) => r.key === AUDIT_META_KEY)?.value;
+  const raw = db
+    .select()
+    .from(appMeta)
+    .all()
+    .find((r) => r.key === AUDIT_META_KEY)?.value;
   if (!raw) return [];
   try {
     return JSON.parse(raw) as PolicyAuditTask[];
@@ -38,7 +42,11 @@ function readQueue(db: HealthspanDb): PolicyAuditTask[] {
 function writeQueue(db: HealthspanDb, tasks: PolicyAuditTask[]) {
   const now = Date.now();
   const value = JSON.stringify(tasks.slice(0, 200));
-  const existing = db.select().from(appMeta).all().find((r) => r.key === AUDIT_META_KEY);
+  const existing = db
+    .select()
+    .from(appMeta)
+    .all()
+    .find((r) => r.key === AUDIT_META_KEY);
   if (existing) {
     db.update(appMeta).set({ value, updatedAt: now }).where(eq(appMeta.key, AUDIT_META_KEY)).run();
   } else {

@@ -68,12 +68,14 @@ export function importPreferences(json: string): Preferences {
   return { ...defaultPreferences(), ...prefs };
 }
 
-export function toggleFollow(prefs: Preferences, id: string, mode: 'demo' | 'live' = 'demo'): Preferences {
+export function toggleFollow(
+  prefs: Preferences,
+  id: string,
+  mode: 'demo' | 'live' = 'demo',
+): Preferences {
   const modeIds = prefs.followedIdsByMode?.[mode] ?? [];
   const exists = modeIds.includes(id) || prefs.followedIds.includes(id);
-  const nextModeIds = exists
-    ? modeIds.filter((x) => x !== id)
-    : [...new Set([...modeIds, id])];
+  const nextModeIds = exists ? modeIds.filter((x) => x !== id) : [...new Set([...modeIds, id])];
   const nextFollowed =
     mode === 'demo'
       ? exists

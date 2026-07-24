@@ -33,7 +33,9 @@ function readFixture(name: string) {
   return fs.readFileSync(path.join(fixturesDir, name), 'utf8');
 }
 
-function fixtureTransport(map: Record<string, { body: string; contentType: string }>): FetchTransport {
+function fixtureTransport(
+  map: Record<string, { body: string; contentType: string }>,
+): FetchTransport {
   return async (input) => {
     const url = String(input);
     const key = Object.keys(map).find((k) => url.includes(k));
@@ -63,7 +65,11 @@ export async function enrichEntityIdentity(
   entityId: string,
   opts?: { useNetwork?: boolean; query?: string },
 ) {
-  const entity = db.select().from(interventionEntities).where(eq(interventionEntities.id, entityId)).all()[0];
+  const entity = db
+    .select()
+    .from(interventionEntities)
+    .where(eq(interventionEntities.id, entityId))
+    .all()[0];
   if (!entity) return null;
   const query = (opts?.query ?? entity.preferredName).trim();
   const useNetwork = opts?.useNetwork === true;
@@ -78,7 +84,10 @@ export async function enrichEntityIdentity(
     });
     const pcTransport = fixtureTransport({
       '/cids/JSON': { body: readFixture('pubchem-cids.json'), contentType: 'application/json' },
-      '/property/': { body: readFixture('pubchem-properties.json'), contentType: 'application/json' },
+      '/property/': {
+        body: readFixture('pubchem-properties.json'),
+        contentType: 'application/json',
+      },
     });
     const gsTransport = fixtureTransport({
       substances: { body: readFixture('gsrs-substance.json'), contentType: 'application/json' },
@@ -104,8 +113,12 @@ export async function enrichEntityIdentity(
       await createDrugsAtFdaConnector({
         products: JSON.parse(readFixture('drugs-at-fda-products.json')),
       }).lookup({ query }),
-      await createPurpleBookConnector({ csvText: readFixture('purple-book.csv') }).lookup({ query }),
-      await createFdaAemsConnector({ transport: aemsTransport, minIntervalMs: 0 }).lookup({ query }),
+      await createPurpleBookConnector({ csvText: readFixture('purple-book.csv') }).lookup({
+        query,
+      }),
+      await createFdaAemsConnector({ transport: aemsTransport, minIntervalMs: 0 }).lookup({
+        query,
+      }),
       await createOpenFdaLabelConnector({ apiKey: null }).lookup({ query }),
     );
   } else {

@@ -59,7 +59,11 @@ export function listRegulatoryAssertions(
   db: HealthspanDb,
   query: { jurisdiction?: string; entityId?: string; limit?: string; offset?: string },
 ) {
-  let rows = db.select().from(regulatoryAssertions).orderBy(desc(regulatoryAssertions.createdAt)).all();
+  let rows = db
+    .select()
+    .from(regulatoryAssertions)
+    .orderBy(desc(regulatoryAssertions.createdAt))
+    .all();
   if (query.jurisdiction) {
     rows = rows.filter((r) => r.jurisdiction.toLowerCase() === query.jurisdiction!.toLowerCase());
   }
@@ -166,10 +170,7 @@ export function listSafetyItems(
       source: 'regulatory_events',
     }));
 
-  const combined = [
-    ...items.map((i) => ({ ...i, source: 'safety_items' as const })),
-    ...events,
-  ];
+  const combined = [...items.map((i) => ({ ...i, source: 'safety_items' as const })), ...events];
   if (query.jurisdiction) {
     const j = query.jurisdiction.toLowerCase();
     return paginate(
@@ -379,7 +380,8 @@ export async function runRegulatoryRefresh(
       const ingredients = Array.isArray(scope.ingredients) ? scope.ingredients : [];
       if (a.productId) {
         for (const ing of ingredients) {
-          const name = typeof ing === 'string' ? ing : String((ing as { name?: string })?.name ?? '');
+          const name =
+            typeof ing === 'string' ? ing : String((ing as { name?: string })?.name ?? '');
           if (!name) continue;
           const exists = db
             .select()
@@ -519,12 +521,36 @@ export async function runSafetyRefresh(
 }
 
 export function workspaceSummary(db: HealthspanDb) {
-  const products = db.select({ c: sql<number>`count(*)` }).from(regulatedProducts).all()[0]?.c ?? 0;
-  const assertions = db.select({ c: sql<number>`count(*)` }).from(regulatoryAssertions).all()[0]?.c ?? 0;
-  const signals = db.select({ c: sql<number>`count(*)` }).from(regulatorSignalRecords).all()[0]?.c ?? 0;
-  const labels = db.select({ c: sql<number>`count(*)` }).from(productLabelRecords).all()[0]?.c ?? 0;
-  const patterns = db.select({ c: sql<number>`count(*)` }).from(adverseEventReportingSnapshots).all()[0]?.c ?? 0;
-  const links = db.select({ c: sql<number>`count(*)` }).from(interventionSafetyLinks).all()[0]?.c ?? 0;
+  const products =
+    db
+      .select({ c: sql<number>`count(*)` })
+      .from(regulatedProducts)
+      .all()[0]?.c ?? 0;
+  const assertions =
+    db
+      .select({ c: sql<number>`count(*)` })
+      .from(regulatoryAssertions)
+      .all()[0]?.c ?? 0;
+  const signals =
+    db
+      .select({ c: sql<number>`count(*)` })
+      .from(regulatorSignalRecords)
+      .all()[0]?.c ?? 0;
+  const labels =
+    db
+      .select({ c: sql<number>`count(*)` })
+      .from(productLabelRecords)
+      .all()[0]?.c ?? 0;
+  const patterns =
+    db
+      .select({ c: sql<number>`count(*)` })
+      .from(adverseEventReportingSnapshots)
+      .all()[0]?.c ?? 0;
+  const links =
+    db
+      .select({ c: sql<number>`count(*)` })
+      .from(interventionSafetyLinks)
+      .all()[0]?.c ?? 0;
   return {
     productCount: Number(products),
     assertionCount: Number(assertions),

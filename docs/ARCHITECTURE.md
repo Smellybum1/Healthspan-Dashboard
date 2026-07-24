@@ -32,15 +32,15 @@ Exact filesystem paths are terminal-only (`pnpm data:path`); browser health/sour
 
 ## Package responsibilities
 
-| Package | Role |
-| --- | --- |
-| `@healthspan/core` | Domain types, `dataOrigin`/`dataMode`, taxonomies, seed showcase |
-| `@healthspan/db` | Path resolution, Drizzle schema/migrations, raw store, operational sources, intelligence tables |
-| `@healthspan/connectors` | PubMed, ClinicalTrials.gov, Crossref (DOI), TGA RSS |
-| `@healthspan/intelligence` | Deterministic study profiles, claims, relationships, optional AI providers |
-| `@healthspan/ui` | Shared badges, banners, section cards |
-| `@healthspan/api` | HTTP + ingestion/intelligence orchestration + jobs/scheduler |
-| `@healthspan/web` | Product UI including Source Health, Review Queue, Live radar |
+| Package                    | Role                                                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| `@healthspan/core`         | Domain types, `dataOrigin`/`dataMode`, taxonomies, seed showcase                                |
+| `@healthspan/db`           | Path resolution, Drizzle schema/migrations, raw store, operational sources, intelligence tables |
+| `@healthspan/connectors`   | PubMed, ClinicalTrials.gov, Crossref (DOI), TGA RSS                                             |
+| `@healthspan/intelligence` | Deterministic study profiles, claims, relationships, optional AI providers                      |
+| `@healthspan/ui`           | Shared badges, banners, section cards                                                           |
+| `@healthspan/api`          | HTTP + ingestion/intelligence orchestration + jobs/scheduler                                    |
+| `@healthspan/web`          | Product UI including Source Health, Review Queue, Live radar                                    |
 
 ## Pipeline
 
