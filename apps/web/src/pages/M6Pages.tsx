@@ -1432,7 +1432,7 @@ export function OperationsPage() {
             </div>
           </Panel>
           <Panel title="Scheduler">
-            <pre className="overflow-auto text-xs">
+            <pre className="max-h-48 overflow-auto text-xs" tabIndex={0}>
               {JSON.stringify(panels.scheduler ?? {}, null, 2)}
             </pre>
           </Panel>

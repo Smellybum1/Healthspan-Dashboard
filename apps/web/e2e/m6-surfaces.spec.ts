@@ -79,8 +79,8 @@ test.describe('M6 Live mutations', () => {
     const name = `E2E WL ${Date.now()}`;
     await page.getByLabel(/new watchlist name/i).fill(name);
     await page.getByRole('button', { name: 'Create' }).click();
-    await expect(page.getByRole('button', { name })).toBeVisible({ timeout: 15_000 });
-    page.once('dialog', (d) => d.accept(name + ' Renamed'));
+    await expect(page.getByRole('link', { name })).toBeVisible({ timeout: 15_000 });
+    page.once('dialog', (d) => d.accept(`${name} Renamed`));
     const renameBtn = page.getByRole('button', { name: /Rename/i }).first();
     if (await renameBtn.isVisible().catch(() => false)) {
       await renameBtn.click();
