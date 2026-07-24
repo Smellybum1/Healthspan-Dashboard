@@ -7,7 +7,7 @@ import { SignalRadar } from '../components/SignalRadar';
 import { PageHeader } from '../components/Common';
 import { formatWhen, itemPath } from '../lib/nav';
 import { usePreferences } from '../state/PreferencesContext';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { m6Api } from '../lib/m6Api';
 
 function isLiveBrief(item: { dataOrigin?: string; status?: unknown }): item is {
@@ -21,35 +21,127 @@ function isLiveBrief(item: { dataOrigin?: string; status?: unknown }): item is {
   return item.dataOrigin === 'live' && !('status' in item && item.status);
 }
 
+type PersonalisedSections = {
+  urgentAlerts?: Array<Record<string, unknown>>;
+  sinceLastVisit?: {
+    items?: Array<Record<string, unknown>>;
+    previousVisitAt?: number | null;
+    firstVisit?: boolean;
+  };
+  latestDailyBrief?: Record<string, unknown> | null;
+  watchlistChanges?: Array<Record<string, unknown>>;
+  continueReading?: Array<Record<string, unknown>>;
+  newSavedSearchMatches?: Array<Record<string, unknown>>;
+  sourceCoverage?: Record<string, unknown>;
+};
+
+function TodayRowActions({
+  kind,
+  id,
+  watchableId,
+  onDone,
+}: {
+  kind: 'alert' | 'reading' | 'change';
+  id: string;
+  watchableId?: string;
+  onDone: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 text-xs">
+      {kind === 'alert' ? (
+        <>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => void m6Api.alertAction(id, 'read').then(onDone)}
+          >
+            Mark read
+          </button>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => void m6Api.alertAction(id, 'dismiss').then(onDone)}
+          >
+            Dismiss
+          </button>
+          <button
+            type="button"
+            className="underline"
+            onClick={() =>
+              void m6Api
+                .createMute({ scopeType: 'object', scopeId: id, reason: 'muted from Today' })
+                .then(onDone)
+            }
+          >
+            Mute
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              if (!watchableId) return;
+              void m6Api.setReadingState(watchableId, 'read').then(onDone);
+            }}
+          >
+            Mark read
+          </button>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              if (!watchableId) return;
+              void m6Api.setReadingState(watchableId, 'dismissed').then(onDone);
+            }}
+          >
+            Dismiss
+          </button>
+          <button
+            type="button"
+            className="underline"
+            onClick={() =>
+              void m6Api
+                .createMute({
+                  scopeType: watchableId ? 'watchable' : 'event_type',
+                  scopeId: watchableId ?? id,
+                  reason: 'muted from Today',
+                })
+                .then(onDone)
+            }
+          >
+            Mute
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function TodayPage() {
   const { data, loading, error, reload } = useAsync(() => fetchDashboard(), []);
   const { prefs, markVisit } = usePreferences();
   const visitedRef = useRef(false);
-  const [alerts, setAlerts] = useState<Array<Record<string, unknown>>>([]);
-  const [briefs, setBriefs] = useState<Array<Record<string, unknown>>>([]);
-  const [since, setSince] = useState<{
-    items: Array<Record<string, unknown>>;
-    previousVisitAt?: number | null;
-  }>({ items: [] });
+  const [sections, setSections] = useState<PersonalisedSections>({});
+
+  const loadPersonalised = useCallback(async () => {
+    const res = await m6Api.personalisedToday();
+    setSections((res.sections ?? res) as PersonalisedSections);
+  }, []);
 
   useEffect(() => {
     if (data && !visitedRef.current) {
       visitedRef.current = true;
       const isLive = data.dataMode === 'live' || data.dataOrigin === 'live';
       if (isLive) {
-        void m6Api.recordVisit().catch(() => undefined);
-        void Promise.all([m6Api.listAlerts(), m6Api.listBriefs(), m6Api.sinceLastVisit()])
-          .then(([a, b, s]) => {
-            setAlerts(a.items.slice(0, 8));
-            setBriefs(b.items.slice(0, 3));
-            setSince(s);
-          })
-          .catch(() => undefined);
+        void m6Api.startVisit().catch(() => undefined);
+        void loadPersonalised().catch(() => undefined);
       } else {
         markVisit();
       }
     }
-  }, [data, markVisit]);
+  }, [data, markVisit, loadPersonalised]);
 
   if (loading) {
     return (
@@ -66,6 +158,8 @@ export function TodayPage() {
   }
 
   const isLive = data.dataMode === 'live' || data.dataOrigin === 'live';
+  const since = sections.sinceLastVisit ?? { items: [] };
+  const coverage = sections.sourceCoverage ?? {};
 
   return (
     <div className="space-y-4">
@@ -84,7 +178,14 @@ export function TodayPage() {
           {data.firstSyncRequired
             ? ' — no live records yet. Run first sync from Settings or Source Health.'
             : null}{' '}
-          <button type="button" className="underline" onClick={() => void reload()}>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              void reload();
+              void loadPersonalised();
+            }}
+          >
             Refresh
           </button>
         </div>
@@ -118,16 +219,21 @@ export function TodayPage() {
 
       {isLive ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          <SectionCard title="Urgent alerts" description="From Alert Centre (SQLite).">
-            {alerts.length === 0 ? (
+          <SectionCard title="Urgent alerts" description="High-priority items from Alert Centre.">
+            {(sections.urgentAlerts ?? []).length === 0 ? (
               <p className="text-sm text-[var(--muted)]">No urgent alerts.</p>
             ) : (
-              <ul className="space-y-2 text-sm">
-                {alerts.map((a) => (
-                  <li key={String(a.id)}>
-                    <Link className="underline" to={`/alerts/${String(a.id)}`}>
+              <ul className="space-y-3 text-sm">
+                {(sections.urgentAlerts ?? []).map((a) => (
+                  <li key={String(a.id)} className="rounded border border-[var(--border)] p-2">
+                    <Link className="font-medium underline" to={`/alerts/${String(a.id)}`}>
                       {String(a.title)}
                     </Link>
+                    <TodayRowActions
+                      kind="alert"
+                      id={String(a.id)}
+                      onDone={() => void loadPersonalised()}
+                    />
                   </li>
                 ))}
               </ul>
@@ -136,50 +242,153 @@ export function TodayPage() {
               Open Alert Centre
             </Link>
           </SectionCard>
-          <SectionCard title="Latest daily brief" description="Live briefing history.">
-            {briefs.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">No briefs yet.</p>
+
+          <SectionCard
+            title="Since last visit"
+            description="Material changes since previous visit."
+          >
+            {(since.items ?? []).length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">
+                {since.firstVisit
+                  ? 'First visit — no prior cutoff yet.'
+                  : 'No changes since previous visit.'}
+              </p>
             ) : (
               <ul className="space-y-2 text-sm">
-                {briefs.map((b) => (
-                  <li key={String(b.id)}>
-                    <Link className="underline" to={`/briefs/${String(b.id)}`}>
-                      {String(b.title ?? b.kind)}
-                    </Link>
+                {(since.items ?? []).slice(0, 8).map((item) => (
+                  <li key={String(item.id)} className="rounded border border-[var(--border)] p-2">
+                    <p>{String(item.title ?? item.id)}</p>
+                    <TodayRowActions
+                      kind="change"
+                      id={String(item.id)}
+                      onDone={() => void loadPersonalised()}
+                    />
                   </li>
                 ))}
               </ul>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Latest daily brief" description="Most recent daily briefing.">
+            {!sections.latestDailyBrief ? (
+              <p className="text-sm text-[var(--muted)]">No daily brief yet.</p>
+            ) : (
+              <div className="text-sm">
+                <Link
+                  className="font-medium underline"
+                  to={`/briefs/${String(sections.latestDailyBrief.id)}`}
+                >
+                  {String(sections.latestDailyBrief.title ?? 'Daily brief')}
+                </Link>
+                <p className="text-xs text-[var(--muted)]">
+                  {formatWhen(new Date(Number(sections.latestDailyBrief.createdAt)).toISOString())}
+                </p>
+              </div>
             )}
             <Link className="mt-2 inline-block text-xs underline" to="/briefs">
               Open Briefings
             </Link>
           </SectionCard>
-          <SectionCard title="Since your last visit" description="SQLite visit sessions.">
-            {since.items.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">No changes since previous visit.</p>
+
+          <SectionCard title="Watchlist changes" description="Recent watchlist activity.">
+            {(sections.watchlistChanges ?? []).length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No recent watchlist changes.</p>
             ) : (
-              <ul className="space-y-1 text-sm">
-                {since.items.slice(0, 8).map((item) => (
-                  <li key={String(item.id)}>{String(item.title ?? item.id)}</li>
+              <ul className="space-y-2 text-sm">
+                {(sections.watchlistChanges ?? []).slice(0, 8).map((c) => (
+                  <li key={String(c.id)} className="rounded border border-[var(--border)] p-2">
+                    <p>
+                      {String(c.watchlistName ?? 'Watchlist')}:{' '}
+                      {String(
+                        (c.watchable as Record<string, unknown> | undefined)?.displayTitle ??
+                          c.watchableId,
+                      )}
+                    </p>
+                    <TodayRowActions
+                      kind="change"
+                      id={String(c.id)}
+                      watchableId={c.watchableId ? String(c.watchableId) : undefined}
+                      onDone={() => void loadPersonalised()}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link className="mt-2 inline-block text-xs underline" to="/watchlists">
+              Open Watchlists
+            </Link>
+          </SectionCard>
+
+          <SectionCard title="Continue reading" description="Opened items not yet finished.">
+            {(sections.continueReading ?? []).length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">Nothing in progress.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {(sections.continueReading ?? []).slice(0, 8).map((r) => (
+                  <li key={String(r.id)} className="rounded border border-[var(--border)] p-2">
+                    <p>{String(r.watchableId)}</p>
+                    <TodayRowActions
+                      kind="reading"
+                      id={String(r.id)}
+                      watchableId={String(r.watchableId)}
+                      onDone={() => void loadPersonalised()}
+                    />
+                  </li>
                 ))}
               </ul>
             )}
           </SectionCard>
-          <SectionCard title="Continue / watchlists / saved matches">
-            <div className="flex flex-wrap gap-3 text-sm">
-              <Link className="underline" to="/watchlists">
-                Watchlists
-              </Link>
-              <Link className="underline" to="/saved-searches">
-                Saved searches
-              </Link>
-              <Link className="underline" to="/settings/backup">
-                Backup & Storage
-              </Link>
-              <Link className="underline" to="/operations">
-                Operations
-              </Link>
-            </div>
+
+          <SectionCard
+            title="New saved-search matches"
+            description="Fresh matches from active searches."
+          >
+            {(sections.newSavedSearchMatches ?? []).length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No new saved-search matches.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {(sections.newSavedSearchMatches ?? []).slice(0, 8).map((m, idx) => (
+                  <li
+                    key={`${String(m.savedSearchId)}-${idx}`}
+                    className="rounded border border-[var(--border)] p-2"
+                  >
+                    <p>
+                      {String(m.savedSearchName ?? 'Search')}: {String(m.watchableId ?? m.id)}
+                    </p>
+                    <TodayRowActions
+                      kind="reading"
+                      id={String(m.id ?? m.watchableId)}
+                      watchableId={m.watchableId ? String(m.watchableId) : undefined}
+                      onDone={() => void loadPersonalised()}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link className="mt-2 inline-block text-xs underline" to="/saved-searches">
+              Open Saved Searches
+            </Link>
+          </SectionCard>
+
+          <SectionCard title="Source coverage" description="Coverage from the latest daily brief.">
+            <dl className="space-y-1 text-sm">
+              <div>
+                <dt className="text-[var(--muted)]">Sources seen</dt>
+                <dd>{((coverage.sourcesSeen as string[]) ?? []).join(', ') || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-[var(--muted)]">Selected / candidates</dt>
+                <dd>
+                  {String(coverage.selectedCount ?? '—')} / {String(coverage.candidateCount ?? '—')}
+                </dd>
+              </div>
+              {((coverage.partialReasons as string[]) ?? []).length > 0 ? (
+                <div>
+                  <dt className="text-[var(--muted)]">Partial reasons</dt>
+                  <dd>{((coverage.partialReasons as string[]) ?? []).join(', ')}</dd>
+                </div>
+              ) : null}
+            </dl>
           </SectionCard>
         </div>
       ) : null}

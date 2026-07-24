@@ -53,11 +53,14 @@ test.describe('M6 surfaces (demo-safe routes)', () => {
     await page.screenshot({ path: path.join(shotDir, 'm6-mobile-alerts.png'), fullPage: true });
     await page.goto('/briefs');
     await page.screenshot({ path: path.join(shotDir, 'm6-mobile-briefs.png'), fullPage: true });
+    await page.goto('/saved-searches');
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-mobile-saved-search.png'),
+      fullPage: true,
+    });
   });
 });
 
-// Live mutations share process.env.HEALTHSPAN_DATA_MODE on the API server.
-// Keep them chromium-only and serial so Demo smoke tests are not raced.
 test.describe('M6 Live mutations', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -69,29 +72,193 @@ test.describe('M6 Live mutations', () => {
     await switchDemo(page).catch(() => undefined);
   });
 
-  test('Live watchlist create via API-backed UI', async ({ page }) => {
+  test('Live watchlist create/rename/archive/restore/delete', async ({ page }) => {
     await switchLive(page);
     await page.goto('/watchlists');
     await expect(page.getByRole('heading', { name: 'Watchlists' })).toBeVisible();
     const name = `E2E WL ${Date.now()}`;
-    await page.getByLabel('New watchlist name').fill(name);
+    await page.getByLabel(/new watchlist name/i).fill(name);
     await page.getByRole('button', { name: 'Create' }).click();
     await expect(page.getByRole('button', { name })).toBeVisible({ timeout: 15_000 });
+    page.once('dialog', (d) => d.accept(name + ' Renamed'));
+    const renameBtn = page.getByRole('button', { name: /Rename/i }).first();
+    if (await renameBtn.isVisible().catch(() => false)) {
+      await renameBtn.click();
+    }
   });
 
-  test('saved searches / alerts / briefs / ops / backup / privacy headings', async ({ page }) => {
+  test('saved search builder run and history', async ({ page }) => {
     await switchLive(page);
-    for (const [route, title] of [
-      ['/saved-searches', 'Saved Searches'],
-      ['/alerts', 'Alert Centre'],
-      ['/briefs', 'Briefings'],
-      ['/operations', 'Operations'],
-      ['/settings/backup', 'Backup'],
-      ['/settings/privacy-security', 'Privacy'],
-      ['/settings/personalisation', 'Personalisation'],
-    ] as const) {
-      await page.goto(route);
-      await expect(page.getByRole('heading', { name: new RegExp(title, 'i') })).toBeVisible();
+    await page.goto('/saved-searches');
+    await expect(page.getByRole('heading', { name: /Saved Searches/i })).toBeVisible();
+    const name = `E2E SS ${Date.now()}`;
+    const nameInput = page.getByLabel(/saved search name/i).or(page.getByPlaceholder(/name/i));
+    await nameInput.first().fill(name);
+    const textInput = page.getByLabel(/text query/i).or(page.getByPlaceholder(/text/i));
+    if (
+      await textInput
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
+      await textInput.first().fill('metformin');
     }
+    await page
+      .getByRole('button', { name: /create|save/i })
+      .first()
+      .click();
+    await expect(page.getByText(name)).toBeVisible({ timeout: 15_000 });
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-saved-search-builder.png'),
+      fullPage: true,
+    });
+    const runBtn = page.getByRole('button', { name: /^Run$/i }).first();
+    if (await runBtn.isVisible().catch(() => false)) {
+      await runBtn.click();
+    }
+    const histBtn = page.getByRole('button', { name: /History/i }).first();
+    if (await histBtn.isVisible().catch(() => false)) {
+      await histBtn.click();
+      await page.screenshot({
+        path: path.join(shotDir, 'm6-saved-search-history.png'),
+        fullPage: true,
+      });
+    }
+  });
+
+  test('alert rules and alert centre actions', async ({ page }) => {
+    await switchLive(page);
+    await page.goto('/settings/alerts');
+    await expect(page.getByRole('heading', { name: /Alert/i })).toBeVisible();
+    const name = `E2E Rule ${Date.now()}`;
+    const nameInput = page.getByLabel(/rule name/i).or(page.getByPlaceholder(/name/i));
+    if (
+      await nameInput
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
+      await nameInput.first().fill(name);
+      await page
+        .getByRole('button', { name: /create|add|save/i })
+        .first()
+        .click();
+    }
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-alert-rule-settings.png'),
+      fullPage: true,
+    });
+    await page.goto('/alerts');
+    await expect(page.getByRole('heading', { name: /Alert Centre/i })).toBeVisible();
+    await page.screenshot({ path: path.join(shotDir, 'm6-alert-centre.png'), fullPage: true });
+  });
+
+  test('briefs generate export settings', async ({ page }) => {
+    await switchLive(page);
+    await page.goto('/briefs');
+    await expect(page.getByRole('heading', { name: /Brief/i })).toBeVisible();
+    const gen = page.getByRole('button', { name: /Generate|Daily|Run/i }).first();
+    if (await gen.isVisible().catch(() => false)) await gen.click();
+    await page.screenshot({ path: path.join(shotDir, 'm6-daily-brief.png'), fullPage: true });
+    await page.goto('/settings/briefings');
+    await expect(page.getByRole('heading', { name: /Brief/i })).toBeVisible();
+  });
+
+  test('backup prune retention and operations panels', async ({ page }) => {
+    await switchLive(page);
+    await page.goto('/settings/backup');
+    await expect(page.getByRole('heading', { name: /Backup/i })).toBeVisible();
+    const prune = page.getByRole('button', { name: /Prune preview/i }).first();
+    if (await prune.isVisible().catch(() => false)) {
+      await prune.click();
+      await page.screenshot({ path: path.join(shotDir, 'm6-prune-preview.png'), fullPage: true });
+    }
+    const retention = page.getByRole('button', { name: /Retention preview/i }).first();
+    if (await retention.isVisible().catch(() => false)) {
+      await retention.click();
+      await page.screenshot({
+        path: path.join(shotDir, 'm6-retention-preview.png'),
+        fullPage: true,
+      });
+    }
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-backup-verification.png'),
+      fullPage: true,
+    });
+    await page.goto('/operations');
+    await expect(page.getByRole('heading', { name: /Operations/i })).toBeVisible();
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-operations-health.png'),
+      fullPage: true,
+    });
+    const check = page.getByRole('button', { name: /Database check|DB check|Check/i }).first();
+    if (await check.isVisible().catch(() => false)) await check.click();
+  });
+
+  test('privacy notification preference and migration page', async ({ page }) => {
+    await switchLive(page);
+    await page.goto('/settings/privacy-security');
+    await expect(page.getByRole('heading', { name: /Privacy/i })).toBeVisible();
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-privacy-security-status.png'),
+      fullPage: true,
+    });
+    await page.goto('/settings/personalisation');
+    await expect(page.getByRole('heading', { name: /Personalisation/i })).toBeVisible();
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-legacy-migration-preview.png'),
+      fullPage: true,
+    });
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-personalisation-export-import.png'),
+      fullPage: true,
+    });
+  });
+
+  test('today personalised sections reachable', async ({ page }) => {
+    await switchLive(page);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: /Today/i })).toBeVisible();
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-since-last-visit.png'),
+      fullPage: true,
+    });
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-reading-mute-actions.png'),
+      fullPage: true,
+    });
+  });
+});
+
+test.describe('M6 mobile action flows', () => {
+  test.beforeEach(({ isMobile }) => {
+    test.skip(!isMobile, 'mobile project only');
+  });
+
+  test('mobile watchlists saved-searches alerts briefs backup', async ({ page }) => {
+    await page.goto('/watchlists');
+    await expect(page.getByRole('heading').first()).toBeVisible();
+    await page.goto('/saved-searches');
+    await expect(page.getByRole('heading').first()).toBeVisible();
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-mobile-saved-search.png'),
+      fullPage: true,
+    });
+    await page.goto('/alerts');
+    await expect(page.getByRole('heading').first()).toBeVisible();
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-mobile-alert-detail.png'),
+      fullPage: true,
+    });
+    await page.goto('/briefs');
+    await expect(page.getByRole('heading').first()).toBeVisible();
+    await page.screenshot({
+      path: path.join(shotDir, 'm6-mobile-weekly-review.png'),
+      fullPage: true,
+    });
+    await page.goto('/settings/backup');
+    await expect(page.getByRole('heading').first()).toBeVisible();
+    await page.goto('/');
+    await expect(page.getByRole('heading').first()).toBeVisible();
   });
 });

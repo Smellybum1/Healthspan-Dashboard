@@ -85,6 +85,13 @@
       "when": 1784970000000,
       "tag": "0011_m6_personalisation_ops",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1784980000000,
+      "tag": "0012_m6_remediation_iv",
+      "breakpoints": true
     }
   ]
 }

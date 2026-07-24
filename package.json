@@ -79,6 +79,9 @@
     "ci:quality": "tsx scripts/ci-quality.ts",
     "reading:eval": "tsx scripts/reading-visits-eval.ts",
     "export-import:eval": "tsx scripts/personalisation-export-import-eval.ts",
+    "m6-product:eval": "tsx scripts/m6-product-eval.ts",
+    "m6-product:doctor": "tsx scripts/m6-product-doctor.ts",
+    "completion-report:doctor": "tsx scripts/completion-report-doctor.ts",
     "sbom": "tsx scripts/sbom.ts",
     "secrets:scan": "tsx scripts/secrets-scan.ts",
     "audit:deps": "pnpm audit --prod"

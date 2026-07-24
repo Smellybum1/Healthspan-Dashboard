@@ -69,6 +69,9 @@ export const watchlists = sqliteTable(
     description: text('description'),
     isDefault: bool('is_default').default(false),
     active: bool('active').default(true),
+    alertEnabled: bool('alert_enabled').default(false),
+    briefEnabled: bool('brief_enabled').default(true),
+    deletedAt: tsNull('deleted_at'),
     createdAt: ts('created_at'),
     updatedAt: ts('updated_at'),
   },
@@ -104,6 +107,7 @@ export const savedSearches = sqliteTable('saved_searches', {
   state: text('state').notNull().default('active'),
   alertEnabled: bool('alert_enabled').default(false),
   briefEnabled: bool('brief_enabled').default(true),
+  needsUpdate: bool('needs_update').default(false),
   createdAt: ts('created_at'),
   updatedAt: ts('updated_at'),
 });
@@ -166,6 +170,7 @@ export const muteRules = sqliteTable('mute_rules', {
   profileId: text('profile_id').notNull(),
   scopeType: text('scope_type').notNull(),
   scopeId: text('scope_id'),
+  scopeEventType: text('scope_event_type'),
   reason: text('reason'),
   active: bool('active').default(true),
   createdAt: ts('created_at'),
@@ -178,6 +183,10 @@ export const visitSessions = sqliteTable('visit_sessions', {
   startedAt: ts('started_at'),
   endedAt: tsNull('ended_at'),
   clientInstallationId: text('client_installation_id'),
+  tabSessionId: text('tab_session_id'),
+  lastHeartbeatAt: tsNull('last_heartbeat_at'),
+  status: text('status').notNull().default('open'),
+  previousCutoffAt: tsNull('previous_cutoff_at'),
   summaryJson: text('summary_json').notNull().default('{}'),
 });
 
@@ -204,10 +213,13 @@ export const alerts = sqliteTable(
     title: text('title').notNull(),
     summary: text('summary'),
     severityJson: text('severity_json').notNull().default('{}'),
+    whyIncludedJson: text('why_included_json').notNull().default('{}'),
     watchableId: text('watchable_id'),
     dedupeKey: text('dedupe_key').notNull(),
     state: text('state').notNull().default('new'),
     importance: text('importance').notNull().default('medium'),
+    family: text('family').notNull().default('research'),
+    snoozeUntil: tsNull('snooze_until'),
     occurredAt: ts('occurred_at'),
     createdAt: ts('created_at'),
     updatedAt: ts('updated_at'),
@@ -240,6 +252,9 @@ export const briefingSettings = sqliteTable(
     dailyEnabled: bool('daily_enabled').default(true),
     weeklyEnabled: bool('weekly_enabled').default(true),
     timezone: text('timezone').notNull().default('Australia/Brisbane'),
+    dailyTimeLocal: text('daily_time_local').notNull().default('07:15'),
+    weeklyTimeLocal: text('weekly_time_local').notNull().default('09:00'),
+    weeklyWeekday: integer('weekly_weekday').notNull().default(0),
     maxDailyItems: integer('max_daily_items').notNull().default(20),
     maxWeeklyItems: integer('max_weekly_items').notNull().default(40),
     updatedAt: ts('updated_at'),
@@ -269,6 +284,8 @@ export const briefs = sqliteTable('briefs', {
   summary: text('summary'),
   windowStart: ts('window_start'),
   windowEnd: ts('window_end'),
+  sourceCoverageJson: text('source_coverage_json').notNull().default('{}'),
+  overflowCount: integer('overflow_count').notNull().default(0),
   createdAt: ts('created_at'),
 });
 
@@ -280,6 +297,7 @@ export const briefItems = sqliteTable('brief_items', {
   summary: text('summary'),
   reason: text('reason'),
   rank: integer('rank').notNull().default(100),
+  readingState: text('reading_state').notNull().default('unread'),
   payloadJson: text('payload_json').notNull().default('{}'),
 });
 

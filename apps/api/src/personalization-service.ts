@@ -2,9 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { and, desc, eq } from 'drizzle-orm';
 import {
   LOCAL_OWNER_PROFILE_ID,
-  SavedSearchQuerySchema,
   buildAlertDedupeKey,
   canonicalSearchHash,
+  migrateSavedSearchQuery,
   previewLegacyPreferenceImport,
   selectBriefItems,
   sinceLastVisitWindow,
@@ -23,8 +23,10 @@ import {
   muteRules,
   preferenceMigrationRuns,
   readingStates,
+  readingStateEvents,
   savedSearches,
   savedSearchEvaluations,
+  savedSearchMatches,
   visitSessions,
   watchableObjects,
   watchlistEntries,
@@ -64,6 +66,9 @@ export function ensureLocalOwnerProfile(db: HealthspanDb) {
       description: 'Default watchlist',
       isDefault: true,
       active: true,
+      alertEnabled: true,
+      briefEnabled: true,
+      deletedAt: null,
       createdAt: at,
       updatedAt: at,
     })
@@ -75,6 +80,9 @@ export function ensureLocalOwnerProfile(db: HealthspanDb) {
       dailyEnabled: true,
       weeklyEnabled: true,
       timezone: 'Australia/Brisbane',
+      dailyTimeLocal: '07:15',
+      weeklyTimeLocal: '09:00',
+      weeklyWeekday: 0,
       maxDailyItems: 20,
       maxWeeklyItems: 40,
       updatedAt: at,
@@ -149,6 +157,9 @@ export function createWatchlist(db: HealthspanDb, name: string, description?: st
       description: description ?? null,
       isDefault: false,
       active: true,
+      alertEnabled: false,
+      briefEnabled: true,
+      deletedAt: null,
       createdAt: at,
       updatedAt: at,
     })
@@ -201,7 +212,7 @@ export function listWatchlistItems(db: HealthspanDb, watchlistId: string) {
 
 export function createSavedSearch(db: HealthspanDb, name: string, queryRaw: unknown) {
   ensureLocalOwnerProfile(db);
-  const query = SavedSearchQuerySchema.parse(queryRaw);
+  const { query, needsUpdate } = migrateSavedSearchQuery(queryRaw);
   const at = now();
   const id = randomUUID();
   db.insert(savedSearches)
@@ -210,12 +221,13 @@ export function createSavedSearch(db: HealthspanDb, name: string, queryRaw: unkn
       profileId: LOCAL_OWNER_PROFILE_ID,
       name,
       description: null,
-      querySchemaVersion: 1,
+      querySchemaVersion: 2,
       queryJson: JSON.stringify(query),
       canonicalHash: canonicalSearchHash(query),
       state: 'active',
       alertEnabled: false,
       briefEnabled: true,
+      needsUpdate,
       createdAt: at,
       updatedAt: at,
     })
@@ -235,7 +247,7 @@ export function listSavedSearches(db: HealthspanDb) {
 export function setReadingState(
   db: HealthspanDb,
   watchableId: string,
-  readingState: 'unread' | 'opened' | 'dismissed',
+  readingState: 'unread' | 'opened' | 'read' | 'dismissed',
 ) {
   ensureLocalOwnerProfile(db);
   const at = now();
@@ -253,11 +265,21 @@ export function setReadingState(
     db.update(readingStates)
       .set({
         readingState,
-        openedAt: readingState === 'opened' ? at : existing.openedAt,
+        openedAt: readingState === 'opened' || readingState === 'read' ? at : existing.openedAt,
         dismissedAt: readingState === 'dismissed' ? at : existing.dismissedAt,
         updatedAt: at,
       })
       .where(eq(readingStates.id, existing.id))
+      .run();
+    db.insert(readingStateEvents)
+      .values({
+        id: randomUUID(),
+        profileId: LOCAL_OWNER_PROFILE_ID,
+        watchableId,
+        fromState: existing.readingState,
+        toState: readingState,
+        createdAt: at,
+      })
       .run();
     return existing.id;
   }
@@ -269,9 +291,19 @@ export function setReadingState(
       watchableId,
       readingState,
       personalSurfaceState: 'default',
-      openedAt: readingState === 'opened' ? at : null,
+      openedAt: readingState === 'opened' || readingState === 'read' ? at : null,
       dismissedAt: readingState === 'dismissed' ? at : null,
       updatedAt: at,
+    })
+    .run();
+  db.insert(readingStateEvents)
+    .values({
+      id: randomUUID(),
+      profileId: LOCAL_OWNER_PROFILE_ID,
+      watchableId,
+      fromState: null,
+      toState: readingState,
+      createdAt: at,
     })
     .run();
   return id;
@@ -392,10 +424,18 @@ export function evaluateDeterministicAlerts(db: HealthspanDb) {
         title: event.title,
         summary: event.summary,
         severityJson: JSON.stringify({ changeEventId: event.id }),
+        whyIncludedJson: JSON.stringify({
+          reason: 'matched_enabled_alert_rule',
+          changeEventId: event.id,
+          sourceDetectedAt: event.detectedAt,
+          ruleId: rules[0]?.id ?? null,
+        }),
         watchableId: null,
         dedupeKey,
         state: 'new',
         importance: event.importance ?? 'medium',
+        family: 'research',
+        snoozeUntil: null,
         occurredAt: event.occurredAt,
         createdAt: at,
         updatedAt: at,
@@ -661,21 +701,81 @@ export function getSavedSearch(db: HealthspanDb, id: string) {
 export function runSavedSearch(db: HealthspanDb, id: string) {
   const search = getSavedSearch(db, id);
   if (!search) return null;
-  const query = SavedSearchQuerySchema.parse(JSON.parse(search.queryJson));
+  const { query, needsUpdate } = migrateSavedSearchQuery(JSON.parse(search.queryJson));
+  if (needsUpdate || search.querySchemaVersion < 2) {
+    db.update(savedSearches)
+      .set({
+        queryJson: JSON.stringify(query),
+        querySchemaVersion: 2,
+        canonicalHash: canonicalSearchHash(query),
+        needsUpdate: true,
+        updatedAt: now(),
+      })
+      .where(eq(savedSearches.id, id))
+      .run();
+  }
   const at = now();
-  // Bounded deterministic scan of change events — no SQL/regex from browser.
   const events = db.select().from(changeEvents).orderBy(desc(changeEvents.occurredAt)).all();
-  const text = (query.text ?? '').toLowerCase();
-  const matched = events
-    .filter((e) => {
+  const text = (query.textQuery ?? '').toLowerCase();
+  const entityTypes = query.entityTypes ?? [];
+  const sources = query.filters?.source ?? [];
+  let status: 'ok' | 'capped' | 'partial' | 'error' = 'ok';
+  let errorSummary: string | null = null;
+  let matched: typeof events = [];
+  try {
+    matched = events.filter((e) => {
       const hay = `${e.title ?? ''} ${e.summary ?? ''} ${e.kind}`.toLowerCase();
       if (text && !hay.includes(text)) return false;
-      if (query.targetTypes?.length && !query.targetTypes.some((t) => e.kind.includes(t))) {
-        return false;
-      }
+      if (entityTypes.length && !entityTypes.some((t) => e.kind.includes(t))) return false;
+      if (sources.length && !sources.some((s) => hay.includes(s.toLowerCase()))) return false;
+      if (!query.includeRetracted && hay.includes('retracted')) return false;
       return true;
-    })
-    .slice(0, 100);
+    });
+  } catch (err) {
+    status = 'error';
+    errorSummary = err instanceof Error ? err.message : 'evaluation failed';
+  }
+  const capped = matched.length > 100;
+  if (capped) status = 'capped';
+  const page = matched.slice(0, 100);
+  let newCount = 0;
+  for (const event of page) {
+    const watchable = ensureWatchable(db, {
+      dataOrigin: 'live',
+      targetType: 'change_event',
+      targetId: event.id,
+      displayTitle: event.title,
+    });
+    const existing = db
+      .select()
+      .from(savedSearchMatches)
+      .where(
+        and(
+          eq(savedSearchMatches.savedSearchId, id),
+          eq(savedSearchMatches.watchableId, watchable.id),
+        ),
+      )
+      .all()[0];
+    if (existing) {
+      db.update(savedSearchMatches)
+        .set({ lastMatchedAt: at, matchState: 'current' })
+        .where(eq(savedSearchMatches.id, existing.id))
+        .run();
+    } else {
+      newCount += 1;
+      db.insert(savedSearchMatches)
+        .values({
+          id: randomUUID(),
+          savedSearchId: id,
+          watchableId: watchable.id,
+          firstMatchedAt: at,
+          lastMatchedAt: at,
+          matchState: 'current',
+          matchVersion: 1,
+        })
+        .run();
+    }
+  }
   const evalId = randomUUID();
   db.insert(savedSearchEvaluations)
     .values({
@@ -683,22 +783,28 @@ export function runSavedSearch(db: HealthspanDb, id: string) {
       savedSearchId: id,
       windowStart: at - 7 * 86400000,
       windowEnd: at,
-      queryHash: search.canonicalHash,
-      status: matched.length >= 100 ? 'capped' : 'ok',
-      matchedCount: matched.length,
-      newCount: matched.length,
-      cappedCount: matched.length >= 100 ? matched.length : 0,
-      errorSummary: null,
+      queryHash: canonicalSearchHash(query),
+      status,
+      matchedCount: page.length,
+      newCount,
+      cappedCount: capped ? matched.length - 100 : 0,
+      errorSummary,
       startedAt: at,
       completedAt: at,
     })
     .run();
-  db.update(savedSearches).set({ updatedAt: at }).where(eq(savedSearches.id, id)).run();
+  db.update(savedSearches)
+    .set({ updatedAt: at, needsUpdate: false })
+    .where(eq(savedSearches.id, id))
+    .run();
   return {
     search: getSavedSearch(db, id),
     evaluationId: evalId,
-    matches: matched,
-    capped: matched.length >= 100,
+    matches: page,
+    status,
+    capped,
+    newCount,
+    errorSummary,
   };
 }
 

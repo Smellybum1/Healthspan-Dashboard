@@ -102,6 +102,7 @@ import {
   storageUsage,
   verifyBackup,
 } from './backup-service.js';
+import { registerM6RemediationRoutes } from './m6-routes.js';
 import {
   listReviewTasks,
   listReviewDecisions,
@@ -2293,6 +2294,8 @@ export function createApp() {
   });
 
   // —— M6 personalisation / ops (Live SQLite only) ——
+  registerM6RemediationRoutes(app, { live, currentMode, scheduler });
+
   app.get('/api/profile', (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', profile: null });
     return c.json({ dataMode: 'live', profile: ensureLocalOwnerProfile(live.db) });

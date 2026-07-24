@@ -2,6 +2,7 @@ import {
   LOCAL_OWNER_PROFILE_ID,
   PERSONALISATION_EVAL_CASES,
   canonicalSearchHash,
+  migrateSavedSearchQuery,
   previewLegacyPreferenceImport,
   selectBriefItems,
   slugifyWatchlistName,
@@ -11,6 +12,7 @@ const checks = [
   LOCAL_OWNER_PROFILE_ID === 'local-owner',
   slugifyWatchlistName('My List!') === 'my-list',
   canonicalSearchHash({ schemaVersion: 1, text: 'metformin' }).startsWith('fnv1a_'),
+  migrateSavedSearchQuery({ schemaVersion: 1, text: 'metformin' }).needsUpdate === true,
   selectBriefItems(
     [
       { id: 'a', importance: 'low', occurredAt: 1 },

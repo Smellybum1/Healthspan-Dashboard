@@ -5,7 +5,7 @@ export * from './backup-format.js';
 export * from './exclusive-lock.js';
 
 export const APP_VERSION = '0.6.0';
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export const BackupManifestSchema = z.object({
   formatVersion: z.literal(1),
