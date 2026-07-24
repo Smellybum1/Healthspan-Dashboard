@@ -104,10 +104,18 @@ metrics.push(
 
 const distDir = path.resolve('apps/web/dist');
 if (!fs.existsSync(distDir)) {
-  console.log(
-    JSON.stringify({ suite: 'performance:check', ok: false, error: 'dist missing — build first' }),
+  const { spawnSync } = await import('node:child_process');
+  const built = spawnSync(
+    process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
+    ['--filter', '@healthspan/web', 'build'],
+    { encoding: 'utf8', shell: true, stdio: 'inherit' },
   );
-  process.exit(1);
+  if (built.status !== 0 || !fs.existsSync(distDir)) {
+    console.log(
+      JSON.stringify({ suite: 'performance:check', ok: false, error: 'dist missing — build failed' }),
+    );
+    process.exit(1);
+  }
 }
 
 const { gzipSync } = await import('node:zlib');
