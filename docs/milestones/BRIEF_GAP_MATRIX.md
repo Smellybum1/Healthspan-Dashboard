@@ -76,13 +76,12 @@ Do **not** rewrite history hashes in M2–M4 completion reports; append gap-clos
 | --- | --- | --- |
 | No person scores; YT metadata ≠ claims; X optional; no X→AI | DONE | Policy correct |
 | Schema §14 (~31 groups) | PARTIAL | Migration `0007_m5_creator_schema_depth` + Drizzle tables landed; import now writes segments + claim source spans; many tables still unused by services/UI |
-| Document import | PARTIAL | Segments/spans + profile UI import/manual claim; delete/lifecycle UI still thin |
-| YouTube | PARTIAL | Playlist/video sync + quota ledger + retention hold + profile UI; search onboarding UI and full fixture corpus still thin |
-| X | PARTIAL | Timeline sync + budget gate + compliance purge APIs; stream/reconciliation depth and UI still thin |
-| Alignment §11 | PARTIAL | All 15 dimensions + **77/77 alignment-pair corpus**; deep M3/M4 evidence pairing and Review Queue still thin |
-| Doctors/evals | PARTIAL | All §26 corpora meet minima (identity 52, docs 68, claims 185, recurrence 24, compliance 41, alignment 77); full lint/e2e re-cert still due at final close |
 | Document import | DONE | Segments/spans + profile import/manual claim + replace/delete lifecycle |
 | Review Queue | DONE | Creator adverse findings require human accept before Live profile publish |
+| YouTube | PARTIAL | Playlist/video sync + quota ledger + retention hold + profile UI; search onboarding UI and full fixture corpus still thin |
+| X | PARTIAL | Timeline sync + budget gate + compliance purge APIs; stream/reconciliation depth and UI still thin |
+| Alignment §11 | PARTIAL | All 15 dimensions + **77/77 alignment-pair corpus**; deep M3/M4 evidence pairing still thin |
+| Doctors/evals | PARTIAL | All §26 corpora meet minima (identity 52, docs 68, claims 185, recurrence 24, compliance 41, alignment 77); full lint/e2e re-cert still due at final close |
 | Screenshots | PARTIAL | Report claims; PNGs not committed |
 
 ---
