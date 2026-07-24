@@ -42,7 +42,7 @@ describe('backup archive crypto and zip', () => {
   it('encrypts and rejects wrong passphrase / tamper', () => {
     const zip = buildZip({ 'a.txt': Buffer.from('hello') });
     const sealed = sealBackupArchive(zip, { passphrase: 'correct-horse-battery-staple' });
-    expect(openBackupArchive(sealed, 'correct-horse-battery-staple').length).toBeGreaterThan(0);
+    expect(openBackupArchive(sealed, 'correct-horse-battery-staple').zip.length).toBeGreaterThan(0);
     expect(() => openBackupArchive(sealed, 'wrong')).toThrow(/Decryption failed|Passphrase/);
     const tampered = Buffer.from(sealed);
     tampered[tampered.length - 5] = tampered[tampered.length - 5]! ^ 0xff;
@@ -115,7 +115,6 @@ describe('online backup restore lifecycle', () => {
       dbPath: live.paths.dbPath,
       archivePath: created.archivePath,
       passphrase,
-      exclusiveLockHeld: true,
     });
     expect(restored.checkpoint).toContain('recovery_checkpoint');
 

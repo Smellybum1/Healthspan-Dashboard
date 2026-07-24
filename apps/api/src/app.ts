@@ -5,6 +5,7 @@ import {
   APP_VERSION,
   SCHEMA_VERSION,
   SecurityHeaders,
+  hostAllowed,
   isLoopbackHost,
   originAllowed,
   fetchMetadataAllowed,
@@ -383,18 +384,10 @@ export function createApp() {
       c.header(k, v);
     }
     const host = c.req.header('host');
-    if (
-      host &&
-      !isLoopbackHost(host.split(':')[0]) &&
-      process.env.HEALTHSPAN_ALLOW_REMOTE_BIND !== 'true'
-    ) {
+    if (host && !hostAllowed(host) && process.env.HEALTHSPAN_ALLOW_REMOTE_BIND !== 'true') {
       return c.json({ error: 'Host not allowed' }, 403);
     }
-    if (
-      process.env.HEALTHSPAN_ALLOW_REMOTE_BIND === 'true' &&
-      host &&
-      !isLoopbackHost(host.split(':')[0])
-    ) {
+    if (process.env.HEALTHSPAN_ALLOW_REMOTE_BIND === 'true' && host && !isLoopbackHost(host)) {
       const token = c.req.header('x-healthspan-remote-token');
       const expected = process.env.HEALTHSPAN_REMOTE_ACCESS_TOKEN ?? '';
       if (!expected || expected.length < 32 || token !== expected) {
@@ -432,19 +425,43 @@ export function createApp() {
       }
     }
 
+    const encoding = c.req.header('content-encoding');
+    if (encoding && encoding.toLowerCase() !== 'identity') {
+      return c.json({ error: 'Unsupported content encoding' }, 415);
+    }
+
+    const contentLength = Number(c.req.header('content-length') ?? 0);
+    const jsonMax = Number(process.env.HEALTHSPAN_MAX_JSON_BYTES ?? 1_048_576);
+    const importMax = Number(process.env.HEALTHSPAN_MAX_IMPORT_BYTES ?? 2_097_152);
+    const uploadMax = Number(process.env.HEALTHSPAN_MAX_UPLOAD_BYTES ?? 10_485_760);
+    if (contentLength > 0) {
+      let limit = jsonMax;
+      if (pathName.includes('/documents') || pathName.includes('/upload')) limit = uploadMax;
+      else if (pathName.includes('/import') || pathName.includes('/preferences')) limit = importMax;
+      if (contentLength > limit) {
+        return c.json({ error: 'Request body too large', limit }, 413);
+      }
+    }
+
     const kind = isSessionBootstrap
       ? 'session'
-      : isMutation
-        ? 'mutation'
-        : pathName.includes('search')
-          ? 'heavy'
-          : 'read';
+      : pathName.includes('/backup') || pathName.includes('/diagnostics')
+        ? pathName.includes('/backup')
+          ? 'backup'
+          : 'diagnostic'
+        : isMutation
+          ? 'mutation'
+          : pathName.includes('search')
+            ? 'heavy'
+            : 'read';
     const bucketKey = `${kind}:${host ?? 'local'}`;
     const limits: Record<string, number> = {
       read: Number(process.env.HEALTHSPAN_RATE_READ_PER_MIN ?? 600),
       heavy: Number(process.env.HEALTHSPAN_RATE_HEAVY_PER_MIN ?? 120),
       mutation: Number(process.env.HEALTHSPAN_RATE_MUTATION_PER_MIN ?? 120),
       session: Number(process.env.HEALTHSPAN_RATE_SESSION_PER_MIN ?? 30),
+      backup: Number(process.env.HEALTHSPAN_RATE_BACKUP_PER_MIN ?? 10),
+      diagnostic: Number(process.env.HEALTHSPAN_RATE_DIAGNOSTIC_PER_MIN ?? 20),
     };
     const bucket = rateBuckets.get(bucketKey) ?? { count: 0, resetAt: Date.now() + 60_000 };
     if (Date.now() > bucket.resetAt) {
@@ -454,7 +471,8 @@ export function createApp() {
     bucket.count += 1;
     rateBuckets.set(bucketKey, bucket);
     if (bucket.count > (limits[kind] ?? 600)) {
-      return c.json({ error: 'Rate limit exceeded' }, 429);
+      c.header('Retry-After', String(Math.max(1, Math.ceil((bucket.resetAt - Date.now()) / 1000))));
+      return c.json({ error: 'Rate limit exceeded', bucket: kind, retryAfterSec: 60 }, 429);
     }
     await next();
   });
@@ -2467,9 +2485,18 @@ export function createApp() {
     return c.json({ dataMode: 'live', categories: storageUsage(live.paths.dataDir) });
   });
 
+  app.notFound((c) => {
+    const requestId = c.req.header('x-request-id') ?? crypto.randomUUID();
+    if (new URL(c.req.url).pathname.startsWith('/api')) {
+      return c.json({ error: 'Not found', requestId }, 404);
+    }
+    return c.text('Not found', 404);
+  });
+
   app.onError((err, c) => {
     console.error(err);
-    return c.json({ error: err instanceof Error ? err.message : 'Server error' }, 500);
+    const requestId = c.req.header('x-request-id') ?? crypto.randomUUID();
+    return c.json({ error: err instanceof Error ? err.message : 'Server error', requestId }, 500);
   });
 
   (app as unknown as { __close?: () => void }).__close = () => {

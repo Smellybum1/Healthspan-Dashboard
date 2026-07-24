@@ -8,17 +8,21 @@ import {
   type BackupTier,
   BackupManifestV1Schema,
   assertSafeRelPath,
-  buildZip,
+  buildZipToFile,
   extractZip,
   openBackupArchive,
   sealBackupArchive,
   sha256Hex,
+  sha256File,
+  acquireExclusiveLock,
 } from '@healthspan/operations';
 import {
   backupRecords,
   restoreRecords,
   databaseDoctor,
   openDatabase,
+  creatorDocuments,
+  rawSnapshots,
   type HealthspanDb,
 } from '@healthspan/db';
 
@@ -114,86 +118,145 @@ export async function createBackup(opts: CreateBackupOptions) {
 
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'healthspan-backup-stage-'));
   const snapshotPath = path.join(staging, 'healthspan-dashboard.sqlite3');
+  const zipPath = path.join(staging, 'inner.zip');
   try {
-    // SQLite Online Backup API via better-sqlite3
     await opts.sqlite.backup(snapshotPath);
     sanitizeBackupSqlite(snapshotPath);
 
-    const dbBytes = fs.readFileSync(snapshotPath);
-    const files: Record<string, Buffer> = {
-      'manifest.json': Buffer.from('{}'), // placeholder filled below
-      'database/healthspan-dashboard.sqlite3': dbBytes,
-      'checksums.json': Buffer.from('{}'),
-    };
+    const entries: Array<
+      | { path: string; kind: 'buffer'; data: Buffer }
+      | { path: string; kind: 'file'; filePath: string; byteLength: number; sha256: string }
+    > = [];
 
-    if (tier === 'portable_full' && opts.includeRaw) {
-      const rawDir = path.join(opts.dataDir, 'raw');
-      if (fs.existsSync(rawDir)) {
-        const walk = (dir: string, rel: string) => {
-          for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-            const full = path.join(dir, ent.name);
-            const r = path.join(rel, ent.name).replace(/\\/g, '/');
-            if (ent.isDirectory()) walk(full, r);
-            else {
-              assertSafeRelPath(`raw/${r}`);
-              files[`raw/${r}`] = fs.readFileSync(full);
-            }
-          }
-        };
-        walk(rawDir, '');
+    const dbStat = fs.statSync(snapshotPath);
+    const dbSha = sha256File(snapshotPath);
+    entries.push({
+      path: 'database/healthspan-dashboard.sqlite3',
+      kind: 'file',
+      filePath: snapshotPath,
+      byteLength: dbStat.size,
+      sha256: dbSha,
+    });
+
+    const includeDocs = process.env.HEALTHSPAN_BACKUP_INCLUDE_USER_DOCUMENTS === 'true';
+    if ((tier === 'portable_core' || tier === 'portable_full') && includeDocs) {
+      const docs = opts.db
+        .select()
+        .from(creatorDocuments)
+        .all()
+        .filter(
+          (d) =>
+            !d.deletedAt &&
+            !d.purgedAt &&
+            !d.storagePurged &&
+            d.lifecycleState === 'current' &&
+            [
+              'user_owned',
+              'authorised_caption_export',
+              'public_domain_or_licence',
+              'fair_dealing_research_notes',
+            ].includes(d.rightsBasis),
+        );
+      for (const doc of docs) {
+        const full = path.isAbsolute(doc.storageKey)
+          ? doc.storageKey
+          : path.join(opts.dataDir, doc.storageKey);
+        if (!fs.existsSync(full)) continue;
+        const st = fs.statSync(full);
+        const sha = sha256File(full);
+        if (sha !== doc.sha256) continue;
+        const rel = `documents/${doc.id}/${path.basename(doc.filename)}`;
+        assertSafeRelPath(rel);
+        entries.push({
+          path: rel,
+          kind: 'file',
+          filePath: full,
+          byteLength: st.size,
+          sha256: sha,
+        });
       }
     }
 
-    const fileMeta = Object.entries(files)
-      .filter(([p]) => p !== 'manifest.json' && p !== 'checksums.json')
-      .map(([p, buf]) => ({ path: p, sha256: sha256Hex(buf), byteLength: buf.length }));
+    if (tier === 'portable_full') {
+      // Only referenced official immutable raw objects from raw_snapshots.
+      const refs = opts.db.select({ sha256: rawSnapshots.sha256 }).from(rawSnapshots).all();
+      const unique = [...new Set(refs.map((r) => r.sha256).filter(Boolean))];
+      for (const hash of unique) {
+        const full = path.join(opts.dataDir, 'raw', 'sha256', hash);
+        if (!fs.existsSync(full)) continue;
+        const st = fs.statSync(full);
+        const rel = `raw/sha256/${hash}`;
+        assertSafeRelPath(rel);
+        entries.push({
+          path: rel,
+          kind: 'file',
+          filePath: full,
+          byteLength: st.size,
+          sha256: sha256File(full),
+        });
+      }
+    }
 
-    const checksums = {
-      files: Object.fromEntries(fileMeta.map((f) => [f.path, f.sha256])),
-    };
-    files['checksums.json'] = Buffer.from(JSON.stringify(checksums, null, 2), 'utf8');
+    const fileMeta = entries.map((e) =>
+      e.kind === 'buffer'
+        ? { path: e.path, sha256: sha256Hex(e.data), byteLength: e.data.length }
+        : { path: e.path, sha256: e.sha256, byteLength: e.byteLength },
+    );
 
-    const manifest = BackupManifestV1Schema.parse({
+    const manifestDraft = BackupManifestV1Schema.parse({
       formatVersion: 1,
       tier,
       appVersion: APP_VERSION,
       schemaVersion: SCHEMA_VERSION,
       createdAt: new Date(at).toISOString(),
       platform: process.platform,
-      encrypted: Boolean(opts.passphrase) || tier !== 'recovery_checkpoint',
-      files: [
-        ...fileMeta,
-        {
-          path: 'checksums.json',
-          sha256: sha256Hex(files['checksums.json']!),
-          byteLength: files['checksums.json']!.length,
-        },
-      ],
+      encrypted:
+        tier !== 'recovery_checkpoint' && Boolean(opts.passphrase || !opts.allowUnencrypted),
+      files: fileMeta,
       exclusions: [
         'request_integrity_sessions',
         'csrf_tokens',
         'absolute_paths',
         'x_current_text',
         'secrets',
+        'unreferenced_raw',
+        'youtube_x_raw_payloads',
       ],
       notes: [
         'Consistent SQLite snapshot via Online Backup API.',
+        'Bounded archive writer with per-entry and total caps.',
         'Sanitized temporary copy — live DB untouched.',
       ],
     });
-    // For recovery checkpoints, encryption is optional; portable defaults encrypted.
     if (tier !== 'recovery_checkpoint' && !opts.passphrase && !opts.allowUnencrypted) {
-      throw new Error('portable backups require --passphrase or --allow-unencrypted');
+      throw new Error('portable backups require passphrase (env/FD) or --allow-unencrypted');
     }
-    if (tier === 'recovery_checkpoint') {
-      manifest.encrypted = false;
+    if (tier === 'recovery_checkpoint') manifestDraft.encrypted = false;
+    if (tier !== 'recovery_checkpoint' && !opts.passphrase && opts.allowUnencrypted) {
+      manifestDraft.notes.push('WARNING: unencrypted portable backup');
     }
-    files['manifest.json'] = Buffer.from(JSON.stringify(manifest, null, 2), 'utf8');
 
-    const zip = buildZip(files);
+    const manifestFinal = Buffer.from(JSON.stringify(manifestDraft, null, 2), 'utf8');
+    const manifestSha = sha256Hex(manifestFinal);
+    const checksumBody = {
+      files: {
+        ...Object.fromEntries(fileMeta.map((f) => [f.path, f.sha256])),
+        'manifest.json': manifestSha,
+      },
+    };
+    const checksumsStored = Buffer.from(JSON.stringify(checksumBody, null, 2), 'utf8');
+
+    const allEntries = [
+      { path: 'manifest.json', kind: 'buffer' as const, data: manifestFinal },
+      { path: 'checksums.json', kind: 'buffer' as const, data: checksumsStored },
+      ...entries,
+    ];
+    buildZipToFile(allEntries, zipPath);
+    const zip = fs.readFileSync(zipPath);
     const sealed = sealBackupArchive(zip, {
       passphrase: tier === 'recovery_checkpoint' ? undefined : opts.passphrase,
       allowUnencrypted: tier === 'recovery_checkpoint' || opts.allowUnencrypted,
+      manifestSha256: manifestSha,
     });
 
     const archiveName = `healthspan-${tier}-${id}.healthspan-backup`;
@@ -210,7 +273,7 @@ export async function createBackup(opts: CreateBackupOptions) {
         profileId: 'local-owner',
         kind: tier,
         status: 'succeeded',
-        manifestJson: JSON.stringify(manifest),
+        manifestJson: JSON.stringify({ ...manifestDraft, manifestSha256: manifestSha }),
         archiveSha256: sha256Hex(sealed),
         byteLength: sealed.length,
         createdAt: at,
@@ -223,7 +286,7 @@ export async function createBackup(opts: CreateBackupOptions) {
       id,
       archivePath,
       archiveName,
-      manifest,
+      manifest: { ...manifestDraft, manifestSha256: manifestSha },
       byteLength: sealed.length,
       sha256: sha256Hex(sealed),
     };
@@ -252,8 +315,10 @@ export function listBackups(dataDir: string) {
 
 export function verifyBackup(opts: { archivePath: string; passphrase?: string; deep?: boolean }) {
   const blob = fs.readFileSync(opts.archivePath);
-  const zip = openBackupArchive(blob, opts.passphrase);
-  const files = extractZip(zip);
+  const opened = openBackupArchive(blob, opts.passphrase);
+  const files = extractZip(opened.zip, { enforceLimits: true });
+  if (!files['manifest.json']) throw new Error('missing-manifest');
+  if (!files['database/healthspan-dashboard.sqlite3']) throw new Error('missing-database');
   const manifest = BackupManifestV1Schema.parse(
     JSON.parse(files['manifest.json']!.toString('utf8')),
   );
@@ -261,6 +326,15 @@ export function verifyBackup(opts: { archivePath: string; passphrase?: string; d
     files: Record<string, string>;
   };
   const mismatches: string[] = [];
+  // Manifest must be checksum-covered (recovery + portable).
+  const expectedManifest = checksums.files['manifest.json'];
+  if (!expectedManifest) mismatches.push('missing:manifest-checksum');
+  else if (sha256Hex(files['manifest.json']!) !== expectedManifest) {
+    mismatches.push('hash:manifest.json');
+  }
+  if (opened.headerManifestSha256 && opened.headerManifestSha256 !== expectedManifest) {
+    mismatches.push('header-manifest-mismatch');
+  }
   for (const [p, expected] of Object.entries(checksums.files)) {
     const buf = files[p];
     if (!buf) {
@@ -323,81 +397,100 @@ export async function restoreBackup(opts: {
   dbPath: string;
   archivePath: string;
   passphrase?: string;
-  exclusiveLockHeld?: boolean;
+  dryRun?: boolean;
 }) {
-  if (!opts.exclusiveLockHeld && process.env.HEALTHSPAN_RESTORE_FORCE !== '1') {
-    throw new Error(
-      'Restore requires exclusive lock (stop API/worker) or HEALTHSPAN_RESTORE_FORCE=1',
-    );
-  }
-
-  const preflight = restorePreflight({
-    archivePath: opts.archivePath,
-    passphrase: opts.passphrase,
-  });
-  if (!preflight.ok) {
-    recordRestoreAttempt(opts.db, null, preflight, false);
-    throw new Error('preflight_failed');
-  }
-
-  // Mandatory pre-restore recovery checkpoint
-  const checkpoint = await createBackup({
-    db: opts.db,
-    sqlite: opts.liveSqlite,
-    dataDir: opts.dataDir,
-    dbPath: opts.dbPath,
-    tier: 'recovery_checkpoint',
-    allowUnencrypted: true,
-  });
-
-  const blob = fs.readFileSync(opts.archivePath);
-  const zip = openBackupArchive(blob, opts.passphrase);
-  const files = extractZip(zip);
-  const dbBytes = files['database/healthspan-dashboard.sqlite3'];
-  if (!dbBytes) throw new Error('Database missing in archive');
-
-  const stagingDb = path.join(os.tmpdir(), `healthspan-restore-${randomUUID()}.sqlite3`);
-  fs.writeFileSync(stagingDb, dbBytes);
-  const probe = openDatabase({ dbPath: stagingDb, migrateOnOpen: false });
-  const doctor = databaseDoctor(probe.sqlite);
-  probe.sqlite.close();
-  if (!doctor.ok) {
-    fs.rmSync(stagingDb, { force: true });
-    throw new Error('Restored snapshot failed integrity checks');
-  }
-
-  const backupLive = `${opts.dbPath}.pre-restore-${Date.now()}`;
-  opts.liveSqlite.close();
+  const lock = acquireExclusiveLock(opts.dataDir, { owner: 'backup:restore' });
   try {
-    fs.renameSync(opts.dbPath, backupLive);
-    fs.copyFileSync(stagingDb, opts.dbPath);
-    const verify = openDatabase({ dbPath: opts.dbPath, migrateOnOpen: false });
-    const after = databaseDoctor(verify.sqlite);
-    verify.sqlite.close();
-    if (!after.ok) {
-      fs.copyFileSync(backupLive, opts.dbPath);
-      throw new Error('Post-restore verification failed; rolled back');
+    const preflight = restorePreflight({
+      archivePath: opts.archivePath,
+      passphrase: opts.passphrase,
+    });
+    if (!preflight.ok) {
+      recordRestoreAttempt(opts.db, null, preflight, false);
+      throw new Error('preflight_failed');
     }
-  } catch (err) {
-    if (fs.existsSync(backupLive) && !fs.existsSync(opts.dbPath)) {
-      fs.renameSync(backupLive, opts.dbPath);
+    if (typeof preflight.schemaVersion === 'number' && preflight.schemaVersion > SCHEMA_VERSION) {
+      throw new Error('future-schema-rejected');
     }
-    throw err;
-  } finally {
-    fs.rmSync(stagingDb, { force: true });
-  }
+    if (opts.dryRun) {
+      return { restoreId: null, dryRun: true as const, preflight, checkpoint: null };
+    }
 
-  const restored = openDatabase({ dbPath: opts.dbPath, migrateOnOpen: false });
-  try {
-    const restoreId = recordRestoreAttempt(
-      restored.db,
-      checkpoint.id,
-      { preflight, checkpoint: checkpoint.archiveName },
-      true,
-    );
-    return { restoreId, checkpoint: checkpoint.archiveName, preflight };
+    // Mandatory pre-restore recovery checkpoint (while lock held)
+    const checkpoint = await createBackup({
+      db: opts.db,
+      sqlite: opts.liveSqlite,
+      dataDir: opts.dataDir,
+      dbPath: opts.dbPath,
+      tier: 'recovery_checkpoint',
+      allowUnencrypted: true,
+    });
+
+    const blob = fs.readFileSync(opts.archivePath);
+    const opened = openBackupArchive(blob, opts.passphrase);
+    const files = extractZip(opened.zip, { enforceLimits: true });
+    const dbBytes = files['database/healthspan-dashboard.sqlite3'];
+    if (!dbBytes) throw new Error('Database missing in archive');
+
+    const stagingDb = path.join(os.tmpdir(), `healthspan-restore-${randomUUID()}.sqlite3`);
+    fs.writeFileSync(stagingDb, dbBytes);
+    // Migrate older supported schema in temporary target before swap.
+    const probe = openDatabase({
+      dbPath: stagingDb,
+      migrateOnOpen: (preflight.schemaVersion ?? SCHEMA_VERSION) < SCHEMA_VERSION,
+    });
+    const doctor = databaseDoctor(probe.sqlite);
+    probe.sqlite.close();
+    if (!doctor.ok) {
+      fs.rmSync(stagingDb, { force: true });
+      throw new Error('Restored snapshot failed integrity checks');
+    }
+
+    const backupLive = `${opts.dbPath}.pre-restore-${Date.now()}`;
+    const wal = `${opts.dbPath}-wal`;
+    const shm = `${opts.dbPath}-shm`;
+    opts.liveSqlite.close();
+    try {
+      fs.renameSync(opts.dbPath, backupLive);
+      if (fs.existsSync(wal)) fs.renameSync(wal, `${backupLive}-wal`);
+      if (fs.existsSync(shm)) fs.renameSync(shm, `${backupLive}-shm`);
+      fs.copyFileSync(stagingDb, opts.dbPath);
+      const verify = openDatabase({ dbPath: opts.dbPath, migrateOnOpen: false });
+      const after = databaseDoctor(verify.sqlite);
+      verify.sqlite.close();
+      if (!after.ok) {
+        fs.copyFileSync(backupLive, opts.dbPath);
+        if (fs.existsSync(`${backupLive}-wal`)) fs.copyFileSync(`${backupLive}-wal`, wal);
+        if (fs.existsSync(`${backupLive}-shm`)) fs.copyFileSync(`${backupLive}-shm`, shm);
+        throw new Error('Post-restore verification failed; rolled back');
+      }
+      // Clean obsolete WAL/SHM for restored DB after successful open.
+      for (const side of [wal, shm]) {
+        if (fs.existsSync(side)) fs.rmSync(side, { force: true });
+      }
+    } catch (err) {
+      if (fs.existsSync(backupLive) && !fs.existsSync(opts.dbPath)) {
+        fs.renameSync(backupLive, opts.dbPath);
+      }
+      throw err;
+    } finally {
+      fs.rmSync(stagingDb, { force: true });
+    }
+
+    const restored = openDatabase({ dbPath: opts.dbPath, migrateOnOpen: false });
+    try {
+      const restoreId = recordRestoreAttempt(
+        restored.db,
+        checkpoint.id,
+        { preflight, checkpoint: checkpoint.archiveName, resyncScheduled: true },
+        true,
+      );
+      return { restoreId, checkpoint: checkpoint.archiveName, preflight };
+    } finally {
+      restored.sqlite.close();
+    }
   } finally {
-    restored.sqlite.close();
+    lock.release();
   }
 }
 

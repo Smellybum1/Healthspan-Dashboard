@@ -27,6 +27,7 @@ export default defineConfig({
         HEALTHSPAN_DATA_MODE: 'demo',
         HEALTHSPAN_DATA_DIR: path.resolve(__dirname, '../../.local-data/e2e'),
         HEALTHSPAN_ALLOW_RELATIVE_DATA_DIR: '1',
+        HEALTHSPAN_CSRF_ENABLED: 'true',
       },
     },
     {

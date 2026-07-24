@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
+export * from './backup-format.js';
+export * from './exclusive-lock.js';
+
 export const APP_VERSION = '0.6.0';
 export const SCHEMA_VERSION = 11;
-
-export * from './backup-format.js';
 
 export const BackupManifestSchema = z.object({
   formatVersion: z.literal(1),
@@ -45,10 +46,69 @@ export const SecurityHeaders: Record<string, string> = {
   'Cross-Origin-Opener-Policy': 'same-origin',
 };
 
+export function parseHostHeader(host: string | undefined): { hostname: string; port?: string } {
+  if (!host) return { hostname: '' };
+  const h = host.trim();
+  if (h.startsWith('[')) {
+    const end = h.indexOf(']');
+    if (end < 0) return { hostname: h.toLowerCase() };
+    const hostname = h.slice(1, end).toLowerCase();
+    const rest = h.slice(end + 1);
+    const port = rest.startsWith(':') ? rest.slice(1) : undefined;
+    return { hostname, port };
+  }
+  // IPv4 or hostname — only split on the last colon when a single colon exists.
+  const first = h.indexOf(':');
+  const last = h.lastIndexOf(':');
+  if (first !== -1 && first === last) {
+    return { hostname: h.slice(0, first).toLowerCase(), port: h.slice(first + 1) };
+  }
+  return { hostname: h.toLowerCase() };
+}
+
 export function isLoopbackHost(host: string | undefined): boolean {
   if (!host) return false;
-  const h = host.split(':')[0]?.toLowerCase() ?? '';
-  return h === '127.0.0.1' || h === 'localhost' || h === '::1' || h === '[::1]';
+  const { hostname } = parseHostHeader(host);
+  return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1';
+}
+
+export function configuredAllowedHosts(): Set<string> {
+  const raw = process.env.HEALTHSPAN_ALLOWED_HOSTS;
+  if (!raw) {
+    return new Set(['127.0.0.1', 'localhost', '::1']);
+  }
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => parseHostHeader(s.trim()).hostname)
+      .filter(Boolean),
+  );
+}
+
+export function configuredAllowedOrigins(): Set<string> {
+  const raw = process.env.HEALTHSPAN_ALLOWED_ORIGINS;
+  if (!raw) {
+    return new Set([
+      'http://127.0.0.1:5173',
+      'http://localhost:5173',
+      'http://127.0.0.1:8787',
+      'http://localhost:8787',
+    ]);
+  }
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
+export function hostAllowed(host: string | undefined): boolean {
+  if (!host) return false;
+  const { hostname } = parseHostHeader(host);
+  if (!hostname) return false;
+  // DNS-rebinding style: reject hosts that aren't exact allowlist entries.
+  return configuredAllowedHosts().has(hostname);
 }
 
 /**
@@ -65,16 +125,10 @@ export function originAllowed(
   if (!origin) return Boolean(opts.allowMissingOrigin);
   try {
     const u = new URL(origin);
-    if (!isLoopbackHost(u.hostname)) return false;
-    if (host && !isLoopbackHost(host.split(':')[0])) return false;
-    const allowedDev = new Set([
-      'http://127.0.0.1:5173',
-      'http://localhost:5173',
-      'http://127.0.0.1:8787',
-      'http://localhost:8787',
-    ]);
-    if (allowedDev.has(origin)) return true;
-    const reqHost = (host ?? '').split(':')[0]?.toLowerCase();
+    if (!isLoopbackHost(u.hostname) && !configuredAllowedOrigins().has(origin)) return false;
+    if (host && !hostAllowed(host) && !isLoopbackHost(host)) return false;
+    if (configuredAllowedOrigins().has(origin)) return true;
+    const reqHost = parseHostHeader(host).hostname;
     return Boolean(reqHost && u.hostname.toLowerCase() === reqHost);
   } catch {
     return false;

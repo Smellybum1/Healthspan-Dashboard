@@ -1,0 +1,77 @@
+{
+  "suite": "performance:check",
+  "hardware": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.14.0"
+  },
+  "profile": {
+    "name": "proportional-local",
+    "contentItems": 2000,
+    "claims": 5000,
+    "alerts": 2000,
+    "note": "DEVIATION from full M6 generated-scale; measured real code paths on proportional fixture."
+  },
+  "metrics": [
+    {
+      "name": "personalised-today-proxy",
+      "rounds": 25,
+      "p50": 4.43,
+      "p95": 8.69
+    },
+    {
+      "name": "alerts-list-proxy",
+      "rounds": 25,
+      "p50": 0.5,
+      "p95": 0.93
+    },
+    {
+      "name": "watchlists-list",
+      "rounds": 25,
+      "p50": 0.2,
+      "p95": 0.47
+    },
+    {
+      "name": "since-last-visit",
+      "rounds": 25,
+      "p50": 0.23,
+      "p95": 0.44
+    },
+    {
+      "name": "operations-storage",
+      "rounds": 25,
+      "p50": 0.32,
+      "p95": 0.56
+    },
+    {
+      "name": "production-startup-openDatabase",
+      "rounds": 10,
+      "p50": 1.75,
+      "p95": 6.75
+    }
+  ],
+  "bundles": {
+    "jsGzip": [
+      {
+        "file": "index-Bvbrb2qN.js",
+        "kb": 220
+      }
+    ],
+    "cssGzip": [
+      {
+        "file": "index-CypvU3MH.css",
+        "kb": 5
+      }
+    ],
+    "initialJsGzipKb": 220,
+    "cssGzipKb": 5
+  },
+  "budgets": {
+    "initialJsGzipKb": 450,
+    "cssGzipKb": 80,
+    "lazyChunkGzipKb": 300
+  },
+  "deviations": [],
+  "status": "PASS",
+  "ok": true
+}

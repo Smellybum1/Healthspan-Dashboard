@@ -53,8 +53,8 @@ checks.push({
   })(),
 });
 
-const zip = openBackupArchive(fs.readFileSync(portable.archivePath), passphrase);
-const files = extractZip(zip);
+const opened = openBackupArchive(fs.readFileSync(portable.archivePath), passphrase);
+const files = extractZip(opened.zip);
 checks.push({
   id: 'contains_sqlite_snapshot',
   ok: Boolean(files['database/healthspan-dashboard.sqlite3']?.length),

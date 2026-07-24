@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { closeDatabase, openDatabase } from '@healthspan/db';
+import { acquirePassphrase } from '@healthspan/operations';
 import { restoreBackup } from '../apps/api/src/backup-service.js';
 
 function arg(name: string) {
@@ -9,10 +10,9 @@ function arg(name: string) {
 }
 
 process.env.HEALTHSPAN_ALLOW_RELATIVE_DATA_DIR ??= '1';
-process.env.HEALTHSPAN_RESTORE_FORCE ??= '1';
 const input = arg('--input');
-const passphraseIdx = process.argv.indexOf('--passphrase');
-const passphrase = passphraseIdx >= 0 ? process.argv[passphraseIdx + 1] : undefined;
+const dryRun = process.argv.includes('--dry-run');
+const passphrase = acquirePassphrase({ allowArgvDeprecated: true });
 const live = openDatabase({ allowRelativeOverride: true, migrateOnOpen: true });
 const archivePath = path.isAbsolute(input)
   ? input
@@ -25,9 +25,18 @@ try {
     dbPath: live.paths.dbPath,
     archivePath,
     passphrase,
-    exclusiveLockHeld: true,
+    dryRun,
   });
   console.log(JSON.stringify({ command: 'backup:restore', ok: true, ...result }, null, 2));
+  if (!dryRun) {
+    try {
+      closeDatabase(live.sqlite);
+    } catch {
+      /* closed during restore */
+    }
+  } else {
+    closeDatabase(live.sqlite);
+  }
   process.exit(0);
 } catch (err) {
   console.error(

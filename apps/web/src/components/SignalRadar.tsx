@@ -62,7 +62,11 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
         ))}
       </div>
 
-      <div className="h-80 w-full" role="img" aria-label="Signal Radar scatter plot">
+      <div
+        className="h-80 w-full"
+        aria-hidden="true"
+        title="Decorative Signal Radar chart; use the data table below"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 8, right: 8, bottom: 12, left: 8 }}>
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />

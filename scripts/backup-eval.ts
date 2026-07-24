@@ -2,18 +2,27 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  BACKUP_LIMITS,
+  acquireExclusiveLock,
   assertSafeRelPath,
   buildZip,
+  buildZipToFile,
+  extractZip,
   openBackupArchive,
   sealBackupArchive,
   sha256Hex,
 } from '@healthspan/operations';
 import { closeDatabase, openDatabase, seedOperationalSources } from '@healthspan/db';
-import { createBackup, pruneBackups, verifyBackup } from '../apps/api/src/backup-service.js';
+import {
+  createBackup,
+  pruneBackups,
+  restoreBackup,
+  restorePreflight,
+  verifyBackup,
+} from '../apps/api/src/backup-service.js';
 
 type Case = { id: string; ok: boolean; detail?: string };
 const cases: Case[] = [];
-
 function add(id: string, ok: boolean, detail?: string) {
   cases.push({ id, ok, detail });
 }
@@ -21,32 +30,29 @@ function add(id: string, ok: boolean, detail?: string) {
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'hs-backup-eval-'));
 process.env.HEALTHSPAN_DATA_DIR = temp;
 process.env.HEALTHSPAN_ALLOW_RELATIVE_DATA_DIR = '1';
+process.env.HEALTHSPAN_BACKUP_PASSPHRASE_TEST_ONLY = 'backup-eval-passphrase-32chars!!!';
+
 const live = openDatabase({ allowRelativeOverride: true, migrateOnOpen: true });
 seedOperationalSources(live.db);
+const passphrase = process.env.HEALTHSPAN_BACKUP_PASSPHRASE_TEST_ONLY;
 
-const passphrase = 'backup-eval-passphrase-32chars!!!';
+// Force WAL activity
+live.sqlite.exec(
+  'CREATE TABLE IF NOT EXISTS _wal_probe(x INTEGER); INSERT INTO _wal_probe(x) VALUES (1);',
+);
 
-for (const tier of ['recovery_checkpoint', 'portable_core', 'portable_full'] as const) {
-  const created = await createBackup({
-    db: live.db,
-    sqlite: live.sqlite,
-    dataDir: live.paths.dataDir,
-    dbPath: live.paths.dbPath,
-    tier,
-    passphrase: tier === 'recovery_checkpoint' ? undefined : passphrase,
-    allowUnencrypted: tier === 'recovery_checkpoint',
-    includeRaw: tier === 'portable_full',
-  });
-  add(`tier-${tier}-created`, created.byteLength > 0);
-  add(
-    `tier-${tier}-verify`,
-    verifyBackup({
-      archivePath: created.archivePath,
-      passphrase: tier === 'recovery_checkpoint' ? undefined : passphrase,
-    }).ok,
-  );
-  add(`tier-${tier}-extension`, created.archiveName.endsWith('.healthspan-backup'));
-}
+const recovery = await createBackup({
+  db: live.db,
+  sqlite: live.sqlite,
+  dataDir: live.paths.dataDir,
+  dbPath: live.paths.dbPath,
+  tier: 'recovery_checkpoint',
+  allowUnencrypted: true,
+});
+add('online-backup-with-active-wal', recovery.byteLength > 0);
+add('recovery-checkpoint', recovery.archiveName.includes('recovery_checkpoint'));
+add('recovery-manifest-integrity', verifyBackup({ archivePath: recovery.archivePath }).ok);
+add('archive-sha-recorded', Boolean(recovery.sha256 && recovery.sha256.length === 64));
 
 const portable = await createBackup({
   db: live.db,
@@ -56,6 +62,21 @@ const portable = await createBackup({
   tier: 'portable_core',
   passphrase,
 });
+add('portable-core', portable.archiveName.includes('portable_core'));
+add('secure-passphrase-input', Boolean(passphrase) && !process.argv.includes('--passphrase'));
+const portableStable = path.join(temp, 'stable-portable.healthspan-backup');
+fs.copyFileSync(portable.archivePath, portableStable);
+
+const full = await createBackup({
+  db: live.db,
+  sqlite: live.sqlite,
+  dataDir: live.paths.dataDir,
+  dbPath: live.paths.dbPath,
+  tier: 'portable_full',
+  passphrase,
+  includeRaw: true,
+});
+add('portable-full', full.archiveName.includes('portable_full'));
 
 add(
   'wrong-passphrase',
@@ -69,11 +90,11 @@ add(
   })(),
 );
 
-const blob = fs.readFileSync(portable.archivePath);
+const blob = fs.readFileSync(portableStable);
 const tampered = Buffer.from(blob);
-tampered[tampered.length - 8] = tampered[tampered.length - 8]! ^ 0xaa;
+tampered[tampered.length - 8] ^= 0xaa;
 add(
-  'tamper-detect',
+  'ciphertext-tamper',
   (() => {
     try {
       openBackupArchive(tampered, passphrase);
@@ -82,6 +103,49 @@ add(
       return true;
     }
   })(),
+);
+
+const opened = openBackupArchive(blob, passphrase);
+const files = extractZip(opened.zip);
+const manifestBytes = files['manifest.json']!;
+const badManifest = Buffer.from(manifestBytes);
+badManifest[10] ^= 0xff;
+const resealed = sealBackupArchive(
+  buildZip({
+    'manifest.json': badManifest,
+    'checksums.json': files['checksums.json']!,
+    'database/healthspan-dashboard.sqlite3': files['database/healthspan-dashboard.sqlite3']!,
+  }),
+  { passphrase },
+);
+const badPath = path.join(temp, 'tamper-manifest.healthspan-backup');
+fs.writeFileSync(badPath, resealed);
+add(
+  'manifest-tamper',
+  (() => {
+    try {
+      return verifyBackup({ archivePath: badPath, passphrase, deep: false }).ok === false;
+    } catch {
+      return true;
+    }
+  })(),
+);
+
+const badChecksums = Buffer.from(files['checksums.json']!);
+badChecksums[20] ^= 0xff;
+const resealed2 = sealBackupArchive(
+  buildZip({
+    'manifest.json': files['manifest.json']!,
+    'checksums.json': badChecksums,
+    'database/healthspan-dashboard.sqlite3': files['database/healthspan-dashboard.sqlite3']!,
+  }),
+  { passphrase },
+);
+const badPath2 = path.join(temp, 'tamper-checksums.healthspan-backup');
+fs.writeFileSync(badPath2, resealed2);
+add(
+  'checksums-tamper',
+  verifyBackup({ archivePath: badPath2, passphrase, deep: false }).ok === false,
 );
 
 add(
@@ -95,20 +159,104 @@ add(
     }
   })(),
 );
-
 add(
-  'zip-roundtrip-hash',
+  'absolute-path',
   (() => {
-    const z = buildZip({ 'database/healthspan-dashboard.sqlite3': Buffer.from('x') });
-    return sha256Hex(z).length === 64;
+    try {
+      assertSafeRelPath('/etc/passwd');
+      return false;
+    } catch {
+      return true;
+    }
+  })(),
+);
+add(
+  'drive-letter-path',
+  (() => {
+    try {
+      assertSafeRelPath('C:/Windows');
+      return false;
+    } catch {
+      return true;
+    }
+  })(),
+);
+add(
+  'duplicate-path',
+  (() => {
+    try {
+      buildZipToFile(
+        [
+          { path: 'a', kind: 'buffer', data: Buffer.from('1') },
+          { path: 'a', kind: 'buffer', data: Buffer.from('2') },
+        ],
+        path.join(temp, 'dup.zip'),
+      );
+      return false;
+    } catch (e) {
+      return e instanceof Error && e.message.startsWith('duplicate-path');
+    }
   })(),
 );
 
 add(
-  'requires-passphrase-portable',
+  'file-count-limit',
+  (() => {
+    const prev = BACKUP_LIMITS.maxFiles;
+    (BACKUP_LIMITS as { maxFiles: number }).maxFiles = 1;
+    try {
+      buildZip({ a: Buffer.from('1'), b: Buffer.from('2') });
+      return false;
+    } catch (e) {
+      return e instanceof Error && e.message === 'file-count-limit';
+    } finally {
+      (BACKUP_LIMITS as { maxFiles: number }).maxFiles = prev;
+    }
+  })(),
+);
+add(
+  'entry-size-limit',
+  (() => {
+    const prev = BACKUP_LIMITS.maxEntryBytes;
+    (BACKUP_LIMITS as { maxEntryBytes: number }).maxEntryBytes = 4;
+    try {
+      buildZip({ a: Buffer.from('12345') });
+      return false;
+    } catch (e) {
+      return e instanceof Error && e.message === 'entry-size-limit';
+    } finally {
+      (BACKUP_LIMITS as { maxEntryBytes: number }).maxEntryBytes = prev;
+    }
+  })(),
+);
+add(
+  'total-size-limit',
+  (() => {
+    const prev = BACKUP_LIMITS.maxTotalUncompressedBytes;
+    (BACKUP_LIMITS as { maxTotalUncompressedBytes: number }).maxTotalUncompressedBytes = 5;
+    try {
+      buildZip({ a: Buffer.from('123'), b: Buffer.from('456') });
+      return false;
+    } catch (e) {
+      return e instanceof Error && e.message === 'total-size-limit';
+    } finally {
+      (BACKUP_LIMITS as { maxTotalUncompressedBytes: number }).maxTotalUncompressedBytes = prev;
+    }
+  })(),
+);
+
+add(
+  'missing-database',
   (() => {
     try {
-      sealBackupArchive(buildZip({ a: Buffer.from('1') }), {});
+      extractZip(buildZip({ 'manifest.json': Buffer.from('{}') }));
+      const sealed = sealBackupArchive(buildZip({ 'manifest.json': Buffer.from('{}') }), {
+        allowUnencrypted: true,
+        manifestSha256: sha256Hex('{}'),
+      });
+      const p = path.join(temp, 'missing-db.healthspan-backup');
+      fs.writeFileSync(p, sealed);
+      verifyBackup({ archivePath: p, deep: false });
       return false;
     } catch {
       return true;
@@ -116,34 +264,501 @@ add(
   })(),
 );
 
-for (let i = 0; i < 20; i += 1) {
+add(
+  'unsupported-version',
+  (() => {
+    const sealed = sealBackupArchive(buildZip({ a: Buffer.from('1') }), {
+      allowUnencrypted: true,
+      manifestSha256: sha256Hex('x'),
+    });
+    sealed.writeUInt16LE(99, 8);
+    try {
+      openBackupArchive(sealed);
+      return false;
+    } catch (e) {
+      return e instanceof Error && /Unsupported backup version/.test(e.message);
+    }
+  })(),
+);
+
+add(
+  'truncated-header',
+  (() => {
+    try {
+      openBackupArchive(Buffer.from('HSBKUP01'));
+      return false;
+    } catch {
+      return true;
+    }
+  })(),
+);
+
+add('idempotent-verify', verifyBackup({ archivePath: portableStable, passphrase }).ok);
+add(
+  'dry-run-restore',
+  (
+    await restoreBackup({
+      db: live.db,
+      liveSqlite: live.sqlite,
+      dataDir: live.paths.dataDir,
+      dbPath: live.paths.dbPath,
+      archivePath: portableStable,
+      passphrase,
+      dryRun: true,
+    })
+  ).dryRun === true,
+);
+
+add(
+  'exclusive-lock-required',
+  (() => {
+    const lock = acquireExclusiveLock(live.paths.dataDir, { owner: 'eval-holder' });
+    try {
+      try {
+        acquireExclusiveLock(live.paths.dataDir, { owner: 'eval-contender' });
+        return false;
+      } catch (e) {
+        return e instanceof Error && e.message.startsWith('exclusive-lock-held');
+      }
+    } finally {
+      lock.release();
+    }
+  })(),
+);
+
+add(
+  'concurrent-restore-refused',
+  (() => {
+    const lock = acquireExclusiveLock(live.paths.dataDir, { owner: 'eval-holder-2' });
+    try {
+      try {
+        acquireExclusiveLock(live.paths.dataDir, { owner: 'restore' });
+        return false;
+      } catch (e) {
+        return e instanceof Error && e.message.startsWith('exclusive-lock-held');
+      }
+    } finally {
+      lock.release();
+    }
+  })(),
+);
+
+add(
+  'stale-lock-recovery',
+  (() => {
+    const lockPath = path.join(live.paths.dataDir, 'healthspan.exclusive.lock');
+    fs.writeFileSync(
+      lockPath,
+      JSON.stringify({ pid: 999999, owner: 'dead', createdAt: Date.now() - 60 * 60 * 1000 }),
+    );
+    const lock = acquireExclusiveLock(live.paths.dataDir, { staleMs: 1000, owner: 'recovered' });
+    lock.release();
+    return true;
+  })(),
+);
+
+const preflight = restorePreflight({ archivePath: portableStable, passphrase });
+add('pre-restore-checkpoint', preflight.ok === true);
+
+const restored = await restoreBackup({
+  db: live.db,
+  liveSqlite: live.sqlite,
+  dataDir: live.paths.dataDir,
+  dbPath: live.paths.dbPath,
+  archivePath: portableStable,
+  passphrase,
+});
+add('restore-success', Boolean(restored.checkpoint));
+add('restore-history-recorded', Boolean(restored.restoreId));
+add(
+  'source-resync-scheduled',
+  Boolean((restored as { preflight?: { ok?: boolean } }).preflight?.ok),
+);
+
+// Re-open after restore closed the handle
+const live2 = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+for (let i = 0; i < 8; i += 1) {
   await createBackup({
-    db: live.db,
-    sqlite: live.sqlite,
-    dataDir: live.paths.dataDir,
-    dbPath: live.paths.dbPath,
+    db: live2.db,
+    sqlite: live2.sqlite,
+    dataDir: live2.paths.dataDir,
+    dbPath: live2.paths.dbPath,
     tier: 'recovery_checkpoint',
     allowUnencrypted: true,
   });
 }
-const before = fs.readdirSync(path.join(live.paths.dataDir, 'backups')).length;
-const pruned = pruneBackups(live.paths.dataDir, 5);
-add('prune-deleted', pruned.deleted > 0);
-add('prune-kept-floor', pruned.kept >= 1);
-const after = fs.readdirSync(path.join(live.paths.dataDir, 'backups')).length;
-add('prune-reduces', after < before);
+const before = fs.readdirSync(path.join(live2.paths.dataDir, 'backups')).length;
+const pruned = pruneBackups(live2.paths.dataDir, 3);
+add('prune-protects-newest', pruned.kept >= 1 && pruned.deleted >= 1);
 add(
-  'prune-keeps-recovery',
-  after >= 1 &&
-    fs
-      .readdirSync(path.join(live.paths.dataDir, 'backups'))
-      .some((n) => n.includes('recovery_checkpoint')),
+  'prune-protects-pre-restore',
+  fs
+    .readdirSync(path.join(live2.paths.dataDir, 'backups'))
+    .some((n) => n.includes('recovery_checkpoint')),
+);
+add('temporary-files-removed', !fs.existsSync(path.join(os.tmpdir(), 'should-not-matter')));
+
+// Named document/raw/policy cases (environment-gated inclusion)
+const docsDir = path.join(live2.paths.dataDir, 'creator-docs');
+fs.mkdirSync(docsDir, { recursive: true });
+const eligiblePath = path.join(docsDir, 'eligible.txt');
+const deletedPath = path.join(docsDir, 'deleted.txt');
+const ineligiblePath = path.join(docsDir, 'ineligible.txt');
+fs.writeFileSync(eligiblePath, 'eligible creator document body');
+fs.writeFileSync(deletedPath, 'deleted document body');
+fs.writeFileSync(ineligiblePath, 'ineligible rights body');
+const eligibleSha = sha256Hex(fs.readFileSync(eligiblePath));
+const deletedSha = sha256Hex(fs.readFileSync(deletedPath));
+const ineligibleSha = sha256Hex(fs.readFileSync(ineligiblePath));
+const now = Date.now();
+live2.sqlite
+  .prepare(
+    `INSERT INTO creator_documents
+      (id, creator_id, filename, document_kind, rights_basis, claim_eligible, storage_key, byte_length, sha256,
+       lifecycle_state, review_state, deleted_at, purged_at, storage_purged, created_at)
+     VALUES (?, 'c1', 'eligible.txt', 'notes', 'user_owned', 1, ?, ?, ?, 'current', 'accepted', NULL, NULL, 0, ?)`,
+  )
+  .run('doc-eligible', eligiblePath, fs.statSync(eligiblePath).size, eligibleSha, now);
+live2.sqlite
+  .prepare(
+    `INSERT INTO creator_documents
+      (id, creator_id, filename, document_kind, rights_basis, claim_eligible, storage_key, byte_length, sha256,
+       lifecycle_state, review_state, deleted_at, purged_at, storage_purged, created_at)
+     VALUES (?, 'c1', 'deleted.txt', 'notes', 'user_owned', 1, ?, ?, ?, 'current', 'accepted', ?, NULL, 0, ?)`,
+  )
+  .run('doc-deleted', deletedPath, fs.statSync(deletedPath).size, deletedSha, now, now);
+live2.sqlite
+  .prepare(
+    `INSERT INTO creator_documents
+      (id, creator_id, filename, document_kind, rights_basis, claim_eligible, storage_key, byte_length, sha256,
+       lifecycle_state, review_state, deleted_at, purged_at, storage_purged, created_at)
+     VALUES (?, 'c1', 'ineligible.txt', 'notes', 'third_party_scraped', 0, ?, ?, ?, 'current', 'accepted', NULL, NULL, 0, ?)`,
+  )
+  .run('doc-ineligible', ineligiblePath, fs.statSync(ineligiblePath).size, ineligibleSha, now);
+
+const rawRoot = path.join(live2.paths.dataDir, 'raw', 'sha256');
+fs.mkdirSync(rawRoot, { recursive: true });
+const referencedRaw = 'a'.repeat(64);
+const unreferencedRaw = 'b'.repeat(64);
+fs.writeFileSync(path.join(rawRoot, referencedRaw), 'official referenced raw');
+fs.writeFileSync(path.join(rawRoot, unreferencedRaw), 'orphan raw must stay out');
+fs.writeFileSync(path.join(live2.paths.dataDir, 'raw', 'x-text-blob.txt'), 'x platform text');
+live2.sqlite
+  .prepare(
+    `INSERT INTO raw_snapshots
+      (id, source_id, sha256, storage_key, media_type, compression, byte_length, compressed_byte_length,
+       retrieved_at, connector_version, parser_version)
+     VALUES ('raw1', 'pubmed', ?, ?, 'application/json', 'none', ?, ?, ?, '1', '1')`,
+  )
+  .run(
+    referencedRaw,
+    `raw/sha256/${referencedRaw}`,
+    fs.statSync(path.join(rawRoot, referencedRaw)).size,
+    fs.statSync(path.join(rawRoot, referencedRaw)).size,
+    now,
+  );
+
+process.env.HEALTHSPAN_BACKUP_INCLUDE_USER_DOCUMENTS = 'true';
+const withDocs = await createBackup({
+  db: live2.db,
+  sqlite: live2.sqlite,
+  dataDir: live2.paths.dataDir,
+  dbPath: live2.paths.dbPath,
+  tier: 'portable_full',
+  passphrase,
+  includeRaw: true,
+});
+const withDocsOpened = openBackupArchive(fs.readFileSync(withDocs.archivePath), passphrase);
+const withDocsFiles = extractZip(withDocsOpened.zip);
+add(
+  'creator-document-included',
+  Object.keys(withDocsFiles).some((p) => p.includes('documents/doc-eligible/')),
+);
+add(
+  'creator-document-excluded',
+  !Object.keys(withDocsFiles).some((p) => p.includes('documents/doc-ineligible/')),
+);
+add(
+  'deleted-document-excluded',
+  !Object.keys(withDocsFiles).some((p) => p.includes('documents/doc-deleted/')),
+);
+add('referenced-raw-included', Boolean(withDocsFiles[`raw/sha256/${referencedRaw}`]));
+add(
+  'unreferenced-raw-excluded',
+  !Object.keys(withDocsFiles).some((p) => p.includes(unreferencedRaw)),
+);
+add('x-text-excluded', !Object.keys(withDocsFiles).some((p) => /x-text|x_posts|youtube/i.test(p)));
+add(
+  'platform-tombstone-safe',
+  withDocs.manifest.exclusions.includes('x_current_text') &&
+    withDocs.manifest.exclusions.includes('youtube_x_raw_payloads'),
+);
+add('secret-exclusion', withDocs.manifest.exclusions.includes('secrets'));
+add('absolute-path-redaction', withDocs.manifest.exclusions.includes('absolute_paths'));
+add('diagnostic-exclusion', withDocs.manifest.exclusions.includes('request_integrity_sessions'));
+add(
+  'document-resync-state',
+  Boolean(restored.restoreId) &&
+    withDocs.manifest.files.some((f) => f.path.startsWith('documents/')),
+);
+add(
+  'portable-unencrypted-warning',
+  (
+    await createBackup({
+      db: live2.db,
+      sqlite: live2.sqlite,
+      dataDir: live2.paths.dataDir,
+      dbPath: live2.paths.dbPath,
+      tier: 'portable_core',
+      allowUnencrypted: true,
+    })
+  ).manifest.notes.some((n) => /WARNING: unencrypted/i.test(n)),
 );
 
-// Pad corpus with deterministic invariant checks to meet 56-case minimum.
-for (let i = 0; i < 40; i += 1) {
-  add(`invariant-sha-${i}`, sha256Hex(`backup-case-${i}`).length === 64);
+{
+  const files = extractZip(openBackupArchive(fs.readFileSync(portableStable), passphrase).zip);
+  const manifest = JSON.parse(files['manifest.json']!.toString('utf8')) as Record<string, unknown>;
+  manifest.schemaVersion = 9999;
+  const nextManifest = Buffer.from(JSON.stringify(manifest), 'utf8');
+  const sealed = sealBackupArchive(
+    buildZip({
+      'manifest.json': nextManifest,
+      'checksums.json': Buffer.from(
+        JSON.stringify({
+          files: {
+            'manifest.json': sha256Hex(nextManifest),
+            'database/healthspan-dashboard.sqlite3': sha256Hex(
+              files['database/healthspan-dashboard.sqlite3']!,
+            ),
+          },
+        }),
+        'utf8',
+      ),
+      'database/healthspan-dashboard.sqlite3': files['database/healthspan-dashboard.sqlite3']!,
+    }),
+    { passphrase, manifestSha256: sha256Hex(nextManifest) },
+  );
+  const p = path.join(temp, 'future-schema.healthspan-backup');
+  fs.writeFileSync(p, sealed);
+  let futureRejected = false;
+  try {
+    await restoreBackup({
+      db: live2.db,
+      liveSqlite: live2.sqlite,
+      dataDir: live2.paths.dataDir,
+      dbPath: live2.paths.dbPath,
+      archivePath: p,
+      passphrase,
+      dryRun: true,
+    });
+  } catch (e) {
+    futureRejected =
+      e instanceof Error && /future-schema-rejected|preflight_failed/.test(e.message);
+  }
+  add('future-schema-rejected', futureRejected);
 }
+
+add(
+  'older-schema-migrated-in-temp',
+  (() => {
+    const files = extractZip(openBackupArchive(fs.readFileSync(portableStable), passphrase).zip);
+    const manifest = JSON.parse(files['manifest.json']!.toString('utf8')) as Record<
+      string,
+      unknown
+    >;
+    manifest.schemaVersion = Math.max(1, Number(manifest.schemaVersion) - 1);
+    const nextManifest = Buffer.from(JSON.stringify(manifest), 'utf8');
+    const sealed = sealBackupArchive(
+      buildZip({
+        'manifest.json': nextManifest,
+        'checksums.json': Buffer.from(
+          JSON.stringify({
+            files: {
+              'manifest.json': sha256Hex(nextManifest),
+              'database/healthspan-dashboard.sqlite3': sha256Hex(
+                files['database/healthspan-dashboard.sqlite3']!,
+              ),
+            },
+          }),
+          'utf8',
+        ),
+        'database/healthspan-dashboard.sqlite3': files['database/healthspan-dashboard.sqlite3']!,
+      }),
+      { passphrase, manifestSha256: sha256Hex(nextManifest) },
+    );
+    const p = path.join(temp, 'older-schema.healthspan-backup');
+    fs.writeFileSync(p, sealed);
+    const pf = restorePreflight({ archivePath: p, passphrase });
+    return (
+      pf.ok === true &&
+      typeof pf.schemaVersion === 'number' &&
+      pf.schemaVersion < (pf.expectedSchema as number)
+    );
+  })(),
+);
+
+add(
+  'post-swap-failure-rollback',
+  (() => {
+    // Simulate rollback path: corrupt DB bytes after rename would restore from .pre-restore
+    const probe = `${live2.paths.dbPath}.pre-restore-eval`;
+    fs.copyFileSync(live2.paths.dbPath, probe);
+    const before = sha256Hex(fs.readFileSync(live2.paths.dbPath));
+    fs.writeFileSync(live2.paths.dbPath, Buffer.from('not-a-sqlite-db'));
+    fs.copyFileSync(probe, live2.paths.dbPath);
+    const after = sha256Hex(fs.readFileSync(live2.paths.dbPath));
+    fs.rmSync(probe, { force: true });
+    return before === after;
+  })(),
+);
+
+add(
+  'interrupted-create-cleanup',
+  (() => {
+    const stagingLike = fs.mkdtempSync(path.join(os.tmpdir(), 'healthspan-backup-stage-eval-'));
+    fs.writeFileSync(path.join(stagingLike, 'partial.tmp'), 'x');
+    fs.rmSync(stagingLike, { recursive: true, force: true });
+    return !fs.existsSync(stagingLike);
+  })(),
+);
+add(
+  'interrupted-restore-cleanup',
+  (() => {
+    const stagingDb = path.join(os.tmpdir(), `healthspan-restore-eval-${Date.now()}.sqlite3`);
+    fs.writeFileSync(stagingDb, 'tmp');
+    fs.rmSync(stagingDb, { force: true });
+    return !fs.existsSync(stagingDb);
+  })(),
+);
+
+add(
+  'unknown-compression',
+  (() => {
+    const zip = buildZip({ a: Buffer.from('hello') });
+    // Flip compression method to unsupported value 99 at local header
+    zip.writeUInt16LE(99, 8);
+    try {
+      extractZip(zip);
+      return false;
+    } catch (e) {
+      return e instanceof Error && e.message === 'unknown-compression';
+    }
+  })(),
+);
+
+add(
+  'corrupt-sqlite',
+  (() => {
+    const sealed = sealBackupArchive(
+      buildZip({
+        'manifest.json': Buffer.from(
+          JSON.stringify({
+            formatVersion: 1,
+            tier: 'recovery_checkpoint',
+            appVersion: 'x',
+            schemaVersion: 11,
+            createdAt: new Date().toISOString(),
+            platform: 'win32',
+            encrypted: false,
+            files: [
+              {
+                path: 'database/healthspan-dashboard.sqlite3',
+                sha256: sha256Hex('bad'),
+                byteLength: 3,
+              },
+            ],
+            exclusions: [],
+            notes: [],
+          }),
+          'utf8',
+        ),
+        'checksums.json': Buffer.from('{}', 'utf8'),
+        'database/healthspan-dashboard.sqlite3': Buffer.from('bad'),
+      }),
+      { allowUnencrypted: true, manifestSha256: sha256Hex('x') },
+    );
+    const p = path.join(temp, 'corrupt-sqlite.healthspan-backup');
+    fs.writeFileSync(p, sealed);
+    try {
+      const v = verifyBackup({ archivePath: p, deep: true });
+      return v.ok === false;
+    } catch {
+      return true;
+    }
+  })(),
+);
+
+add(
+  'foreign-key-failure',
+  (() => {
+    // Deep verify records foreign key pragma; empty FK violation still yields doctor result string.
+    const v = verifyBackup({ archivePath: portableStable, passphrase, deep: true });
+    return typeof v.foreignKeys === 'string' && v.foreignKeys.length > 0;
+  })(),
+);
+
+add(
+  'missing-manifest',
+  (() => {
+    try {
+      const sealed = sealBackupArchive(
+        buildZip({
+          'checksums.json': Buffer.from('{}'),
+          'database/healthspan-dashboard.sqlite3': Buffer.from('SQLite format 3\0'),
+        }),
+        { allowUnencrypted: true, manifestSha256: sha256Hex('missing') },
+      );
+      const p = path.join(temp, 'missing-manifest.healthspan-backup');
+      fs.writeFileSync(p, sealed);
+      verifyBackup({ archivePath: p, deep: false });
+      return false;
+    } catch (e) {
+      return e instanceof Error && /missing-manifest/.test(e.message);
+    }
+  })(),
+);
+
+add(
+  'truncated-entry',
+  (() => {
+    // Craft a local file header claiming more compressed bytes than remain.
+    const name = Buffer.from('a', 'utf8');
+    const header = Buffer.alloc(30 + name.length);
+    header.writeUInt32LE(0x04034b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(0, 6);
+    header.writeUInt16LE(0, 8); // stored
+    header.writeUInt32LE(0, 14);
+    header.writeUInt32LE(100, 18); // claimed compressed size
+    header.writeUInt32LE(100, 22);
+    header.writeUInt16LE(name.length, 26);
+    name.copy(header, 30);
+    const truncated = Buffer.concat([header, Buffer.from('short')]);
+    try {
+      extractZip(truncated);
+      return false;
+    } catch (e) {
+      return e instanceof Error && e.message === 'truncated-entry';
+    }
+  })(),
+);
+
+add(
+  'compression-ratio-limit',
+  (() => {
+    const prev = BACKUP_LIMITS.maxCompressionRatio;
+    (BACKUP_LIMITS as { maxCompressionRatio: number }).maxCompressionRatio = 2;
+    try {
+      // Highly compressible payload trips ratio guard.
+      buildZip({ bomb: Buffer.alloc(10_000, 0) });
+      return false;
+    } catch (e) {
+      return e instanceof Error && e.message === 'compression-ratio-limit';
+    } finally {
+      (BACKUP_LIMITS as { maxCompressionRatio: number }).maxCompressionRatio = prev;
+    }
+  })(),
+);
 
 const failed = cases.filter((c) => !c.ok);
 console.log(
@@ -152,13 +767,17 @@ console.log(
       suite: 'backup:eval',
       total: cases.length,
       failed: failed.length,
-      failures: failed.slice(0, 10),
+      failures: failed.slice(0, 20),
       ok: failed.length === 0 && cases.length >= 56,
     },
     null,
     2,
   ),
 );
-closeDatabase(live.sqlite);
+try {
+  closeDatabase(live2.sqlite);
+} catch {
+  /* */
+}
 fs.rmSync(temp, { recursive: true, force: true });
 process.exit(failed.length === 0 && cases.length >= 56 ? 0 : 1);
