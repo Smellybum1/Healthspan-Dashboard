@@ -42,10 +42,14 @@ export function openDatabase(options: OpenDatabaseOptions = {}): {
   ensureDataDirectories(paths.dataDir, paths.rawDir);
 
   const sqlite = new Database(paths.dbPath, { readonly: options.readonly ?? false });
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('foreign_keys = ON');
-  sqlite.pragma('synchronous = NORMAL');
-  sqlite.pragma('busy_timeout = 5000');
+  if (!options.readonly) {
+    sqlite.pragma('journal_mode = WAL');
+    sqlite.pragma('foreign_keys = ON');
+    sqlite.pragma('synchronous = NORMAL');
+    sqlite.pragma('busy_timeout = 5000');
+  } else {
+    sqlite.pragma('foreign_keys = ON');
+  }
 
   const db = drizzle(sqlite, { schema });
 

@@ -2,8 +2,53 @@ import type { ContentItem, DashboardPayload, EvidenceAssessment } from '@healths
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
+let csrfToken: string | null = null;
+let sessionPromise: Promise<void> | null = null;
+
+async function ensureSession() {
+  if (csrfToken) return;
+  if (!sessionPromise) {
+    sessionPromise = (async () => {
+      const res = await fetch(`${API_BASE}/api/session`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Session bootstrap failed: ${res.status}`);
+      const body = (await res.json()) as { csrfToken: string };
+      csrfToken = body.csrfToken;
+    })().finally(() => {
+      sessionPromise = null;
+    });
+  }
+  await sessionPromise;
+}
+
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const method = (init.method ?? 'GET').toUpperCase();
+  const headers = new Headers(init.headers);
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    await ensureSession();
+    if (csrfToken) headers.set('X-CSRF-Token', csrfToken);
+  }
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    method,
+    headers,
+    credentials: 'include',
+  });
+  if (res.status === 403 && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    csrfToken = null;
+    await ensureSession();
+    if (csrfToken) headers.set('X-CSRF-Token', csrfToken);
+    return fetch(`${API_BASE}${path}`, {
+      ...init,
+      method,
+      headers,
+      credentials: 'include',
+    });
+  }
+  return res;
+}
+
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await apiFetch(path);
   if (!res.ok) {
     throw new Error(`Request failed: ${res.status} ${path}`);
   }
@@ -11,7 +56,7 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await apiFetch(path, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),

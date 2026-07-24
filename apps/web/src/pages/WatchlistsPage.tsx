@@ -5,7 +5,7 @@ import { DEMO_SNAPSHOT_NOTICE } from '@healthspan/core';
 import { PageHeader, FollowButton } from '../components/Common';
 import { usePreferences } from '../state/PreferencesContext';
 import { useAsync } from '../hooks/useAsync';
-import { fetchItems, fetchMode } from '../lib/api';
+import { fetchItems, fetchMode, apiFetch } from '../lib/api';
 import { itemPath } from '../lib/nav';
 import { SkeletonBlock } from '@healthspan/ui';
 
@@ -26,14 +26,14 @@ export function WatchlistsPage() {
     if (mode !== 'live') return;
     void (async () => {
       try {
-        await fetch('/api/visits', {
+        await apiFetch('/api/visits', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: '{}',
         });
         const [wl, since] = await Promise.all([
-          fetch('/api/watchlists').then((r) => r.json()),
-          fetch('/api/since-last-visit').then((r) => r.json()),
+          apiFetch('/api/watchlists').then((r) => r.json()),
+          apiFetch('/api/since-last-visit').then((r) => r.json()),
         ]);
         setLiveLists((wl.items ?? []) as LiveWatchlist[]);
         setSinceItems(((since.items ?? []) as Array<{ id: string; title: string }>).slice(0, 12));

@@ -5,18 +5,20 @@ on:
     branches: ['**']
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  quality:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  quality-ubuntu:
+    name: Quality — Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
           version: 11.6.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm
@@ -26,12 +28,100 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  quality-windows:
+    name: Quality — Windows
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          version: 11.6.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e-ubuntu:
+    name: E2E — Ubuntu Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          version: 11.6.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @healthspan/web exec playwright install chromium --with-deps
+      - run: pnpm test:e2e
+        env:
+          HEALTHSPAN_CSRF_ENABLED: 'true'
+
+  security-supply-chain:
+    name: Security & supply chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          version: 11.6.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm security:audit
+      - run: pnpm security:signatures
+      - run: pnpm security:secrets
+      - run: pnpm security:sbom
+      - run: pnpm security:headers
+      - run: pnpm security:check
+      - run: pnpm test -- packages/operations/src/backup-security.test.ts
+
+  doctors-evaluations:
+    name: Doctors/evaluations
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          version: 11.6.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm db:doctor
       - run: pnpm personalisation:doctor
+      - run: pnpm personalisation:eval
+      - run: pnpm reading:eval
       - run: pnpm alerts:doctor
+      - run: pnpm alerts:eval
       - run: pnpm briefs:doctor
+      - run: pnpm briefs:eval
+      - run: pnpm export-import:eval
       - run: pnpm backup:doctor
+      - run: pnpm backup:eval
       - run: pnpm operations:doctor
-      - run: pnpm secrets:scan
-      - run: pnpm sbom
-        continue-on-error: true
+      - run: pnpm accessibility:audit
+      - run: pnpm performance:check
+      - run: pnpm intelligence:doctor
+      - run: pnpm interventions:doctor
+      - run: pnpm regulatory:doctor
+      - run: pnpm safety:doctor
+      - run: pnpm creators:doctor
+      - run: pnpm platform-policy:doctor

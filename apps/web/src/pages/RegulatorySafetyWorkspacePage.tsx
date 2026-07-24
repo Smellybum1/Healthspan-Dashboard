@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '../components/Common';
+import { apiFetch } from '../lib/api';
 
 type Summary = {
   productCount: number;
@@ -14,7 +15,7 @@ type Summary = {
 type Tab = 'products' | 'assertions' | 'history' | 'items' | 'signals' | 'patterns';
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(path);
+  const res = await apiFetch(path);
   if (!res.ok) throw new Error(await res.text());
   return (await res.json()) as T;
 }
@@ -69,7 +70,7 @@ export function RegulatorySafetyWorkspacePage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/${kind}/runs`, {
+      const res = await apiFetch(`/api/${kind}/runs`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: '{}',

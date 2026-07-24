@@ -11,8 +11,12 @@ const ok =
   !isLoopbackHost('evil.example') &&
   originAllowed('http://127.0.0.1:5173', '127.0.0.1:8787') &&
   !originAllowed('https://evil.example', '127.0.0.1:8787') &&
+  !originAllowed('null', '127.0.0.1:8787') &&
+  !originAllowed(undefined, '127.0.0.1:8787') &&
+  originAllowed(undefined, '127.0.0.1:8787', { allowMissingOrigin: true }) &&
   redactLogLine('authorization: Bearer secret-token-value').includes('[REDACTED]') &&
   Boolean(SecurityHeaders['X-Content-Type-Options']) &&
+  Boolean(SecurityHeaders['Content-Security-Policy']) &&
   DEFAULT_RETENTION_RULES.operational_events_days === 90;
 
 console.log(JSON.stringify({ suite: 'operations:doctor', ok }, null, 2));

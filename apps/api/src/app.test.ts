@@ -8,6 +8,7 @@ process.env.HEALTHSPAN_DATA_DIR = dataDir;
 process.env.HEALTHSPAN_DATA_MODE = 'demo';
 process.env.HEALTHSPAN_JOB_WORKER_ENABLED = 'false';
 process.env.HEALTHSPAN_SCHEDULER_ENABLED = 'false';
+process.env.HEALTHSPAN_CSRF_ENABLED = 'false';
 
 const { createApp } = await import('./app.js');
 

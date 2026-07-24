@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { PageHeader } from '../components/Common';
 import { useAsync } from '../hooks/useAsync';
 import { SkeletonBlock } from '@healthspan/ui';
-import { resolveReviewTask } from '../lib/api';
+import { resolveReviewTask, apiFetch } from '../lib/api';
 
 async function fetchReviewTasks() {
-  const res = await fetch('/api/review/tasks?status=open');
+  const res = await apiFetch('/api/review/tasks?status=open');
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
   return res.json() as Promise<{
     dataMode: string;
@@ -15,7 +15,7 @@ async function fetchReviewTasks() {
 }
 
 async function fetchCreatorReviewTasks() {
-  const res = await fetch('/api/creator-review/tasks');
+  const res = await apiFetch('/api/creator-review/tasks');
   if (!res.ok) throw new Error(`Creator review request failed: ${res.status}`);
   return res.json() as Promise<{
     dataMode: string;
@@ -59,7 +59,7 @@ export function ReviewQueuePage() {
     setBusyId(taskId);
     setMessage(null);
     try {
-      const res = await fetch(`/api/creator-review/tasks/${taskId}/resolve`, {
+      const res = await apiFetch(`/api/creator-review/tasks/${taskId}/resolve`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action }),

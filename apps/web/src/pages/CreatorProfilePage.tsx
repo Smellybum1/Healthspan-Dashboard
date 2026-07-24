@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { PageHeader } from '../components/Common';
 import { useAsync } from '../hooks/useAsync';
 import { SkeletonBlock } from '@healthspan/ui';
+import { apiFetch } from '../lib/api';
 
 const RIGHTS_OPTIONS = [
   { value: 'user_owned', label: 'User-owned transcript/notes' },
@@ -13,7 +14,7 @@ const RIGHTS_OPTIONS = [
 ] as const;
 
 async function fetchCreator(id: string) {
-  const res = await fetch(`/api/creators/${id}`);
+  const res = await apiFetch(`/api/creators/${id}`);
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
   return res.json() as Promise<Record<string, unknown>>;
 }
@@ -70,7 +71,7 @@ export function CreatorProfilePage() {
     setYtSyncBusy(true);
     setYtSyncMessage(null);
     try {
-      const res = await fetch(`/api/creators/${id}/youtube-sync`, {
+      const res = await apiFetch(`/api/creators/${id}/youtube-sync`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({}),
@@ -83,7 +84,7 @@ export function CreatorProfilePage() {
       if (jobId) {
         for (let i = 0; i < 40; i += 1) {
           await new Promise((r) => setTimeout(r, 400));
-          const jobRes = await fetch(`/api/jobs/${jobId}`);
+          const jobRes = await apiFetch(`/api/jobs/${jobId}`);
           const job = (await jobRes.json().catch(() => ({}))) as Record<string, unknown>;
           const status = String(job.status ?? '');
           if (status === 'succeeded' || status === 'partial') {
@@ -116,7 +117,7 @@ export function CreatorProfilePage() {
     setImportMessage(null);
     try {
       const contentBase64 = await fileToBase64(file);
-      const res = await fetch(`/api/creators/${id}/documents`, {
+      const res = await apiFetch(`/api/creators/${id}/documents`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -145,7 +146,7 @@ export function CreatorProfilePage() {
     setClaimBusy(true);
     setClaimMessage(null);
     try {
-      const res = await fetch(`/api/creators/${id}/claims`, {
+      const res = await apiFetch(`/api/creators/${id}/claims`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -331,9 +332,12 @@ export function CreatorProfilePage() {
                       className="text-xs underline text-[var(--muted)]"
                       onClick={() => {
                         void (async () => {
-                          const res = await fetch(`/api/creators/${id}/documents/${String(d.id)}`, {
-                            method: 'DELETE',
-                          });
+                          const res = await apiFetch(
+                            `/api/creators/${id}/documents/${String(d.id)}`,
+                            {
+                              method: 'DELETE',
+                            },
+                          );
                           const body = (await res.json().catch(() => ({}))) as Record<
                             string,
                             unknown

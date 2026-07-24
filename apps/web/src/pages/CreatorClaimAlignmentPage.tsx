@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { PageHeader } from '../components/Common';
 import { useAsync } from '../hooks/useAsync';
 import { SkeletonBlock } from '@healthspan/ui';
+import { apiFetch } from '../lib/api';
 
 export function CreatorClaimAlignmentPage() {
   const { id = '' } = useParams();
@@ -76,8 +77,8 @@ export function CreatorClaimAlignmentPage() {
               type="button"
               className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs"
               onClick={() => {
-                void fetch(`/api/creator-claims/${id}/evidence/link`, { method: 'POST' }).then(() =>
-                  evidence.reload(),
+                void apiFetch(`/api/creator-claims/${id}/evidence/link`, { method: 'POST' }).then(
+                  () => evidence.reload(),
                 );
               }}
             >

@@ -1,6 +1,6 @@
 import { PageHeader } from '../components/Common';
 import { useAsync } from '../hooks/useAsync';
-import { fetchIngestionRuns, fetchSources, runIngestion, fetchJob } from '../lib/api';
+import { fetchIngestionRuns, fetchSources, runIngestion, fetchJob, apiFetch } from '../lib/api';
 import { formatWhen } from '../lib/nav';
 import { useState } from 'react';
 import { SkeletonBlock } from '@healthspan/ui';
@@ -162,7 +162,7 @@ export function SourceHealthPage() {
 
 function PlatformPolicyHealth() {
   const policy = useAsync(async () => {
-    const res = await fetch('/api/platform-policy');
+    const res = await apiFetch('/api/platform-policy');
     if (!res.ok) throw new Error(`platform-policy ${res.status}`);
     return res.json() as Promise<Record<string, unknown>>;
   }, []);
@@ -185,7 +185,7 @@ function PlatformPolicyHealth() {
           type="button"
           className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
           onClick={() => {
-            void fetch('/api/platform-policy/audit', { method: 'POST' }).then(() =>
+            void apiFetch('/api/platform-policy/audit', { method: 'POST' }).then(() =>
               policy.reload(),
             );
           }}

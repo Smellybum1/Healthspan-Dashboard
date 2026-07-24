@@ -7,6 +7,10 @@ import {
   SecurityHeaders,
   isLoopbackHost,
   originAllowed,
+  fetchMetadataAllowed,
+  createIntegritySession,
+  getIntegritySession,
+  validateCsrf,
 } from '@healthspan/operations';
 import {
   createSeedRepository,
@@ -76,9 +80,11 @@ import {
 } from './personalization-service.js';
 import {
   createBackup,
+  listBackups,
   recordRestoreAttempt,
   restorePreflight,
   storageUsage,
+  verifyBackup,
 } from './backup-service.js';
 import {
   listReviewTasks,
@@ -358,6 +364,19 @@ export function createApp() {
 
   const app = new Hono();
   const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+  const csrfEnabled = process.env.HEALTHSPAN_CSRF_ENABLED !== 'false';
+  const SESSION_COOKIE = 'healthspan_ri';
+
+  function parseCookie(header: string | undefined): Record<string, string> {
+    const out: Record<string, string> = {};
+    if (!header) return out;
+    for (const part of header.split(';')) {
+      const [k, ...rest] = part.trim().split('=');
+      if (!k) continue;
+      out[k] = decodeURIComponent(rest.join('=') ?? '');
+    }
+    return out;
+  }
 
   app.use('*', async (c, next) => {
     for (const [k, v] of Object.entries(SecurityHeaders)) {
@@ -371,19 +390,70 @@ export function createApp() {
     ) {
       return c.json({ error: 'Host not allowed' }, 403);
     }
-    const origin = c.req.header('origin');
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.req.method) && !originAllowed(origin, host)) {
-      return c.json({ error: 'Origin not allowed' }, 403);
+    if (
+      process.env.HEALTHSPAN_ALLOW_REMOTE_BIND === 'true' &&
+      host &&
+      !isLoopbackHost(host.split(':')[0])
+    ) {
+      const token = c.req.header('x-healthspan-remote-token');
+      const expected = process.env.HEALTHSPAN_REMOTE_ACCESS_TOKEN ?? '';
+      if (!expected || expected.length < 32 || token !== expected) {
+        return c.json({ error: 'Remote access token required' }, 403);
+      }
     }
-    const ip = host ?? 'local';
-    const bucket = rateBuckets.get(ip) ?? { count: 0, resetAt: Date.now() + 60_000 };
+
+    const method = c.req.method;
+    const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+    const pathName = new URL(c.req.url).pathname;
+    const isSessionBootstrap = pathName === '/api/session';
+    const origin = c.req.header('origin');
+
+    if (isMutation && !isSessionBootstrap) {
+      const allowMissing = !csrfEnabled;
+      if (!originAllowed(origin, host, { allowMissingOrigin: allowMissing })) {
+        return c.json({ error: 'Origin not allowed' }, 403);
+      }
+      if (
+        !fetchMetadataAllowed({
+          secFetchSite: c.req.header('sec-fetch-site'),
+          secFetchMode: c.req.header('sec-fetch-mode'),
+          secFetchDest: c.req.header('sec-fetch-dest'),
+        })
+      ) {
+        return c.json({ error: 'Fetch metadata rejected' }, 403);
+      }
+      if (csrfEnabled) {
+        const cookies = parseCookie(c.req.header('cookie'));
+        const session = getIntegritySession(cookies[SESSION_COOKIE]);
+        const csrf = c.req.header('x-csrf-token') ?? c.req.header('x-healthspan-csrf');
+        if (!validateCsrf(session, csrf ?? undefined)) {
+          return c.json({ error: 'CSRF validation failed' }, 403);
+        }
+      }
+    }
+
+    const kind = isSessionBootstrap
+      ? 'session'
+      : isMutation
+        ? 'mutation'
+        : pathName.includes('search')
+          ? 'heavy'
+          : 'read';
+    const bucketKey = `${kind}:${host ?? 'local'}`;
+    const limits: Record<string, number> = {
+      read: Number(process.env.HEALTHSPAN_RATE_READ_PER_MIN ?? 600),
+      heavy: Number(process.env.HEALTHSPAN_RATE_HEAVY_PER_MIN ?? 120),
+      mutation: Number(process.env.HEALTHSPAN_RATE_MUTATION_PER_MIN ?? 120),
+      session: Number(process.env.HEALTHSPAN_RATE_SESSION_PER_MIN ?? 30),
+    };
+    const bucket = rateBuckets.get(bucketKey) ?? { count: 0, resetAt: Date.now() + 60_000 };
     if (Date.now() > bucket.resetAt) {
       bucket.count = 0;
       bucket.resetAt = Date.now() + 60_000;
     }
     bucket.count += 1;
-    rateBuckets.set(ip, bucket);
-    if (bucket.count > Number(process.env.HEALTHSPAN_RATE_LIMIT_PER_MIN ?? 600)) {
+    rateBuckets.set(bucketKey, bucket);
+    if (bucket.count > (limits[kind] ?? 600)) {
       return c.json({ error: 'Rate limit exceeded' }, 429);
     }
     await next();
@@ -398,10 +468,31 @@ export function createApp() {
         'http://127.0.0.1:8787',
         'http://localhost:8787',
       ],
+      credentials: true,
+      allowHeaders: [
+        'Content-Type',
+        'X-CSRF-Token',
+        'X-Healthspan-CSRF',
+        'X-Healthspan-Remote-Token',
+      ],
     }),
   );
 
   ensureLocalOwnerProfile(live.db);
+
+  app.get('/api/session', (c) => {
+    const session = createIntegritySession();
+    const secure = c.req.url.startsWith('https:');
+    c.header(
+      'Set-Cookie',
+      `${SESSION_COOKIE}=${session.id}; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200${secure ? '; Secure' : ''}`,
+    );
+    return c.json({
+      csrfToken: session.csrfToken,
+      expiresAt: new Date(session.expiresAt).toISOString(),
+      cookie: SESSION_COOKIE,
+    });
+  });
 
   app.get('/health', (c) => {
     const doctor = databaseDoctor(live.sqlite);
@@ -2310,21 +2401,55 @@ export function createApp() {
     return c.json({ dataMode: 'live', ...result });
   });
 
-  app.post('/api/ops/backup', (c) => {
+  app.post('/api/ops/backup', async (c) => {
     assertAdminMutationAllowed();
-    const result = createBackup({
+    const body = (await c.req
+      .json<{
+        tier?: 'recovery_checkpoint' | 'portable_core' | 'portable_full';
+        passphrase?: string;
+      }>()
+      .catch(() => ({}))) as {
+      tier?: 'recovery_checkpoint' | 'portable_core' | 'portable_full';
+      passphrase?: string;
+    };
+    const tier = body.tier ?? 'recovery_checkpoint';
+    const result = await createBackup({
       db: live.db,
+      sqlite: live.sqlite,
       dataDir: live.paths.dataDir,
       dbPath: live.paths.dbPath,
+      tier,
+      passphrase: body.passphrase,
+      allowUnencrypted: tier === 'recovery_checkpoint' || !body.passphrase,
     });
     return c.json({
       dataMode: 'live',
       id: result.id,
       byteLength: result.byteLength,
       manifest: result.manifest,
-      // Do not return absolute paths to the browser.
-      archiveName: result.archivePath.split(/[/\\]/).pop(),
+      archiveName: result.archiveName,
     });
+  });
+
+  app.get('/api/ops/backups', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [] });
+    return c.json({ dataMode: 'live', items: listBackups(live.paths.dataDir) });
+  });
+
+  app.post('/api/ops/backup/verify', async (c) => {
+    assertAdminMutationAllowed();
+    const body = await c.req.json<{ archiveName?: string; passphrase?: string }>();
+    if (!body.archiveName) return c.json({ error: 'archiveName required' }, 400);
+    const archivePath = `${live.paths.dataDir}/backups/${body.archiveName}`.replace(/\\/g, '/');
+    try {
+      const verified = verifyBackup({ archivePath, passphrase: body.passphrase });
+      return c.json({
+        dataMode: 'live',
+        verified: { ok: verified.ok, mismatches: verified.mismatches },
+      });
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'verify failed' }, 400);
+    }
   });
 
   app.post('/api/ops/restore/preflight', async (c) => {
