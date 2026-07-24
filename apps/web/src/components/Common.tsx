@@ -98,8 +98,10 @@ export function FollowButton({
 }) {
   const { isFollowed, toggleFollowId } = usePreferences();
   const modeState = useAsync(() => fetchMode(), []);
-  const mode = modeState.data?.dataMode ?? 'live';
+  // Never assume Live while mode is unknown — E2E/demo would POST /api/follow and no-op.
+  const mode = modeState.data?.dataMode;
   const [liveFollowing, setLiveFollowing] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (mode !== 'live') return;
@@ -109,13 +111,19 @@ export function FollowButton({
       .catch(() => setLiveFollowing(false));
   }, [mode, targetType, id]);
 
+  const modeReady = mode === 'demo' || mode === 'live';
+  const liveStatusReady = mode !== 'live' || liveFollowing !== null;
+  const ready = modeReady && liveStatusReady && !busy;
   const followed = mode === 'live' ? Boolean(liveFollowing) : isFollowed(id);
 
   return (
     <button
       type="button"
+      disabled={!ready}
       onClick={() => {
+        if (!modeReady || busy) return;
         if (mode === 'live') {
+          setBusy(true);
           void m6Api
             .follow({
               targetType,
@@ -124,15 +132,21 @@ export function FollowButton({
               unfollow: followed,
             })
             .then((r) => setLiveFollowing(Boolean((r as { following?: boolean }).following)))
-            .catch(() => undefined);
+            .catch(() => undefined)
+            .finally(() => setBusy(false));
           return;
         }
         toggleFollowId(id);
       }}
-      className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
+      className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-60"
       aria-pressed={followed}
+      aria-busy={!ready}
     >
-      {followed ? `Unfollow${label ? ` ${label}` : ''}` : `Follow${label ? ` ${label}` : ''}`}
+      {!modeReady
+        ? 'Follow…'
+        : followed
+          ? `Unfollow${label ? ` ${label}` : ''}`
+          : `Follow${label ? ` ${label}` : ''}`}
     </button>
   );
 }

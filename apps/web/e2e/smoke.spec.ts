@@ -40,10 +40,12 @@ test.describe('Milestone 1 smoke', () => {
     await page.goto('/peptides/pep-bpc157');
     const follow = page.getByRole('button', { name: /Follow|Unfollow/i });
     await expect(follow).toBeVisible();
+    await expect(follow).toBeEnabled();
     const label = await follow.textContent();
     if (label?.includes('Follow') && !label.includes('Unfollow')) {
       await follow.click();
     }
+    await expect(page.getByRole('button', { name: /Unfollow/i })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('button', { name: /Unfollow/i })).toBeVisible();
     await page.goto('/watchlists');
