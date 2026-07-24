@@ -27,10 +27,14 @@ import {
   ALIGNMENT_RULES_VERSION,
   CLAIM_EXTRACT_VERSION,
   extractCreatorClaimsFromText,
+  classifyCreatorClaimTaxonomy,
+  redactActionableDosing,
   normalizeCreatorName,
   parseTranscriptDocument,
   type RightsBasis,
 } from '@healthspan/creators';
+import { getCreatorRecurrence } from './creator-recurrence-service.js';
+import { listCreatorRoles, queueAmbiguousIdentityIfNeeded } from './creator-identity-service.js';
 
 const BOOTSTRAP = [
   {
@@ -288,14 +292,19 @@ export function importCreatorDocument(
       const segIdx = matchingIdx >= 0 ? matchingIdx : 0;
       const matchingSeg = parsed.segments[segIdx];
       const matchingSegId = segmentIds[segIdx] ?? null;
+      const taxonomy = classifyCreatorClaimTaxonomy(draft.claimText, draft.assertionRole);
+      const claimText = redactActionableDosing(draft.claimText);
       db.insert(creatorClaims)
         .values({
           id: claimId,
           creatorId: opts.creatorId,
           documentId: docId,
           claimFingerprint: fingerprint,
-          claimText: draft.claimText,
+          claimText,
           assertionRole: draft.assertionRole,
+          claimKind: taxonomy.claimKind,
+          direction: taxonomy.direction,
+          certaintyLanguage: taxonomy.certaintyLanguage,
           excerpt: draft.excerpt,
           fieldPath: draft.fieldPath,
           confidence: draft.confidence,
@@ -310,7 +319,7 @@ export function importCreatorDocument(
         .run();
       const alignment = persistClaimAlignment(db, {
         claimId,
-        claimText: draft.claimText,
+        claimText,
         assertionRole: draft.assertionRole,
         confidence: draft.confidence,
         at: now,
@@ -342,7 +351,7 @@ export function importCreatorDocument(
             id: randomUUID(),
             creatorId: opts.creatorId,
             creatorClaimId: claimId,
-            disclosureText: draft.claimText,
+            disclosureText: claimText,
             source: 'document',
             createdAt: now,
           })
@@ -474,6 +483,9 @@ export function listCreatorClaims(db: HealthspanDb, opts?: { creatorId?: string;
     creatorId: r.creatorId,
     claimText: r.claimText,
     assertionRole: r.assertionRole,
+    claimKind: r.claimKind,
+    direction: r.direction,
+    certaintyLanguage: r.certaintyLanguage,
     confidence: r.confidence,
     reviewStatus: r.reviewStatus ?? 'unreviewed',
     recurrenceKey: r.recurrenceKey,
@@ -541,20 +553,23 @@ export function getCreatorDetail(db: HealthspanDb, id: string) {
         note: 'YouTube API metadata is operational context only — not claim evidence',
       };
     });
-  const recurrence = Object.entries(
-    claims.reduce<Record<string, number>>((acc, c) => {
-      acc[c.recurrenceKey] = (acc[c.recurrenceKey] ?? 0) + 1;
-      return acc;
-    }, {}),
-  )
-    .filter(([, count]) => count > 1)
-    .map(([key, count]) => ({ recurrenceKey: key, count }));
+  const recurrence = getCreatorRecurrence(db, id).groups.map((g) => ({
+    recurrenceKey: g.recurrenceKey,
+    reviewedClaimCount: g.reviewedClaimCount,
+    distinctMonitoredSourceCount: g.distinctMonitoredSourceCount,
+    formulaVersion: g.formulaVersion,
+    firstObservedAt: g.firstObservedAt ? new Date(g.firstObservedAt).toISOString() : null,
+    firstObservedScope: g.firstObservedScope,
+    notPopularity: true as const,
+  }));
 
   return {
     id: creator.id,
     preferredName: creator.preferredName,
     creatorKind: creator.creatorKind,
     identityConfidence: creator.identityConfidence,
+    identityRevision: creator.identityRevision,
+    currentProfileSnapshotId: creator.currentProfileSnapshotId,
     neutralDescription: creator.neutralDescription,
     lifecycleState: creator.lifecycleState,
     accounts,
@@ -567,6 +582,7 @@ export function getCreatorDetail(db: HealthspanDb, id: string) {
     })),
     documents,
     youtubeVideos,
+    roles: listCreatorRoles(db, id),
     recurrence,
     prohibitedScores: [
       'trust_score',
@@ -633,6 +649,11 @@ export function addYoutubeAccount(
       createdAt: Date.now(),
     })
     .run();
+  queueAmbiguousIdentityIfNeeded(db, {
+    accountId: id,
+    handle: parsed.handle,
+    creatorId: opts.creatorId,
+  });
   return { ok: true as const, accountId: id, created: true };
 }
 
@@ -666,6 +687,11 @@ export function addXAccount(
       createdAt: Date.now(),
     })
     .run();
+  queueAmbiguousIdentityIfNeeded(db, {
+    accountId: id,
+    handle: `@${handle}`,
+    creatorId: opts.creatorId,
+  });
   return {
     ok: true as const,
     accountId: id,
@@ -687,7 +713,7 @@ export function createManualCreatorClaim(
   bootstrapCreatorCatalog(db);
   const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, opts.creatorId)).all()[0];
   if (!creator) return { ok: false as const, status: 404 as const, error: 'Creator not found' };
-  const text = opts.claimText.trim();
+  const text = redactActionableDosing(opts.claimText.trim());
   if (text.length < 12 || text.length > 500) {
     return { ok: false as const, status: 400 as const, error: 'claimText must be 12–500 characters' };
   }
@@ -700,6 +726,7 @@ export function createManualCreatorClaim(
       | 'correction'
       | 'disclosure'
       | undefined) ?? 'assertion';
+  const taxonomy = classifyCreatorClaimTaxonomy(text, role);
   const id = randomUUID();
   const now = Date.now();
   db.insert(creatorClaims)
@@ -708,6 +735,9 @@ export function createManualCreatorClaim(
       creatorId: opts.creatorId,
       claimText: text,
       assertionRole: role,
+      claimKind: taxonomy.claimKind,
+      direction: taxonomy.direction,
+      certaintyLanguage: taxonomy.certaintyLanguage,
       excerpt: text.slice(0, 240),
       fieldPath: `manual:${opts.sourceUrl ?? 'user'}:${opts.timestampOrPostId ?? 'none'}`,
       confidence: 'medium',

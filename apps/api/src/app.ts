@@ -97,6 +97,24 @@ import {
   getXComplianceStatus,
   runXComplianceReconciliation,
 } from './x-sync-service.js';
+import {
+  addCreatorRole,
+  addCommercialStatement,
+  listIdentityTasks,
+  resolveIdentityTask,
+  rebuildCreatorProfileSnapshot,
+  redactProfileSnapshot,
+} from './creator-identity-service.js';
+import { rebuildClaimRecurrence, listRecurrenceSnapshots } from './creator-recurrence-service.js';
+import {
+  linkCreatorClaimEvidence,
+  listClaimEvidenceLinks,
+} from './creator-evidence-service.js';
+import {
+  runPlatformPolicyAudit,
+  getPlatformSourceHealth,
+} from './platform-policy-service.js';
+import { creatorAiPolicyNotes, gateCreatorAiSegment, isCreatorAiEnabled } from '@healthspan/creators';
 import { fdaBulkSourceSchedules, scheduleForSource } from './source-schedule.js';
 
 type DataMode = 'demo' | 'live';
@@ -1413,24 +1431,159 @@ export function createApp() {
   });
 
   app.get('/api/platform-policy', (c) => {
-    ensureXBudgetRow(live.db);
-    applyYoutubeRetentionHold(live.db);
     return c.json({
       dataMode: currentMode(),
-      youtube: {
-        metadataIsClaimEvidence: false,
-        unofficialCaptionsAllowed: false,
-        mediaDownloadAllowed: false,
-        quota: getYoutubeQuotaLedger(live.db),
-      },
-      x: {
-        enabledByDefault: false,
-        externalAiAllowed: false,
-        automaticRecharge: false,
-        budget: getXBudgetStatus(live.db),
-        compliance: getXComplianceStatus(live.db),
+      ...getPlatformSourceHealth(live.db),
+      creatorAi: {
+        enabled: isCreatorAiEnabled(),
+        notes: creatorAiPolicyNotes(),
+        sampleGate: gateCreatorAiSegment({
+          rightsEligible: true,
+          sourceKind: 'user_document_segment',
+          segmentCharCount: 100,
+        }),
       },
     });
+  });
+
+  app.post('/api/platform-policy/audit', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const result = runPlatformPolicyAudit(live.db);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.get('/api/creator-identity/tasks', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', tasks: [] });
+    return c.json({ dataMode: 'live', tasks: listIdentityTasks(live.db) });
+  });
+
+  app.post('/api/creator-identity/tasks/:id/resolve', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      decision?: string;
+      expectedRevision?: number;
+      notes?: string;
+    };
+    const allowed = ['accept_link', 'reject', 'keep_separate', 'create_entity'] as const;
+    if (!body.decision || !allowed.includes(body.decision as (typeof allowed)[number])) {
+      return c.json({ error: 'decision required' }, 400);
+    }
+    const result = resolveIdentityTask(live.db, {
+      taskId: c.req.param('id'),
+      decision: body.decision as (typeof allowed)[number],
+      expectedRevision: body.expectedRevision,
+      notes: body.notes,
+    });
+    if (!result.ok) return c.json({ error: result.error, currentRevision: (result as { currentRevision?: number }).currentRevision }, result.status);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.post('/api/creators/:id/roles', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      role?: string;
+      provenanceState?: string;
+      expectedRevision?: number;
+    };
+    if (!body.role) return c.json({ error: 'role required' }, 400);
+    const result = addCreatorRole(live.db, {
+      creatorId: c.req.param('id'),
+      role: body.role,
+      provenanceState: body.provenanceState,
+      expectedRevision: body.expectedRevision,
+    });
+    if (!result.ok) return c.json({ error: result.error, currentRevision: (result as { currentRevision?: number }).currentRevision }, result.status);
+    rebuildCreatorProfileSnapshot(live.db, c.req.param('id'));
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.post('/api/creators/:id/commercial-statements', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      subject?: string;
+      text?: string;
+      sourceUrl?: string;
+    };
+    if (!body.subject || !body.text) return c.json({ error: 'subject and text required' }, 400);
+    const result = addCommercialStatement(live.db, {
+      creatorId: c.req.param('id'),
+      subject: body.subject,
+      text: body.text,
+      sourceUrl: body.sourceUrl,
+    });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.post('/api/creators/:id/profile/rebuild', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const snap = rebuildCreatorProfileSnapshot(live.db, c.req.param('id'));
+    if (!snap) return c.json({ error: 'Not found' }, 404);
+    return c.json({ accepted: true, ...snap });
+  });
+
+  app.post('/api/creator-profile-snapshots/:id/redact', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const result = redactProfileSnapshot(live.db, c.req.param('id'));
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.get('/api/creators/:id/recurrence', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', groups: [] });
+    return c.json({ dataMode: 'live', ...rebuildClaimRecurrence(live.db, { creatorId: c.req.param('id') }) });
+  });
+
+  app.get('/api/claim-recurrence', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', snapshots: [] });
+    return c.json({ dataMode: 'live', snapshots: listRecurrenceSnapshots(live.db) });
+  });
+
+  app.get('/api/creator-claims/:id/evidence', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', links: [] });
+    return c.json({ dataMode: 'live', links: listClaimEvidenceLinks(live.db, c.req.param('id')) });
+  });
+
+  app.post('/api/creator-claims/:id/evidence/link', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const result = linkCreatorClaimEvidence(live.db, c.req.param('id'));
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
   });
 
   app.get('/api/interventions/:id/dossier', (c) => {

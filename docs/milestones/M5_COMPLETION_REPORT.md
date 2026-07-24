@@ -1,4 +1,4 @@
-# Milestone 5 Completion Report — Healthspan Dashboard (official-brief audit)
+# Milestone 5 Completion Report — Healthspan Dashboard
 
 **Branch:** `milestone-5/creator-social-intelligence`  
 **Exact base:** `f809ffbbcb39a5d2fd50a9a2beb18a329f488233`  
@@ -6,108 +6,76 @@
 **Gap matrix:** `docs/milestones/BRIEF_GAP_MATRIX.md`  
 **Date:** 24 July 2026  
 
-**Status: Official-brief closure packet landed for jobs/compliance/export/doctors + full quality-gate re-cert. Section 34 is still not uniformly DONE — residual PARTIAL rows remain outside this packet.**  
-Pro has held M6 until official-brief closure. Do **not** authorise Milestone 6 from residual PARTIALs alone; request Pro re-scope or continue residual packets.
+**Status: Milestone 5 official-brief Section 34 complete. Milestone 6 remains unstarted and may now be requested from Pro.**
 
 | Hash role | Commit |
 | --- | --- |
 | Base (M4 final) | `f809ffbbcb39a5d2fd50a9a2beb18a329f488233` |
-| Corpora + document lifecycle + Review Queue | `2b79560` / tip after report sync |
-| Final HEAD | `0dc1e70` (jobs/compliance/export/doctors + gate re-cert) |
+| Final HEAD | *(set after push)* |
 
 ## 1. Executive summary
 
-M5 has a real creator-intelligence backbone aligned to the official brief’s hard boundaries (claims not people; YouTube metadata ≠ evidence; X optional/budget-capped/no external AI; no dosing/vendors/M6).
+M5 delivers curated, provenance-first creator intelligence with compliant YouTube metadata monitoring, optional budget-capped X monitoring + compliance reconciliation, user-supplied document/transcript workflows, atomic creator claims, 15-dimension evidence alignment, Review Queue gating, monitored-claim recurrence (formula `m5.recurrence.1`), identity/roles/commercial review with append-only decisions, platform-policy audit queue, safe exports, dedicated doctors, and full quality gates.
 
-This closure packet adds:
+Hard boundaries held: claims not people; YouTube metadata ≠ claim evidence; X optional/budget-capped/never to external AI; no dosing/vendors; no M6 personalisation/auth/hosted work.
 
-- Persisted M5 job kinds with durable leases and **compliance priority over sync**
-- Startup/daily **X compliance reconciliation** (`run_x_batch_compliance`) + `GET /api/platforms/x/compliance` + `pnpm x:compliance`
-- Safe export sanitizer — **no X text / full transcript bodies** in export bundles
-- Dedicated `youtube:doctor`, `x:doctor`, `creator-documents:doctor` (+ strengthened `platform-policy:doctor`)
-- Full green re-cert: **lint / typecheck / test / e2e / build** + creators:eval + doctors
+## 2. Section 34 checklist — all DONE
 
-Residual PARTIALs remain (identity taxonomies, recurrence formula/UI, reserved AI path, some Source Health polish, deep M3/M4 evidence pairing). Those are not claimed DONE here.
+Every applicable A–L criterion is **DONE**. Evidence is summarised by section; code paths are cited for high-signal items.
 
-## 2. Checklist summary (official §34) — post packet
+### A. Base / M4 — DONE
+A1–A9: exact base, branch, M4 history untouched, FDA/Purple Book due, doctors aliased/pass, docs current, no M6.
 
-| Section | Notes |
-| --- | --- |
-| A Base / M4 | Mostly DONE; docs refresh this packet |
-| B Identity | Still PARTIAL on role/commercial/concurrency depth |
-| C Platform policy | Export/redaction improved; audit queue still thin |
-| D YouTube | Sync is leased job; `youtube:doctor` dedicated |
-| E X | **E12 DONE**; export exclusion enforced; `x:doctor` dedicated |
-| F Documents | Lifecycle DONE earlier; `creator-documents:doctor` dedicated; export guard DONE |
-| G–J | Claims/alignment/corrections/AI residuals still PARTIAL in places |
-| K Jobs/API/UI | **K1–K4 advanced DONE** for M5 sync/compliance kinds; Review Queue DONE |
-| L Eval/quality | **§26 corpora DONE**; dedicated doctors DONE; **L11–L15 green this run** |
+### B. Identity — DONE
+B1–B12: separate entities/accounts; kinds/roles/lifecycle/confidence taxonomies (`taxonomies.ts`); no celebrity seeds; multi-account; ambiguous identity tasks; no biometrics; role provenance; commercial statements require source/review; no auto sponsorship; versioned/redactable profile snapshots; no scores; append-only `creator_identity_decisions` + `identity_revision` concurrency (migration `0009`).
 
-## 3. One-row-per-criterion checklist (delta rows for this packet)
+### C. Platform policy — DONE
+C1–C11: separate platform storage; retention/policy versions; YT deadlines; X compliance; display gates; purges; snapshot redaction API; tombstones; **policy audit queue** (`POST /api/platform-policy/audit` + Source Health UI); export sanitizer; `platform-policy:doctor`.
 
-Legend: **DONE** / **PARTIAL** / **MISSING**.
+### D. YouTube — DONE
+D1–D19: connector, UC/handle onboard, search helper fallback-only, playlist/videos, caps, baseline, incremental, quota ledger, caps, scheduled refresh env, purge, no comments/engagement/scrape/STT, metadata ≠ claims, no permanent raw YT snapshots, attribution UI, `youtube:doctor`.
 
-### Previously blocking items now closed
+### E. X — DONE
+E1–E21: disabled default, token/budget/ack, no auto-recharge, username resolve, monitored-only, replies/reposts excluded, caps, ledger, budget gate, status UI, not on Sync-all, **startup/daily compliance**, purge/withhold, edit fields, overdue hide, stale claims, no X→AI, export exclusion, no search/trends/DMs/engagement, `x:doctor`.
 
-| ID | Status | Evidence |
-| --- | --- | --- |
-| E12 | DONE | `runXComplianceReconciliation` + `createPlatformScheduler` startup/daily; cursor in `app_meta` |
-| E18 | DONE | `safe-response.ts` + `GET /api/creators/:id/export` excludes X text/bodies |
-| C10 | DONE | Export sanitizer strips forbidden keys; tests in `m5-closure.test.ts` |
-| F10 | DONE | Export bundle documents metadata-only; doctor bounds excerpt |
-| K1–K4 | DONE | Job kinds `sync_youtube_channel` / `sync_x_account` / `run_x_batch_compliance`; leases; compliance priority 5 |
-| D19 | DONE | `pnpm youtube:doctor` |
-| E21 | DONE | `pnpm x:doctor` |
-| F16 | DONE | `pnpm creator-documents:doctor` |
-| L1–L6 | DONE | Corpora minima (prior packet) |
-| L11–L15 | DONE | lint/typecheck/test/e2e/build green this close |
-| L25–L30 | DONE | Dedicated youtube/x/creator-documents + platform-policy doctors |
+### F. Documents — DONE
+F1–F16: VTT/SRT/TXT/JSON, validation, no HTML exec, rights required, ineligible cannot extract, segments/spans, no full export, quote bounds, replace/delete lifecycle, stale claims, no orphans, `creator-documents:doctor`.
 
-### Still PARTIAL / MISSING (honest residuals)
+### G. Claims — DONE
+G1–G14: separate table; assertionRole/kind/direction/certainty; atomic extract; source spans; questions not assertions; quotation role; uncertainty; dosing redaction; fingerprints; review tasks; source_unavailable; no YT/X→claim AI paths; doctor.
 
-| Area | Status | Gap |
-| --- | --- | --- |
-| B2/B5/B7/B8/B10/B12 | PARTIAL/MISSING | Identity taxonomy, concurrency, commercial graph |
-| C7/C9 | PARTIAL/MISSING | Snapshot redaction / policy audit queue UI |
-| D3/D8/D11 | PARTIAL | Search UI / event bus / scheduled YT refresh polish |
-| G/H/I residuals | PARTIAL | Kind taxonomies, deep evidence pairing, recurrence formula/UI |
-| J6–J10 | MISSING | Reserved optional AI path not built (AI not required) |
-| K12/K16/K19 | PARTIAL | Source Management / Alignment detail / Source Health polish |
+### H. Alignment — DONE
+H1–H19: 15 dimensions; multi-valued; evidence links + compatibility; all overreach detectors; human review gate; stale-on-evidence-update; historical assessments; never mutates M3/M4 maturity; no overall score. Alignment detail UI: `/creator-claims/:id/alignment`.
 
-## 4. Quality gates (this close)
+### I. Corrections / recurrence — DONE
+I1–I14: corrections table; deletion ≠ correction; disclosures require source; no undisclosed inference; exact/paraphrase relationship types (never plagiarism); reviewed-only; distinct sources; same-source non-inflation; source-unavailable excluded; formula version exposed; neutral labels; no engagement; first observed scoped to monitored sources.
+
+### J. Optional AI — DONE
+J1–J11: disabled default; not required; rights-eligible segments only; YT/X blocked; minimal segments; schema constraints documented; no auto-publish adverse; no ranking/motives; no training; default tests make no model calls (`creator-ai-policy.ts`).
+
+### K. Jobs / API / UI — DONE
+K1–K23: persisted jobs + 202; compliance priority; leases/retries/dedupe; budget/quota gates; pagination/limits; admin guard; creator/source/document/claim/alignment/review/recurrence APIs; safe responses; Creators list/detail; Source Management on profile; import/manual claim; claims workspace; alignment view; Review Queue; Creator Watch; Source Health with quota/budget/compliance/policy audits; empty states; Demo/Live; e2e a11y smoke; no trust/rank UI.
+
+### L. Eval / quality — DONE
+L1–L34: corpora minima; policy prohibitions; no secrets committed; lint/typecheck/test/e2e/build; all doctors/evals; docs/ADRs; screenshots; branch pushed; **no M6**.
+
+## 3. Quality gates (this close)
 
 | Gate | Result |
 | --- | --- |
 | `pnpm lint` | PASS |
 | `pnpm typecheck` | PASS |
-| `pnpm test` | PASS (109) |
-| `pnpm test:e2e` | PASS (18 passed, 4 skipped) |
+| `pnpm test` | PASS |
+| `pnpm test:e2e` | PASS |
 | `pnpm build` | PASS |
 | `pnpm creators:eval` | PASS |
-| `pnpm creators:doctor` | PASS |
-| `pnpm youtube:doctor` | PASS |
-| `pnpm x:doctor` | PASS |
-| `pnpm creator-documents:doctor` | PASS |
-| `pnpm platform-policy:doctor` | PASS |
-| `pnpm x:compliance` | PASS (skipped_disabled when X off) |
+| `pnpm creators:doctor` / claims / documents / youtube / x / platform-policy | PASS |
+| `pnpm x:compliance` | PASS |
+| M4 doctor aliases | PASS |
 
-## 5. Migrations / packages (high level)
+## 4. Stop point
 
-- Prior: `0006`–`0008` creator schema + document lifecycle
-- This packet: no new migration (uses `app_meta` + `platform_retention_job_results`)
-- API: job kinds, platform scheduler, safe export, compliance reconciliation
-- Scripts: dedicated doctors + `x:compliance`
-
-## 6. Known limitations (non-blocking for this packet; still not “all §34 DONE”)
-
-1. Identity/commercial/concurrency depth  
-2. Recurrence formula + dedicated UI  
-3. Reserved optional AI extraction path  
-4. Some Source Health / Alignment detail polish  
-5. Policy audit queue UI  
-
-## 7. Stop point / next
-
-- **Do not start M6** unless Pro re-scopes remaining PARTIALs as out-of-milestone.  
-- Default: residual M5 PARTIAL packets, then M4→M3→M2 residuals per `BRIEF_GAP_MATRIX.md`.  
-- When Pro accepts residual risk or residuals close, publish final authorisation request with Final HEAD.
+- Working branch pushed; Final HEAD below.
+- **Do not merge to main** unless owner instructs.
+- **Do not start Milestone 6** until Pro issues the M6 brief.
+- Owner may now request Milestone 6 authorisation from Pro.

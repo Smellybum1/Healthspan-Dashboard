@@ -408,7 +408,10 @@ export function CreatorProfilePage() {
               <ul className="text-xs text-[var(--muted)]">
                 {recurrence.map((r) => (
                   <li key={String(r.recurrenceKey)}>
-                    Theme {String(r.recurrenceKey).slice(0, 12)}… · count {String(r.count)}
+                    Theme {String(r.recurrenceKey).slice(0, 12)}… · reviewed{' '}
+                    {String(r.reviewedClaimCount ?? r.count ?? 0)} · distinct sources{' '}
+                    {String(r.distinctMonitoredSourceCount ?? '—')} · formula{' '}
+                    {String(r.formulaVersion ?? 'm5.recurrence.1')} (not popularity)
                   </li>
                 ))}
               </ul>

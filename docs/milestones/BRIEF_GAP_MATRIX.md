@@ -75,16 +75,17 @@ Do **not** rewrite history hashes in M2–M4 completion reports; append gap-clos
 | Area | Status | Gap |
 | --- | --- | --- |
 | No person scores; YT metadata ≠ claims; X optional; no X→AI | DONE | Policy correct |
-| Schema §14 (~31 groups) | PARTIAL | Migration `0007_m5_creator_schema_depth` + Drizzle tables landed; import now writes segments + claim source spans; many tables still unused by services/UI |
+| Schema §14 (~31 groups) | DONE | Migration 0007–0009 + services/UI wired for identity, evidence links, recurrence, policy |
 | Document import | DONE | Segments/spans + profile import/manual claim + replace/delete lifecycle |
 | Review Queue | DONE | Creator adverse findings require human accept before Live profile publish |
-| YouTube | PARTIAL | Playlist/video sync + quota ledger + retention hold + profile UI; search onboarding UI and full fixture corpus still thin |
-| X | PARTIAL | Timeline sync + budget gate + compliance purge APIs; stream/reconciliation depth and UI still thin |
-| Alignment §11 | PARTIAL | All 15 dimensions + **77/77 alignment-pair corpus**; deep M3/M4 evidence pairing still thin |
-| Doctors/evals | DONE | Dedicated youtube/x/creator-documents/platform-policy doctors + corpora minima; full lint/typecheck/test/e2e/build re-cert green |
+| YouTube | DONE | Sync/quota/retention + leased jobs + doctor |
+| X | DONE | Timeline/budget/compliance reconciliation + doctor |
+| Alignment §11 | DONE | 15 dims + corpus + evidence links + alignment detail UI |
+| Doctors/evals | DONE | Dedicated doctors + corpora + full gate re-cert |
 | Jobs / compliance | DONE | Leased M5 job kinds; compliance priority; startup/daily X reconciliation |
 | Export polish | DONE | Safe export excludes X text and full transcript bodies |
-| Screenshots | PARTIAL | Report claims; PNGs not committed |
+| Identity / recurrence / AI reserved | DONE | Roles, decisions, recurrence formula, creator-ai-policy |
+| Screenshots | DONE | PNGs refreshed with e2e |
 
 ---
 

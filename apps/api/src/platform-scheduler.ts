@@ -10,7 +10,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Startup + daily X compliance reconciliation when X is enabled.
- * Content sync remains opt-in / disabled by default per brief §21.1.
+ * Optional YouTube scheduled refresh when HEALTHSPAN_YOUTUBE_SCHEDULED_SYNC=true.
+ * X content sync remains disabled by default per brief §21.1.
  */
 export function createPlatformScheduler(opts: {
   db: HealthspanDb;
@@ -48,17 +49,26 @@ export function createPlatformScheduler(opts: {
     const status = getXComplianceStatus(opts.db);
     const overdue = isXComplianceOverdue(status, now);
 
+    if (process.env.HEALTHSPAN_YOUTUBE_SCHEDULED_SYNC === 'true' && lastDailyKey !== day) {
+      enqueueJob(opts.db, {
+        kind: 'sync_youtube_channel',
+        payload: { trigger: 'scheduled_refresh', baseline: false },
+        dedupeKey: stableDedupeKey('sync_youtube_scheduled', { day }),
+        priority: JOB_PRIORITY.PLATFORM_SYNC,
+      });
+    }
+
     if (!xEnabled()) {
+      if (lastDailyKey !== day) lastDailyKey = day;
       return { enqueued: false, reason: 'x_disabled' as string | null, status };
     }
 
-    // Startup / overdue catch-up
     if (overdue || status.lastReconciledAt == null) {
       const result = enqueueCompliance(status.lastReconciledAt == null ? 'startup' : 'overdue');
+      if (lastDailyKey !== day) lastDailyKey = day;
       return { ...result, status: getXComplianceStatus(opts.db) };
     }
 
-    // Daily once per UTC day
     if (lastDailyKey !== day) {
       lastDailyKey = day;
       const result = enqueueCompliance('daily');
@@ -90,7 +100,6 @@ export function createPlatformScheduler(opts: {
       if (timer) clearInterval(timer);
       timer = null;
     },
-    /** Expose for tests — max age before overdue. */
     maxAgeMs: Number(process.env.HEALTHSPAN_X_COMPLIANCE_MAX_AGE_HOURS ?? 24) * 60 * 60 * 1000 || DAY_MS,
   };
 }

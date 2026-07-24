@@ -22,6 +22,7 @@ import { ClaimDetailPage } from './pages/ClaimDetailPage';
 import { EntityResolutionPage } from './pages/EntityResolutionPage';
 import { ComparisonPage } from './pages/ComparisonPage';
 import { CreatorClaimsPage } from './pages/CreatorClaimsPage';
+import { CreatorClaimAlignmentPage } from './pages/CreatorClaimAlignmentPage';
 import { CreatorProfilePage } from './pages/CreatorProfilePage';
 
 export function App() {
@@ -41,6 +42,7 @@ export function App() {
         <Route path="creators" element={<CreatorsListPage />} />
         <Route path="creators/:id" element={<CreatorProfilePage />} />
         <Route path="creator-claims" element={<CreatorClaimsPage />} />
+        <Route path="creator-claims/:id/alignment" element={<CreatorClaimAlignmentPage />} />
         <Route path="creator-claims/:id" element={<CreatorClaimsPage />} />
         <Route path="safety" element={<SafetyListPage />} />
         <Route path="sources" element={<SourceHealthPage />} />

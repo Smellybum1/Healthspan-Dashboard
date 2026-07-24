@@ -18,6 +18,13 @@ export const CREATOR_KINDS = [
 
 export type CreatorKind = (typeof CREATOR_KINDS)[number];
 
+export {
+  CREATOR_ROLES,
+  IDENTITY_CONFIDENCE_LEVELS,
+  CREATOR_LIFECYCLE_STATES,
+  ROLE_PROVENANCE_STATES,
+} from './taxonomies.js';
+
 /** Prohibited creator-level judgements — never computed or displayed. */
 export const CREATOR_PROHIBITED_SCORES = [
   'trust_score',

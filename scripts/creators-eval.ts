@@ -7,6 +7,10 @@ import {
   extractCreatorClaimsFromText,
   parseTranscriptDocument,
   CREATOR_PROHIBITED_SCORES,
+  computeClaimRecurrence,
+  gateCreatorAiSegment,
+  isCreatorAiEnabled,
+  classifyCreatorClaimTaxonomy,
 } from '@healthspan/creators';
 import {
   applyXComplianceActionsLocally,
@@ -117,6 +121,39 @@ const checks = {
   xDisabledHealthy: xDisabled.ok && (xDisabled.warnings?.length ?? 0) > 0,
   xBudgetGate: !budgetBlocked.allowed,
   xCompliancePurge: compliance.purged.includes('drop') && compliance.remaining.length === 1,
+  creatorAiDisabledByDefault: !isCreatorAiEnabled(),
+  creatorAiBlocksYoutube: !gateCreatorAiSegment({
+    rightsEligible: true,
+    sourceKind: 'youtube_metadata',
+    segmentCharCount: 20,
+  }).allowed,
+  creatorAiBlocksX: !gateCreatorAiSegment({
+    rightsEligible: true,
+    sourceKind: 'x_content',
+    segmentCharCount: 20,
+  }).allowed,
+  claimTaxonomy: classifyCreatorClaimTaxonomy(assertions[0]?.claimText ?? 'x improves y', 'assertion')
+    .claimKind.length > 0,
+  recurrenceFormula: computeClaimRecurrence([
+    {
+      id: 'a',
+      recurrenceKey: 'k',
+      claimText: 'Rapamycin extends healthspan in adults.',
+      reviewStatus: 'accepted',
+      active: true,
+      sourceKey: 's1',
+      firstObservedAt: 1,
+    },
+    {
+      id: 'b',
+      recurrenceKey: 'k',
+      claimText: 'Rapamycin extends healthspan in adults.',
+      reviewStatus: 'accepted',
+      active: true,
+      sourceKey: 's2',
+      firstObservedAt: 2,
+    },
+  ])[0]?.distinctMonitoredSourceCount === 2,
 };
 
 const report = {

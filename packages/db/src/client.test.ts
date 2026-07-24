@@ -69,6 +69,10 @@ describe('sqlite database', () => {
     const docNames = new Set(docCols.map((c) => c.name));
     expect(docNames.has('replaces_document_id')).toBe(true);
     expect(docNames.has('deleted_at')).toBe(true);
+    const entityCols = sqlite
+      .prepare(`PRAGMA table_info(creator_entities)`)
+      .all() as Array<{ name: string }>;
+    expect(entityCols.some((c) => c.name === 'identity_revision')).toBe(true);
     closeDatabase(sqlite);
   });
 

@@ -57,11 +57,11 @@ const SECTIONS = [
   },
   {
     title: 'Creator claims, not creator worth',
-    body: 'YouTube Data API metadata is operational context only and is never claim evidence. Claims come from user-supplied or authorised transcripts/documents with an explicit rights basis — never unofficial caption scrape, media download, or speech-to-text. X monitoring is optional, budget-capped, acknowledgement-gated, with no automatic recharge; X content is never sent to external AI. Alignment is multi-dimensional and claim-scoped. The product never computes trust, credibility, misinformation, influence, attention, engagement, or popularity scores for people or organisations.',
+    body: 'YouTube Data API metadata is operational context only and is never claim evidence. Claims come from user-supplied or authorised transcripts/documents with an explicit rights basis — never unofficial caption scrape, media download, or speech-to-text. X monitoring is optional, budget-capped, acknowledgement-gated, with no automatic recharge; X content is never sent to external AI. Alignment is multi-dimensional and claim-scoped. Monitored-claim recurrence uses formula m5.recurrence.1 over reviewed active claims and distinct monitored sources — never labelled popularity, influence, attention, or truth. The product never computes trust, credibility, misinformation, influence, attention, engagement, or popularity scores for people or organisations.',
   },
   {
     title: 'AI-generated fields and provenance',
-    body: 'Live intelligence is deterministic-first. Optional AI providers are disabled by default, must be schema-constrained, cannot write directly to the database, and cannot invent uncited claims. AI-assisted fields store provider/model/prompt/version and remain unreviewed until human confirmation.',
+    body: 'Live intelligence is deterministic-first. Optional creator AI assist is reserved and disabled by default (HEALTHSPAN_CREATOR_AI_ENABLED). Only rights-eligible user-supplied segments may reach external AI; YouTube API metadata and X content are hard-blocked. AI candidates never auto-publish adverse findings, cannot rank creators or infer sponsorship, and no model training/fine-tuning is performed. Completion does not require paid AI.',
   },
   {
     title: 'Informational, not medical advice',

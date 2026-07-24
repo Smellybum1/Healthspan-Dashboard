@@ -1,5 +1,16 @@
 # Progress log
 
+## 2026-07-24 — M5 Section 34 complete (M6 unblocked for Pro request)
+
+- Residual packet: identity decisions/roles/commercial/snapshots, recurrence formula, claim taxonomies, evidence links, policy audit queue, Source Health polish, alignment detail UI, reserved AI policy
+- Migration `0009_m5_identity_decisions`
+- Gates green: lint, typecheck, test 114, e2e 18/4 skip, build, creators:eval, doctors
+- Report: `docs/milestones/M5_COMPLETION_REPORT.md` — request M6 brief from Pro; do not start M6 code
+
+### Next recommended work
+
+Ask ChatGPT Pro for Milestone 6 brief only; do not create an M6 branch until authorised.
+
 ## 2026-07-24 — M5 closure packet: jobs, compliance, export, doctors, gates
 
 - Job kinds: `sync_youtube_channel`, `sync_x_account`, `run_x_batch_compliance` with leases + compliance priority

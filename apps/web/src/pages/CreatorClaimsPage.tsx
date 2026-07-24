@@ -36,7 +36,8 @@ export function CreatorClaimsPage() {
             <li key={String(claim.id)} className="rounded-lg border border-[var(--border)] px-3 py-2">
               <p className="font-medium">{String(claim.claimText)}</p>
               <p className="text-xs text-[var(--muted)]">
-                {String(claim.assertionRole)} · {String(claim.confidence)} · recurrence{' '}
+                {String(claim.assertionRole)} · {String(claim.claimKind ?? '—')} ·{' '}
+                {String(claim.direction ?? '—')} · {String(claim.certaintyLanguage ?? '—')} · recurrence{' '}
                 {String(claim.recurrenceKey).slice(0, 24)}
               </p>
               <p className="mt-1 text-xs text-[var(--muted)]">
@@ -54,10 +55,14 @@ export function CreatorClaimsPage() {
                   ))}
                 </ul>
               ) : null}
-              <Link className="text-xs underline" to={`/creators/${String(claim.creatorId)}`}>
-                Creator
-              </Link>
-            </li>
+              <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                <Link className="underline" to={`/creators/${String(claim.creatorId)}`}>
+                  Creator
+                </Link>
+                <Link className="underline" to={`/creator-claims/${String(claim.id)}/alignment`}>
+                  Evidence alignment
+                </Link>
+              </div>            </li>
           ))}
         </ul>
       )}

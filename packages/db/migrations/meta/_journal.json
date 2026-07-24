@@ -64,6 +64,13 @@
       "when": 1784940000000,
       "tag": "0008_m5_document_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784950000000,
+      "tag": "0009_m5_identity_decisions",
+      "breakpoints": true
     }
   ]
 }

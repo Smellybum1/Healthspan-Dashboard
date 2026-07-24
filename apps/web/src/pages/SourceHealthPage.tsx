@@ -143,6 +143,70 @@ export function SourceHealthPage() {
           </ul>
         )}
       </section>
+
+      <PlatformPolicyHealth />
     </div>
+  );
+}
+
+function PlatformPolicyHealth() {
+  const policy = useAsync(async () => {
+    const res = await fetch('/api/platform-policy');
+    if (!res.ok) throw new Error(`platform-policy ${res.status}`);
+    return res.json() as Promise<Record<string, unknown>>;
+  }, []);
+
+  if (policy.loading) return <SkeletonBlock className="h-32 w-full" />;
+  if (!policy.data) return null;
+
+  const yt = policy.data.youtube as Record<string, unknown> | undefined;
+  const x = policy.data.x as Record<string, unknown> | undefined;
+  const quota = (yt?.quota ?? {}) as Record<string, unknown>;
+  const budget = (x?.budget ?? {}) as Record<string, unknown>;
+  const compliance = (x?.compliance ?? {}) as Record<string, unknown>;
+  const audits = (policy.data.audits as Array<Record<string, unknown>> | undefined) ?? [];
+
+  return (
+    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Creator platform health</h2>
+        <button
+          type="button"
+          className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
+          onClick={() => {
+            void fetch('/api/platform-policy/audit', { method: 'POST' }).then(() => policy.reload());
+          }}
+        >
+          Run policy audit
+        </button>
+      </div>
+      <div className="grid gap-2 md:grid-cols-2 text-sm">
+        <div className="rounded-lg border border-[var(--border)] px-3 py-2">
+          <p className="font-medium">YouTube</p>
+          <p className="text-xs text-[var(--muted)]">
+            Metadata never claim evidence · quota {String(quota.status ?? 'unknown')} · units{' '}
+            {String(quota.unitsSpentToday ?? quota.spentUnits ?? 0)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-[var(--border)] px-3 py-2">
+          <p className="font-medium">X</p>
+          <p className="text-xs text-[var(--muted)]">
+            Budget {String(budget.status ?? 'disabled')} · compliance{' '}
+            {compliance.overdue ? 'overdue' : 'ok'} · external AI never allowed
+          </p>
+        </div>
+      </div>
+      {audits.length > 0 ? (
+        <ul className="space-y-1 text-xs text-[var(--muted)]">
+          {audits.slice(0, 8).map((a) => (
+            <li key={String(a.id)}>
+              [{String(a.severity)}] {String(a.issue)} · {String(a.severity)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-[var(--muted)]">No open platform-policy audit findings.</p>
+      )}
+    </section>
   );
 }

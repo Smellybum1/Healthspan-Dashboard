@@ -23,6 +23,7 @@ export const creatorEntities = sqliteTable(
     neutralDescription: text('neutral_description'),
     currentProfileSnapshotId: text('current_profile_snapshot_id'),
     redirectTargetId: text('redirect_target_id'),
+    identityRevision: integer('identity_revision').notNull().default(0),
     dataOrigin: text('data_origin').notNull().default('live'),
     createdAt: ts('created_at'),
     updatedAt: ts('updated_at'),
@@ -30,6 +31,26 @@ export const creatorEntities = sqliteTable(
   (t) => [
     index('creator_entities_norm').on(t.normalizedName),
     index('creator_entities_lifecycle').on(t.lifecycleState, t.normalizedName),
+  ],
+);
+
+export const creatorIdentityDecisions = sqliteTable(
+  'creator_identity_decisions',
+  {
+    id: id(),
+    taskId: text('task_id'),
+    accountId: text('account_id'),
+    creatorId: text('creator_id'),
+    decision: text('decision').notNull(),
+    rationale: text('rationale'),
+    expectedRevision: integer('expected_revision'),
+    actor: text('actor').notNull().default('local_admin'),
+    detailJson: text('detail_json').notNull().default('{}'),
+    createdAt: ts('created_at'),
+  },
+  (t) => [
+    index('creator_identity_decisions_creator').on(t.creatorId, t.createdAt),
+    index('creator_identity_decisions_task').on(t.taskId),
   ],
 );
 
