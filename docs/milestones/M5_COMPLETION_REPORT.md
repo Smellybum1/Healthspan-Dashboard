@@ -11,7 +11,7 @@
 | Hash role | Commit |
 | --- | --- |
 | Base (M4 final) | `f809ffbbcb39a5d2fd50a9a2beb18a329f488233` |
-| Final HEAD | *(set after push)* |
+| Final HEAD | `f21a553` |
 
 ## 1. Executive summary
 
