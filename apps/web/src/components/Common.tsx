@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ConfidenceBadge,
@@ -9,6 +10,9 @@ import {
 } from '@healthspan/ui';
 import type { EvidenceAssessment } from '@healthspan/core';
 import { usePreferences } from '../state/PreferencesContext';
+import { fetchMode } from '../lib/api';
+import { m6Api } from '../lib/m6Api';
+import { useAsync } from '../hooks/useAsync';
 
 export function AssessmentPanel({ assessment }: { assessment: EvidenceAssessment }) {
   return (
@@ -83,13 +87,48 @@ export function AssessmentPanel({ assessment }: { assessment: EvidenceAssessment
   );
 }
 
-export function FollowButton({ id, label }: { id: string; label?: string }) {
+export function FollowButton({
+  id,
+  label,
+  targetType = 'content_item',
+}: {
+  id: string;
+  label?: string;
+  targetType?: string;
+}) {
   const { isFollowed, toggleFollowId } = usePreferences();
-  const followed = isFollowed(id);
+  const modeState = useAsync(() => fetchMode(), []);
+  const mode = modeState.data?.dataMode ?? 'live';
+  const [liveFollowing, setLiveFollowing] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (mode !== 'live') return;
+    void m6Api
+      .followStatus(targetType, id)
+      .then((r) => setLiveFollowing(r.following))
+      .catch(() => setLiveFollowing(false));
+  }, [mode, targetType, id]);
+
+  const followed = mode === 'live' ? Boolean(liveFollowing) : isFollowed(id);
+
   return (
     <button
       type="button"
-      onClick={() => toggleFollowId(id)}
+      onClick={() => {
+        if (mode === 'live') {
+          void m6Api
+            .follow({
+              targetType,
+              targetId: id,
+              displayTitle: label ?? id,
+              unfollow: followed,
+            })
+            .then((r) => setLiveFollowing(Boolean((r as { following?: boolean }).following)))
+            .catch(() => undefined);
+          return;
+        }
+        toggleFollowId(id);
+      }}
       className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
       aria-pressed={followed}
     >

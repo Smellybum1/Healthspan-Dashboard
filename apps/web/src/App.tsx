@@ -12,7 +12,6 @@ import {
 import { RegulatorySafetyWorkspacePage } from './pages/RegulatorySafetyWorkspacePage';
 import { DetailPage } from './pages/DetailPage';
 import { InterventionOrDossierPage } from './pages/InterventionOrDossierPage';
-import { WatchlistsPage } from './pages/WatchlistsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MethodologyPage } from './pages/MethodologyPage';
 import { SourceHealthPage } from './pages/SourceHealthPage';
@@ -24,6 +23,21 @@ import { ComparisonPage } from './pages/ComparisonPage';
 import { CreatorClaimsPage } from './pages/CreatorClaimsPage';
 import { CreatorClaimAlignmentPage } from './pages/CreatorClaimAlignmentPage';
 import { CreatorProfilePage } from './pages/CreatorProfilePage';
+import {
+  AlertDetailPage,
+  AlertsPage,
+  AlertsSettingsPage,
+  BackupSettingsPage,
+  BriefDetailPage,
+  BriefingsSettingsPage,
+  BriefsPage,
+  OperationsPage,
+  PersonalisationMigrationPage,
+  PrivacySecurityPage,
+  SavedSearchDetailPage,
+  SavedSearchesPage,
+  WatchlistsPage,
+} from './pages/M6Pages';
 
 export function App() {
   return (
@@ -52,8 +66,21 @@ export function App() {
         <Route path="entity-resolution" element={<EntityResolutionPage />} />
         <Route path="compare" element={<ComparisonPage />} />
         <Route path="watchlists" element={<WatchlistsPage />} />
+        <Route path="watchlists/:id" element={<WatchlistsPage />} />
+        <Route path="saved-searches" element={<SavedSearchesPage />} />
+        <Route path="saved-searches/:id" element={<SavedSearchDetailPage />} />
+        <Route path="alerts" element={<AlertsPage />} />
+        <Route path="alerts/:id" element={<AlertDetailPage />} />
+        <Route path="briefs" element={<BriefsPage />} />
+        <Route path="briefs/:id" element={<BriefDetailPage />} />
+        <Route path="operations" element={<OperationsPage />} />
         <Route path="methodology" element={<MethodologyPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings/personalisation" element={<PersonalisationMigrationPage />} />
+        <Route path="settings/briefings" element={<BriefingsSettingsPage />} />
+        <Route path="settings/alerts" element={<AlertsSettingsPage />} />
+        <Route path="settings/backup" element={<BackupSettingsPage />} />
+        <Route path="settings/privacy-security" element={<PrivacySecurityPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

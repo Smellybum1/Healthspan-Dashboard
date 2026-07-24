@@ -62,13 +62,21 @@ import {
 import { listContentItems } from './content-service.js';
 import {
   addWatchlistItem,
+  applyLegacyPreferenceImport,
+  archiveSavedSearch,
   createMuteRule,
   createSavedSearch,
   createWatchlist,
   ensureLocalOwnerProfile,
   evaluateDeterministicAlerts,
+  followTarget,
   generateBrief,
+  getAlert,
+  getBrief,
+  getBriefingSettings,
+  getSavedSearch,
   importLegacyPreferencesPreview,
+  isFollowing,
   listAlerts,
   listBriefs,
   listSavedSearches,
@@ -76,8 +84,15 @@ import {
   listWatchlists,
   personalisationExport,
   recordVisit,
+  removeWatchlistItem,
+  renameWatchlist,
+  runSavedSearch,
   setReadingState,
+  setWatchlistActive,
   sinceLastVisit,
+  unfollowTarget,
+  updateAlertState,
+  updateBriefingSettings,
 } from './personalization-service.js';
 import {
   createBackup,
@@ -2324,6 +2339,64 @@ export function createApp() {
     return c.json({ dataMode: 'live', watchable }, 201);
   });
 
+  app.patch('/api/watchlists/:id', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const body = await c.req.json<{ name?: string; active?: boolean }>();
+    const id = c.req.param('id');
+    let item = null;
+    if (typeof body.name === 'string' && body.name.trim()) {
+      item = renameWatchlist(live.db, id, body.name.trim());
+    }
+    if (typeof body.active === 'boolean') {
+      item = setWatchlistActive(live.db, id, body.active);
+    }
+    if (!item) return c.json({ error: 'Nothing to update' }, 400);
+    return c.json({ dataMode: 'live', item });
+  });
+
+  app.delete('/api/watchlists/:id/items/:watchableId', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    removeWatchlistItem(live.db, c.req.param('id'), c.req.param('watchableId'));
+    return c.json({ dataMode: 'live', ok: true });
+  });
+
+  app.post('/api/follow', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo')
+      return c.json({ error: 'Demo mode uses browser follow state' }, 400);
+    const body = await c.req.json<{
+      targetType?: string;
+      targetId?: string;
+      displayTitle?: string;
+      unfollow?: boolean;
+    }>();
+    if (!body.targetType || !body.targetId)
+      return c.json({ error: 'targetType and targetId required' }, 400);
+    if (body.unfollow) {
+      unfollowTarget(live.db, body.targetType, body.targetId);
+      return c.json({ dataMode: 'live', following: false });
+    }
+    const watchable = followTarget(live.db, {
+      targetType: body.targetType,
+      targetId: body.targetId,
+      displayTitle: body.displayTitle,
+    });
+    return c.json({ dataMode: 'live', following: true, watchable });
+  });
+
+  app.get('/api/follow', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', following: false });
+    const targetType = c.req.query('targetType');
+    const targetId = c.req.query('targetId');
+    if (!targetType || !targetId) return c.json({ error: 'targetType and targetId required' }, 400);
+    return c.json({
+      dataMode: 'live',
+      following: isFollowing(live.db, targetType, targetId),
+    });
+  });
+
   app.get('/api/saved-searches', (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [] });
     return c.json({ dataMode: 'live', items: listSavedSearches(live.db) });
@@ -2336,6 +2409,29 @@ export function createApp() {
     if (!body.name || !body.query) return c.json({ error: 'name and query required' }, 400);
     const item = createSavedSearch(live.db, body.name, body.query);
     return c.json({ dataMode: 'live', item }, 201);
+  });
+
+  app.get('/api/saved-searches/:id', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const item = getSavedSearch(live.db, c.req.param('id'));
+    if (!item) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', item });
+  });
+
+  app.post('/api/saved-searches/:id/run', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const result = runSavedSearch(live.db, c.req.param('id'));
+    if (!result) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', ...result });
+  });
+
+  app.post('/api/saved-searches/:id/archive', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const item = archiveSavedSearch(live.db, c.req.param('id'));
+    if (!item) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', item });
   });
 
   app.post('/api/reading-states', async (c) => {
@@ -2381,6 +2477,25 @@ export function createApp() {
     return c.json({ dataMode: 'live', items: listAlerts(live.db) });
   });
 
+  app.get('/api/alerts/:id', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const item = getAlert(live.db, c.req.param('id'));
+    if (!item) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', item });
+  });
+
+  app.post('/api/alerts/:id/state', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const body = await c.req.json<{
+      state?: 'new' | 'unread' | 'read' | 'acknowledged' | 'snoozed' | 'dismissed' | 'resolved';
+    }>();
+    if (!body.state) return c.json({ error: 'state required' }, 400);
+    const item = updateAlertState(live.db, c.req.param('id'), body.state);
+    if (!item) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', item });
+  });
+
   app.post('/api/alerts/evaluate', (c) => {
     assertAdminMutationAllowed();
     if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
@@ -2392,6 +2507,13 @@ export function createApp() {
     return c.json({ dataMode: 'live', items: listBriefs(live.db) });
   });
 
+  app.get('/api/briefs/:id', (c) => {
+    if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
+    const item = getBrief(live.db, c.req.param('id'));
+    if (!item) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', ...item });
+  });
+
   app.post('/api/briefs/generate', async (c) => {
     assertAdminMutationAllowed();
     if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
@@ -2400,6 +2522,23 @@ export function createApp() {
       .catch(() => ({ kind: 'daily' as const }));
     const kind = body.kind === 'weekly' ? 'weekly' : 'daily';
     return c.json({ dataMode: 'live', ...generateBrief(live.db, kind) }, 201);
+  });
+
+  app.get('/api/briefing-settings', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', settings: null });
+    return c.json({ dataMode: 'live', settings: getBriefingSettings(live.db) });
+  });
+
+  app.post('/api/briefing-settings', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Demo mode is read-only' }, 400);
+    const body = await c.req.json<{
+      dailyEnabled?: boolean;
+      weeklyEnabled?: boolean;
+      maxDailyItems?: number;
+      maxWeeklyItems?: number;
+    }>();
+    return c.json({ dataMode: 'live', settings: updateBriefingSettings(live.db, body) });
   });
 
   app.get('/api/personalisation/export', (c) => {
@@ -2417,6 +2556,37 @@ export function createApp() {
       body.browserIdentityHash ?? 'unknown',
     );
     return c.json({ dataMode: 'live', ...result });
+  });
+
+  app.post('/api/personalisation/import', async (c) => {
+    assertAdminMutationAllowed();
+    if (currentMode() === 'demo') return c.json({ error: 'Live only' }, 400);
+    const body = await c.req.json<{ preferences?: unknown; browserIdentityHash?: string }>();
+    const result = applyLegacyPreferenceImport(
+      live.db,
+      body.preferences ?? body,
+      body.browserIdentityHash ?? 'unknown',
+    );
+    return c.json({ dataMode: 'live', ...result });
+  });
+
+  app.get('/api/ops/overview', (c) => {
+    const doctor = databaseDoctor(live.sqlite);
+    return c.json({
+      dataMode: currentMode(),
+      appVersion: APP_VERSION,
+      schemaVersion: SCHEMA_VERSION,
+      runtime: process.versions.node,
+      database: {
+        status: doctor.ok ? 'healthy' : 'degraded',
+        integrity: doctor.integrity,
+        foreignKeys: doctor.foreignKeys,
+        journalMode: doctor.journalMode,
+      },
+      scheduler: scheduler.getStatus(),
+      backups: currentMode() === 'live' ? listBackups(live.paths.dataDir).slice(0, 5) : [],
+      storage: currentMode() === 'live' ? storageUsage(live.paths.dataDir) : [],
+    });
   });
 
   app.post('/api/ops/backup', async (c) => {

@@ -2,9 +2,18 @@ import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const states: Array<{ name: string; path: string }> = [
-  { name: 'Live/Demo Today', path: '/' },
-  { name: 'Discover', path: '/discover' },
-  { name: 'Watchlists', path: '/watchlists' },
+  { name: 'Personalised Today', path: '/' },
+  { name: 'Watchlists CRUD', path: '/watchlists' },
+  { name: 'Saved Searches', path: '/saved-searches' },
+  { name: 'Alert Centre', path: '/alerts' },
+  { name: 'Briefings', path: '/briefs' },
+  { name: 'Operations', path: '/operations' },
+  { name: 'Settings hub', path: '/settings' },
+  { name: 'Personalisation migration', path: '/settings/personalisation' },
+  { name: 'Briefing settings', path: '/settings/briefings' },
+  { name: 'Alert settings', path: '/settings/alerts' },
+  { name: 'Backup & Storage', path: '/settings/backup' },
+  { name: 'Privacy & Security', path: '/settings/privacy-security' },
   { name: 'Research', path: '/research' },
   { name: 'Trials', path: '/trials' },
   { name: 'Interventions', path: '/interventions' },
@@ -16,9 +25,7 @@ const states: Array<{ name: string; path: string }> = [
   { name: 'Entity resolution', path: '/entity-resolution' },
   { name: 'Compare', path: '/compare' },
   { name: 'Regulatory & Safety', path: '/safety' },
-  { name: 'Sources / operations', path: '/sources' },
-  { name: 'Methodology', path: '/methodology' },
-  { name: 'Settings / backup prefs', path: '/settings' },
+  { name: 'Sources', path: '/sources' },
 ];
 
 for (const state of states) {
@@ -45,25 +52,3 @@ test('axe mobile navigation state', async ({ page, isMobile }) => {
   );
   expect(serious).toEqual([]);
 });
-
-// Extra states for brief coverage when detail routes resolve in demo data
-const detailStates = [
-  { name: 'Watchlist-adjacent since-last-visit on Today', path: '/' },
-  { name: 'Alert-centre-adjacent Sources', path: '/sources' },
-  { name: 'Daily-brief-adjacent Today', path: '/' },
-  { name: 'Weekly-review-adjacent Review', path: '/review' },
-  { name: 'Security/Privacy via Settings', path: '/settings' },
-  { name: 'Backup & Storage via Settings', path: '/settings' },
-];
-
-for (const state of detailStates) {
-  test(`axe coverage: ${state.name}`, async ({ page }) => {
-    await page.goto(state.path);
-    await page.waitForLoadState('domcontentloaded');
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-    const serious = results.violations.filter(
-      (v) => v.impact === 'serious' || v.impact === 'critical',
-    );
-    expect(serious, JSON.stringify(serious, null, 2)).toEqual([]);
-  });
-}

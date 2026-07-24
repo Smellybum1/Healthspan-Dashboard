@@ -6,6 +6,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const shotDir = path.resolve(__dirname, '../../../docs/milestones/screenshots');
 
 test.describe('Milestone 1 smoke', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/settings');
+    const demo = page.getByRole('button', { name: 'Demo', exact: true });
+    if (await demo.isVisible().catch(() => false)) {
+      await demo.click();
+      await expect(page.getByText(/Current:\s*demo/i)).toBeVisible({ timeout: 10_000 });
+    }
+  });
   test('Today page loads and shows differentiators', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
@@ -59,7 +67,9 @@ test.describe('Milestone 1 smoke', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Open navigation' }).click();
     await expect(page.getByRole('dialog', { name: 'Navigation' })).toBeVisible();
-    await page.getByRole('link', { name: 'Methodology' }).click();
+    const methodology = page.getByRole('link', { name: 'Methodology' });
+    await methodology.scrollIntoViewIfNeeded();
+    await methodology.click();
     await expect(page.getByRole('heading', { name: 'Methodology' })).toBeVisible();
     await page.screenshot({ path: path.join(shotDir, 'mobile-methodology.png'), fullPage: true });
   });

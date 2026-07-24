@@ -7,7 +7,8 @@ import { SignalRadar } from '../components/SignalRadar';
 import { PageHeader } from '../components/Common';
 import { formatWhen, itemPath } from '../lib/nav';
 import { usePreferences } from '../state/PreferencesContext';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { m6Api } from '../lib/m6Api';
 
 function isLiveBrief(item: { dataOrigin?: string; status?: unknown }): item is {
   id: string;
@@ -24,11 +25,29 @@ export function TodayPage() {
   const { data, loading, error, reload } = useAsync(() => fetchDashboard(), []);
   const { prefs, markVisit } = usePreferences();
   const visitedRef = useRef(false);
+  const [alerts, setAlerts] = useState<Array<Record<string, unknown>>>([]);
+  const [briefs, setBriefs] = useState<Array<Record<string, unknown>>>([]);
+  const [since, setSince] = useState<{
+    items: Array<Record<string, unknown>>;
+    previousVisitAt?: number | null;
+  }>({ items: [] });
 
   useEffect(() => {
     if (data && !visitedRef.current) {
       visitedRef.current = true;
-      markVisit();
+      const isLive = data.dataMode === 'live' || data.dataOrigin === 'live';
+      if (isLive) {
+        void m6Api.recordVisit().catch(() => undefined);
+        void Promise.all([m6Api.listAlerts(), m6Api.listBriefs(), m6Api.sinceLastVisit()])
+          .then(([a, b, s]) => {
+            setAlerts(a.items.slice(0, 8));
+            setBriefs(b.items.slice(0, 3));
+            setSince(s);
+          })
+          .catch(() => undefined);
+      } else {
+        markVisit();
+      }
     }
   }, [data, markVisit]);
 
@@ -77,8 +96,16 @@ export function TodayPage() {
           <p className="text-sm font-medium">{formatWhen(data.asOf)}</p>
         </div>
         <div>
-          <p className="text-xs text-[var(--muted)]">Previous visit (local)</p>
-          <p className="text-sm font-medium">{formatWhen(prefs.lastVisitAt ?? data.lastVisitAt)}</p>
+          <p className="text-xs text-[var(--muted)]">Previous visit</p>
+          <p className="text-sm font-medium">
+            {isLive
+              ? formatWhen(
+                  since.previousVisitAt
+                    ? new Date(since.previousVisitAt).toISOString()
+                    : data.lastVisitAt,
+                )
+              : formatWhen(prefs.lastVisitAt ?? data.lastVisitAt)}
+          </p>
         </div>
         <div>
           <p className="text-xs text-[var(--muted)]">Source health</p>
@@ -88,6 +115,74 @@ export function TodayPage() {
           </p>
         </div>
       </div>
+
+      {isLive ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <SectionCard title="Urgent alerts" description="From Alert Centre (SQLite).">
+            {alerts.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No urgent alerts.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {alerts.map((a) => (
+                  <li key={String(a.id)}>
+                    <Link className="underline" to={`/alerts/${String(a.id)}`}>
+                      {String(a.title)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link className="mt-2 inline-block text-xs underline" to="/alerts">
+              Open Alert Centre
+            </Link>
+          </SectionCard>
+          <SectionCard title="Latest daily brief" description="Live briefing history.">
+            {briefs.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No briefs yet.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {briefs.map((b) => (
+                  <li key={String(b.id)}>
+                    <Link className="underline" to={`/briefs/${String(b.id)}`}>
+                      {String(b.title ?? b.kind)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link className="mt-2 inline-block text-xs underline" to="/briefs">
+              Open Briefings
+            </Link>
+          </SectionCard>
+          <SectionCard title="Since your last visit" description="SQLite visit sessions.">
+            {since.items.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No changes since previous visit.</p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {since.items.slice(0, 8).map((item) => (
+                  <li key={String(item.id)}>{String(item.title ?? item.id)}</li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+          <SectionCard title="Continue / watchlists / saved matches">
+            <div className="flex flex-wrap gap-3 text-sm">
+              <Link className="underline" to="/watchlists">
+                Watchlists
+              </Link>
+              <Link className="underline" to="/saved-searches">
+                Saved searches
+              </Link>
+              <Link className="underline" to="/settings/backup">
+                Backup & Storage
+              </Link>
+              <Link className="underline" to="/operations">
+                Operations
+              </Link>
+            </div>
+          </SectionCard>
+        </div>
+      ) : null}
 
       <SectionCard
         title="What changed since last visit"

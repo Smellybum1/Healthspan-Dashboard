@@ -38,6 +38,8 @@ export type CreateBackupOptions = {
   passphrase?: string;
   allowUnencrypted?: boolean;
   includeRaw?: boolean;
+  /** Active only when HEALTHSPAN_BACKUP_TEST_HOOKS=1 */
+  testFailAt?: 'after-staging-snapshot' | 'before-archive-finalize';
 };
 
 function backupsRoot(dataDir: string) {
@@ -115,6 +117,8 @@ export async function createBackup(opts: CreateBackupOptions) {
   const id = randomUUID();
   const outDir = opts.outDir ?? backupsRoot(opts.dataDir);
   fs.mkdirSync(outDir, { recursive: true });
+  const hooksEnabled = process.env.HEALTHSPAN_BACKUP_TEST_HOOKS === '1';
+  const failAt = hooksEnabled ? opts.testFailAt : undefined;
 
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'healthspan-backup-stage-'));
   const snapshotPath = path.join(staging, 'healthspan-dashboard.sqlite3');
@@ -122,6 +126,9 @@ export async function createBackup(opts: CreateBackupOptions) {
   try {
     await opts.sqlite.backup(snapshotPath);
     sanitizeBackupSqlite(snapshotPath);
+    if (failAt === 'after-staging-snapshot') {
+      throw new Error('injected-failure:after-staging-snapshot');
+    }
 
     const entries: Array<
       | { path: string; kind: 'buffer'; data: Buffer }
@@ -259,6 +266,10 @@ export async function createBackup(opts: CreateBackupOptions) {
       manifestSha256: manifestSha,
     });
 
+    if (failAt === 'before-archive-finalize') {
+      throw new Error('injected-failure:before-archive-finalize');
+    }
+
     const archiveName = `healthspan-${tier}-${id}.healthspan-backup`;
     assertSafeRelPath(archiveName);
     const archivePath = path.join(outDir, archiveName);
@@ -390,6 +401,14 @@ export function restorePreflight(opts: { archivePath: string; passphrase?: strin
   }
 }
 
+/** Test-only restore failure injection points. */
+export type RestoreFailureHook =
+  | 'after-live-db-move'
+  | 'after-restored-db-placement'
+  | 'while-restoring-documents'
+  | 'while-restoring-raw'
+  | 'before-final-verification';
+
 export async function restoreBackup(opts: {
   db: HealthspanDb;
   liveSqlite: SqliteHandle;
@@ -398,7 +417,11 @@ export async function restoreBackup(opts: {
   archivePath: string;
   passphrase?: string;
   dryRun?: boolean;
+  /** Active only when HEALTHSPAN_BACKUP_TEST_HOOKS=1 */
+  testFailAt?: RestoreFailureHook;
 }) {
+  const hooksEnabled = process.env.HEALTHSPAN_BACKUP_TEST_HOOKS === '1';
+  const failAt = hooksEnabled ? opts.testFailAt : undefined;
   const lock = acquireExclusiveLock(opts.dataDir, { owner: 'backup:restore' });
   try {
     const preflight = restorePreflight({
@@ -449,19 +472,67 @@ export async function restoreBackup(opts: {
     const backupLive = `${opts.dbPath}.pre-restore-${Date.now()}`;
     const wal = `${opts.dbPath}-wal`;
     const shm = `${opts.dbPath}-shm`;
+    const payloadBackupRoot = path.join(
+      opts.dataDir,
+      `.restore-payload-backup-${Date.now()}-${process.pid}`,
+    );
+    const restoredPayloads: Array<{ dest: string; backup?: string }> = [];
     opts.liveSqlite.close();
     try {
       fs.renameSync(opts.dbPath, backupLive);
       if (fs.existsSync(wal)) fs.renameSync(wal, `${backupLive}-wal`);
       if (fs.existsSync(shm)) fs.renameSync(shm, `${backupLive}-shm`);
+      if (failAt === 'after-live-db-move') throw new Error('injected-failure:after-live-db-move');
+
       fs.copyFileSync(stagingDb, opts.dbPath);
+      if (failAt === 'after-restored-db-placement') {
+        throw new Error('injected-failure:after-restored-db-placement');
+      }
+
+      // Restore eligible document and raw payload files from archive.
+      fs.mkdirSync(payloadBackupRoot, { recursive: true });
+      for (const [rel, bytes] of Object.entries(files)) {
+        if (rel === 'manifest.json' || rel === 'checksums.json') continue;
+        if (rel === 'database/healthspan-dashboard.sqlite3') continue;
+        assertSafeRelPath(rel);
+        const dest = path.join(opts.dataDir, rel);
+        const managedRoot = path.resolve(opts.dataDir);
+        if (!path.resolve(dest).startsWith(managedRoot)) {
+          throw new Error(`path-escape:${rel}`);
+        }
+        const expected = sha256Hex(bytes);
+        if (rel.startsWith('documents/')) {
+          if (failAt === 'while-restoring-documents') {
+            throw new Error('injected-failure:while-restoring-documents');
+          }
+        }
+        if (rel.startsWith('raw/')) {
+          if (failAt === 'while-restoring-raw') {
+            throw new Error('injected-failure:while-restoring-raw');
+          }
+        }
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        let backupOfExisting: string | undefined;
+        if (fs.existsSync(dest)) {
+          backupOfExisting = path.join(payloadBackupRoot, rel.replace(/[\\/]/g, '__'));
+          fs.mkdirSync(path.dirname(backupOfExisting), { recursive: true });
+          fs.copyFileSync(dest, backupOfExisting);
+        }
+        fs.writeFileSync(dest, bytes);
+        if (sha256File(dest) !== expected) {
+          throw new Error(`hash-mismatch-after-restore:${rel}`);
+        }
+        restoredPayloads.push({ dest, backup: backupOfExisting });
+      }
+
+      if (failAt === 'before-final-verification') {
+        throw new Error('injected-failure:before-final-verification');
+      }
+
       const verify = openDatabase({ dbPath: opts.dbPath, migrateOnOpen: false });
       const after = databaseDoctor(verify.sqlite);
       verify.sqlite.close();
       if (!after.ok) {
-        fs.copyFileSync(backupLive, opts.dbPath);
-        if (fs.existsSync(`${backupLive}-wal`)) fs.copyFileSync(`${backupLive}-wal`, wal);
-        if (fs.existsSync(`${backupLive}-shm`)) fs.copyFileSync(`${backupLive}-shm`, shm);
         throw new Error('Post-restore verification failed; rolled back');
       }
       // Clean obsolete WAL/SHM for restored DB after successful open.
@@ -469,23 +540,73 @@ export async function restoreBackup(opts: {
         if (fs.existsSync(side)) fs.rmSync(side, { force: true });
       }
     } catch (err) {
-      if (fs.existsSync(backupLive) && !fs.existsSync(opts.dbPath)) {
+      // Rollback DB + payload files.
+      for (const p of [...restoredPayloads].reverse()) {
+        try {
+          if (p.backup && fs.existsSync(p.backup)) fs.copyFileSync(p.backup, p.dest);
+          else if (fs.existsSync(p.dest) && !p.backup) fs.rmSync(p.dest, { force: true });
+        } catch {
+          /* best-effort */
+        }
+      }
+      if (fs.existsSync(backupLive)) {
+        if (fs.existsSync(opts.dbPath)) fs.rmSync(opts.dbPath, { force: true });
         fs.renameSync(backupLive, opts.dbPath);
+        if (fs.existsSync(`${backupLive}-wal`)) {
+          fs.copyFileSync(`${backupLive}-wal`, wal);
+        }
+        if (fs.existsSync(`${backupLive}-shm`)) {
+          fs.copyFileSync(`${backupLive}-shm`, shm);
+        }
       }
       throw err;
     } finally {
       fs.rmSync(stagingDb, { force: true });
+      fs.rmSync(payloadBackupRoot, { recursive: true, force: true });
     }
 
     const restored = openDatabase({ dbPath: opts.dbPath, migrateOnOpen: false });
     try {
+      const { enqueueJob, JOB_PRIORITY } = await import('./jobs.js');
+      const jobs = [
+        enqueueJob(restored.db, {
+          kind: 'ingestion',
+          payload: { sourceId: 'all', trigger: 'post_restore' },
+          dedupeKey: `post-restore:ingestion:${checkpoint.id}`,
+          priority: JOB_PRIORITY.SCHEDULED_INGESTION,
+        }),
+        enqueueJob(restored.db, {
+          kind: 'intelligence',
+          payload: { trigger: 'post_restore', staleOnly: true },
+          dedupeKey: `post-restore:intelligence:${checkpoint.id}`,
+          priority: JOB_PRIORITY.INTELLIGENCE,
+        }),
+        enqueueJob(restored.db, {
+          kind: 'run_x_batch_compliance',
+          payload: { trigger: 'post_restore' },
+          dedupeKey: `post-restore:x-compliance:${checkpoint.id}`,
+          priority: JOB_PRIORITY.COMPLIANCE,
+        }),
+      ];
       const restoreId = recordRestoreAttempt(
         restored.db,
         checkpoint.id,
-        { preflight, checkpoint: checkpoint.archiveName, resyncScheduled: true },
+        {
+          preflight,
+          checkpoint: checkpoint.archiveName,
+          resyncScheduled: true,
+          enqueuedJobs: jobs.map((j) => ({ id: j.job.id, kind: j.job.kind, created: j.created })),
+          restoredPayloadCount: restoredPayloads.length,
+        },
         true,
       );
-      return { restoreId, checkpoint: checkpoint.archiveName, preflight };
+      return {
+        restoreId,
+        checkpoint: checkpoint.archiveName,
+        preflight,
+        enqueuedJobs: jobs.map((j) => j.job.id),
+        restoredPayloadCount: restoredPayloads.length,
+      };
     } finally {
       restored.sqlite.close();
     }

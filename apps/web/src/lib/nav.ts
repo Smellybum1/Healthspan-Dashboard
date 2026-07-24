@@ -14,6 +14,10 @@ export const NAV_ITEMS = [
   { to: '/entity-resolution', label: 'Entity Resolution' },
   { to: '/compare', label: 'Compare' },
   { to: '/watchlists', label: 'Watchlists' },
+  { to: '/saved-searches', label: 'Saved Searches' },
+  { to: '/alerts', label: 'Alert Centre' },
+  { to: '/briefs', label: 'Briefings' },
+  { to: '/operations', label: 'Operations' },
   { to: '/methodology', label: 'Methodology' },
   { to: '/settings', label: 'Settings' },
 ] as const;

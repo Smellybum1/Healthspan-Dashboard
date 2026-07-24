@@ -16,44 +16,98 @@
     {
       "name": "personalised-today-proxy",
       "rounds": 25,
-      "p50": 4.43,
-      "p95": 8.69
+      "p50": 4.14,
+      "p95": 9.68
     },
     {
       "name": "alerts-list-proxy",
       "rounds": 25,
-      "p50": 0.5,
-      "p95": 0.93
+      "p50": 0.32,
+      "p95": 0.46
     },
     {
       "name": "watchlists-list",
       "rounds": 25,
-      "p50": 0.2,
+      "p50": 0.23,
       "p95": 0.47
+    },
+    {
+      "name": "watchlist-detail",
+      "rounds": 25,
+      "p50": 0.32,
+      "p95": 0.55
     },
     {
       "name": "since-last-visit",
       "rounds": 25,
-      "p50": 0.23,
-      "p95": 0.44
+      "p50": 0.21,
+      "p95": 0.39
     },
     {
       "name": "operations-storage",
       "rounds": 25,
-      "p50": 0.32,
-      "p95": 0.56
+      "p50": 0.31,
+      "p95": 0.52
+    },
+    {
+      "name": "operations-overview",
+      "rounds": 25,
+      "p50": 2.87,
+      "p95": 3.56
+    },
+    {
+      "name": "alerts-list-filter",
+      "rounds": 25,
+      "p50": 0.16,
+      "p95": 0.24
+    },
+    {
+      "name": "saved-search-list",
+      "rounds": 25,
+      "p50": 0.21,
+      "p95": 0.36
+    },
+    {
+      "name": "saved-search-execution",
+      "rounds": 25,
+      "p50": 0.54,
+      "p95": 1.08
+    },
+    {
+      "name": "briefs-list",
+      "rounds": 25,
+      "p50": 0.15,
+      "p95": 0.24
+    },
+    {
+      "name": "brief-detail",
+      "rounds": 25,
+      "p50": 0.15,
+      "p95": 0.39
+    },
+    {
+      "name": "default-following-watchlist",
+      "rounds": 25,
+      "p50": 0.24,
+      "p95": 0.42
     },
     {
       "name": "production-startup-openDatabase",
       "rounds": 10,
-      "p50": 1.75,
-      "p95": 6.75
+      "p50": 1.4,
+      "p95": 5.85
+    },
+    {
+      "name": "production-local-startup-createApp",
+      "rounds": 10,
+      "p50": 4.15,
+      "p95": 5.34
     }
   ],
   "bundles": {
     "jsGzip": [
       {
-        "file": "index-Bvbrb2qN.js",
+        "file": "index-DBeR2ViV.js",
         "kb": 220
       }
     ],
@@ -71,7 +125,14 @@
     "cssGzipKb": 80,
     "lazyChunkGzipKb": 300
   },
-  "deviations": [],
-  "status": "PASS",
+  "deviations": [
+    {
+      "id": "generated-scale",
+      "measured": 2000,
+      "budget": 50000,
+      "reason": "DEVIATION from full M6 generated-scale; measured real code paths on proportional fixture."
+    }
+  ],
+  "status": "DEVIATION",
   "ok": true
 }

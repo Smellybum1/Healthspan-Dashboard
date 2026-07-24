@@ -63,6 +63,27 @@ async function measure(name: string, fn: () => Promise<void> | void, rounds = 25
 }
 
 const { createApp } = await import('../apps/api/src/app.js');
+const {
+  createWatchlist,
+  createSavedSearch,
+  generateBrief,
+  defaultFollowingWatchlist,
+  addWatchlistItem,
+} = await import('../apps/api/src/personalization-service.js');
+
+const following = defaultFollowingWatchlist(live.db);
+const wl = createWatchlist(live.db, 'Perf Watchlist');
+addWatchlistItem(live.db, wl.id, {
+  targetType: 'content_item',
+  targetId: 'perf-item-0',
+  displayTitle: 'Perf paper 0',
+});
+const search = createSavedSearch(live.db, 'Perf search', {
+  schemaVersion: 1,
+  text: 'Perf',
+});
+const brief = generateBrief(live.db, 'daily');
+
 const app = createApp();
 
 const metrics = [];
@@ -88,6 +109,13 @@ metrics.push(
   }),
 );
 metrics.push(
+  await measure('watchlist-detail', async () => {
+    await app.request(`http://127.0.0.1:8787/api/watchlists/${wl.id}`, {
+      headers: { host: '127.0.0.1:8787' },
+    });
+  }),
+);
+metrics.push(
   await measure('since-last-visit', async () => {
     await app.request('http://127.0.0.1:8787/api/since-last-visit', {
       headers: { host: '127.0.0.1:8787' },
@@ -97,6 +125,57 @@ metrics.push(
 metrics.push(
   await measure('operations-storage', async () => {
     await app.request('http://127.0.0.1:8787/api/ops/storage', {
+      headers: { host: '127.0.0.1:8787' },
+    });
+  }),
+);
+metrics.push(
+  await measure('operations-overview', async () => {
+    await app.request('http://127.0.0.1:8787/api/ops/overview', {
+      headers: { host: '127.0.0.1:8787' },
+    });
+  }),
+);
+metrics.push(
+  await measure('alerts-list-filter', async () => {
+    await app.request('http://127.0.0.1:8787/api/alerts?state=open', {
+      headers: { host: '127.0.0.1:8787' },
+    });
+  }),
+);
+metrics.push(
+  await measure('saved-search-list', async () => {
+    await app.request('http://127.0.0.1:8787/api/saved-searches', {
+      headers: { host: '127.0.0.1:8787' },
+    });
+  }),
+);
+metrics.push(
+  await measure('saved-search-execution', async () => {
+    await app.request(`http://127.0.0.1:8787/api/saved-searches/${search.id}/run`, {
+      method: 'POST',
+      headers: { host: '127.0.0.1:8787', 'content-type': 'application/json' },
+      body: '{}',
+    });
+  }),
+);
+metrics.push(
+  await measure('briefs-list', async () => {
+    await app.request('http://127.0.0.1:8787/api/briefs', {
+      headers: { host: '127.0.0.1:8787' },
+    });
+  }),
+);
+metrics.push(
+  await measure('brief-detail', async () => {
+    await app.request(`http://127.0.0.1:8787/api/briefs/${brief.briefId}`, {
+      headers: { host: '127.0.0.1:8787' },
+    });
+  }),
+);
+metrics.push(
+  await measure('default-following-watchlist', async () => {
+    await app.request(`http://127.0.0.1:8787/api/watchlists/${following.id}`, {
       headers: { host: '127.0.0.1:8787' },
     });
   }),
@@ -158,11 +237,18 @@ if (cssTotal > budgets.cssGzipKb) {
   });
 }
 
-const startup = await measure(
+const startupDb = await measure(
   'production-startup-openDatabase',
   () => {
     const probe = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
     probe.sqlite.close();
+  },
+  10,
+);
+const startupApp = await measure(
+  'production-local-startup-createApp',
+  () => {
+    createApp();
   },
   10,
 );
@@ -171,11 +257,22 @@ const artifact = {
   suite: 'performance:check',
   hardware: { platform: process.platform, arch: process.arch, node: process.version },
   profile: PROFILE,
-  metrics: [...metrics, startup],
+  metrics: [...metrics, startupDb, startupApp],
   bundles: { jsGzip, cssGzip, initialJsGzipKb: initialJs, cssGzipKb: cssTotal },
   budgets,
-  deviations,
-  status: deviations.length ? 'DEVIATION' : 'PASS',
+  deviations:
+    PROFILE.name === 'proportional-local'
+      ? [
+          {
+            id: 'generated-scale',
+            measured: PROFILE.contentItems,
+            budget: 50_000,
+            reason: PROFILE.note,
+          },
+          ...deviations,
+        ]
+      : deviations,
+  status: PROFILE.name === 'proportional-local' || deviations.length ? 'DEVIATION' : 'PASS',
   ok: true,
 };
 fs.writeFileSync(

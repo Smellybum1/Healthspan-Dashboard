@@ -189,7 +189,7 @@ export const alertRules = sqliteTable('alert_rules', {
   targetType: text('target_type').notNull(),
   targetRef: text('target_ref'),
   eventKindsJson: text('event_kinds_json').notNull().default('[]'),
-  payloadJson: text('payload_json').notNull().default('{}'),
+  severityJson: text('severity_json').notNull().default('{}'),
   createdAt: ts('created_at'),
   updatedAt: ts('updated_at'),
 });
@@ -203,7 +203,7 @@ export const alerts = sqliteTable(
     kind: text('kind').notNull(),
     title: text('title').notNull(),
     summary: text('summary'),
-    payloadJson: text('payload_json').notNull().default('{}'),
+    severityJson: text('severity_json').notNull().default('{}'),
     watchableId: text('watchable_id'),
     dedupeKey: text('dedupe_key').notNull(),
     state: text('state').notNull().default('new'),

@@ -66,6 +66,27 @@ export function SettingsPage() {
       />
       {dataMode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
 
+      <nav className="flex flex-wrap gap-2 text-sm" aria-label="Settings sections">
+        <Link className="underline" to="/settings/personalisation">
+          Personalisation migration
+        </Link>
+        <Link className="underline" to="/settings/briefings">
+          Briefings
+        </Link>
+        <Link className="underline" to="/settings/alerts">
+          Alerts
+        </Link>
+        <Link className="underline" to="/settings/backup">
+          Backup & Storage
+        </Link>
+        <Link className="underline" to="/settings/privacy-security">
+          Privacy & Security
+        </Link>
+        <Link className="underline" to="/operations">
+          Operations
+        </Link>
+      </nav>
+
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
         <h2 className="text-sm font-semibold">Data mode</h2>
         <p className="text-sm text-[var(--muted)]">

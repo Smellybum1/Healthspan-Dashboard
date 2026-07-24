@@ -13,6 +13,7 @@ import {
 import {
   alertRules,
   alerts,
+  alertStateEvents,
   briefingSettings,
   briefs,
   briefItems,
@@ -23,6 +24,7 @@ import {
   preferenceMigrationRuns,
   readingStates,
   savedSearches,
+  savedSearchEvaluations,
   visitSessions,
   watchableObjects,
   watchlistEntries,
@@ -389,7 +391,7 @@ export function evaluateDeterministicAlerts(db: HealthspanDb) {
         kind,
         title: event.title,
         summary: event.summary,
-        payloadJson: JSON.stringify({ changeEventId: event.id }),
+        severityJson: JSON.stringify({ changeEventId: event.id }),
         watchableId: null,
         dedupeKey,
         state: 'new',
@@ -532,6 +534,244 @@ export function personalisationExport(db: HealthspanDb) {
       'Personalisation export only. No medical records. Demo IDs must not be re-imported into Live.',
   };
   return payload;
+}
+
+export function renameWatchlist(db: HealthspanDb, id: string, name: string) {
+  ensureLocalOwnerProfile(db);
+  const at = now();
+  db.update(watchlists)
+    .set({ name, slug: slugifyWatchlistName(name), updatedAt: at })
+    .where(and(eq(watchlists.id, id), eq(watchlists.profileId, LOCAL_OWNER_PROFILE_ID)))
+    .run();
+  return db.select().from(watchlists).where(eq(watchlists.id, id)).all()[0] ?? null;
+}
+
+export function setWatchlistActive(db: HealthspanDb, id: string, active: boolean) {
+  ensureLocalOwnerProfile(db);
+  const at = now();
+  db.update(watchlists)
+    .set({ active, updatedAt: at })
+    .where(and(eq(watchlists.id, id), eq(watchlists.profileId, LOCAL_OWNER_PROFILE_ID)))
+    .run();
+  return db.select().from(watchlists).where(eq(watchlists.id, id)).all()[0] ?? null;
+}
+
+export function removeWatchlistItem(db: HealthspanDb, watchlistId: string, watchableId: string) {
+  const at = now();
+  db.update(watchlistEntries)
+    .set({ state: 'removed', removedAt: at })
+    .where(
+      and(
+        eq(watchlistEntries.watchlistId, watchlistId),
+        eq(watchlistEntries.watchableId, watchableId),
+      ),
+    )
+    .run();
+  return true;
+}
+
+export function defaultFollowingWatchlist(db: HealthspanDb) {
+  ensureLocalOwnerProfile(db);
+  return (
+    db
+      .select()
+      .from(watchlists)
+      .where(
+        and(
+          eq(watchlists.profileId, LOCAL_OWNER_PROFILE_ID),
+          eq(watchlists.isDefault, true),
+          eq(watchlists.active, true),
+        ),
+      )
+      .all()[0] ?? listWatchlists(db)[0]!
+  );
+}
+
+export function followTarget(
+  db: HealthspanDb,
+  target: { targetType: string; targetId: string; displayTitle?: string },
+) {
+  const following = defaultFollowingWatchlist(db);
+  return addWatchlistItem(db, following.id, target);
+}
+
+export function unfollowTarget(db: HealthspanDb, targetType: string, targetId: string) {
+  const following = defaultFollowingWatchlist(db);
+  const watchable = db
+    .select()
+    .from(watchableObjects)
+    .where(
+      and(
+        eq(watchableObjects.dataOrigin, 'live'),
+        eq(watchableObjects.targetType, targetType),
+        eq(watchableObjects.targetId, targetId),
+      ),
+    )
+    .all()[0];
+  if (!watchable) return false;
+  removeWatchlistItem(db, following.id, watchable.id);
+  return true;
+}
+
+export function isFollowing(db: HealthspanDb, targetType: string, targetId: string) {
+  const following = defaultFollowingWatchlist(db);
+  const items = listWatchlistItems(db, following.id);
+  return items.some(
+    (i) => i.watchable?.targetType === targetType && i.watchable?.targetId === targetId,
+  );
+}
+
+export function updateAlertState(
+  db: HealthspanDb,
+  alertId: string,
+  toState: 'new' | 'unread' | 'read' | 'acknowledged' | 'snoozed' | 'dismissed' | 'resolved',
+) {
+  ensureLocalOwnerProfile(db);
+  const alert = db.select().from(alerts).where(eq(alerts.id, alertId)).all()[0];
+  if (!alert) return null;
+  const at = now();
+  db.update(alerts).set({ state: toState, updatedAt: at }).where(eq(alerts.id, alertId)).run();
+  db.insert(alertStateEvents)
+    .values({
+      id: randomUUID(),
+      alertId,
+      fromState: alert.state,
+      toState,
+      createdAt: at,
+    })
+    .run();
+  return db.select().from(alerts).where(eq(alerts.id, alertId)).all()[0]!;
+}
+
+export function getAlert(db: HealthspanDb, id: string) {
+  return db.select().from(alerts).where(eq(alerts.id, id)).all()[0] ?? null;
+}
+
+export function getBrief(db: HealthspanDb, id: string) {
+  const brief = db.select().from(briefs).where(eq(briefs.id, id)).all()[0];
+  if (!brief) return null;
+  const items = db.select().from(briefItems).where(eq(briefItems.briefId, id)).all();
+  return { brief, items };
+}
+
+export function getSavedSearch(db: HealthspanDb, id: string) {
+  return db.select().from(savedSearches).where(eq(savedSearches.id, id)).all()[0] ?? null;
+}
+
+export function runSavedSearch(db: HealthspanDb, id: string) {
+  const search = getSavedSearch(db, id);
+  if (!search) return null;
+  const query = SavedSearchQuerySchema.parse(JSON.parse(search.queryJson));
+  const at = now();
+  // Bounded deterministic scan of change events — no SQL/regex from browser.
+  const events = db.select().from(changeEvents).orderBy(desc(changeEvents.occurredAt)).all();
+  const text = (query.text ?? '').toLowerCase();
+  const matched = events
+    .filter((e) => {
+      const hay = `${e.title ?? ''} ${e.summary ?? ''} ${e.kind}`.toLowerCase();
+      if (text && !hay.includes(text)) return false;
+      if (query.targetTypes?.length && !query.targetTypes.some((t) => e.kind.includes(t))) {
+        return false;
+      }
+      return true;
+    })
+    .slice(0, 100);
+  const evalId = randomUUID();
+  db.insert(savedSearchEvaluations)
+    .values({
+      id: evalId,
+      savedSearchId: id,
+      windowStart: at - 7 * 86400000,
+      windowEnd: at,
+      queryHash: search.canonicalHash,
+      status: matched.length >= 100 ? 'capped' : 'ok',
+      matchedCount: matched.length,
+      newCount: matched.length,
+      cappedCount: matched.length >= 100 ? matched.length : 0,
+      errorSummary: null,
+      startedAt: at,
+      completedAt: at,
+    })
+    .run();
+  db.update(savedSearches).set({ updatedAt: at }).where(eq(savedSearches.id, id)).run();
+  return {
+    search: getSavedSearch(db, id),
+    evaluationId: evalId,
+    matches: matched,
+    capped: matched.length >= 100,
+  };
+}
+
+export function archiveSavedSearch(db: HealthspanDb, id: string) {
+  const at = now();
+  db.update(savedSearches)
+    .set({ state: 'archived', updatedAt: at })
+    .where(eq(savedSearches.id, id))
+    .run();
+  return getSavedSearch(db, id);
+}
+
+export function applyLegacyPreferenceImport(
+  db: HealthspanDb,
+  raw: unknown,
+  browserIdentityHash: string,
+) {
+  const previewed = importLegacyPreferencesPreview(db, raw, browserIdentityHash);
+  if (!previewed.preview.ok) return previewed;
+  const following = defaultFollowingWatchlist(db);
+  const ids =
+    (raw as { followedIdsByMode?: { live?: string[] }; followedIds?: string[] }).followedIdsByMode
+      ?.live ??
+    (raw as { followedIds?: string[] }).followedIds ??
+    [];
+  let imported = 0;
+  for (const targetId of ids) {
+    if (String(targetId).startsWith('demo-')) continue;
+    addWatchlistItem(db, following.id, {
+      targetType: 'content_item',
+      targetId: String(targetId),
+      displayTitle: String(targetId),
+    });
+    imported += 1;
+  }
+  db.update(preferenceMigrationRuns)
+    .set({ importedCount: imported, status: 'completed', completedAt: now() })
+    .where(eq(preferenceMigrationRuns.id, previewed.runId))
+    .run();
+  return { ...previewed, imported };
+}
+
+export function getBriefingSettings(db: HealthspanDb) {
+  ensureLocalOwnerProfile(db);
+  return db
+    .select()
+    .from(briefingSettings)
+    .where(eq(briefingSettings.profileId, LOCAL_OWNER_PROFILE_ID))
+    .all()[0]!;
+}
+
+export function updateBriefingSettings(
+  db: HealthspanDb,
+  patch: {
+    dailyEnabled?: boolean;
+    weeklyEnabled?: boolean;
+    maxDailyItems?: number;
+    maxWeeklyItems?: number;
+  },
+) {
+  const current = getBriefingSettings(db);
+  const at = now();
+  db.update(briefingSettings)
+    .set({
+      dailyEnabled: patch.dailyEnabled ?? current.dailyEnabled,
+      weeklyEnabled: patch.weeklyEnabled ?? current.weeklyEnabled,
+      maxDailyItems: patch.maxDailyItems ?? current.maxDailyItems,
+      maxWeeklyItems: patch.maxWeeklyItems ?? current.maxWeeklyItems,
+      updatedAt: at,
+    })
+    .where(eq(briefingSettings.id, current.id))
+    .run();
+  return getBriefingSettings(db);
 }
 
 export function fingerprint(value: string) {

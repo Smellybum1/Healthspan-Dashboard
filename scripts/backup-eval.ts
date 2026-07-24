@@ -357,9 +357,6 @@ add(
   })(),
 );
 
-const preflight = restorePreflight({ archivePath: portableStable, passphrase });
-add('pre-restore-checkpoint', preflight.ok === true);
-
 const restored = await restoreBackup({
   db: live.db,
   liveSqlite: live.sqlite,
@@ -372,8 +369,10 @@ add('restore-success', Boolean(restored.checkpoint));
 add('restore-history-recorded', Boolean(restored.restoreId));
 add(
   'source-resync-scheduled',
-  Boolean((restored as { preflight?: { ok?: boolean } }).preflight?.ok),
+  Array.isArray((restored as { enqueuedJobs?: string[] }).enqueuedJobs) &&
+    ((restored as { enqueuedJobs?: string[] }).enqueuedJobs?.length ?? 0) >= 1,
 );
+add('pre-restore-checkpoint', Boolean(restored.checkpoint));
 
 // Re-open after restore closed the handle
 const live2 = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
@@ -496,25 +495,79 @@ add(
 add('secret-exclusion', withDocs.manifest.exclusions.includes('secrets'));
 add('absolute-path-redaction', withDocs.manifest.exclusions.includes('absolute_paths'));
 add('diagnostic-exclusion', withDocs.manifest.exclusions.includes('request_integrity_sessions'));
+
+// Document/raw restore: delete local payloads, restore archive, verify bytes + DB refs.
+try {
+  live2.sqlite.close();
+} catch {
+  /* */
+}
+add(
+  'document-raw-restore-bytes',
+  await (async () => {
+    const docRel = Object.keys(withDocsFiles).find((p) => p.includes('documents/doc-eligible/'));
+    const rawRel = `raw/sha256/${referencedRaw}`;
+    if (!docRel || !withDocsFiles[docRel] || !withDocsFiles[rawRel]) {
+      return false;
+    }
+    const expectedDoc = sha256Hex(withDocsFiles[docRel]!);
+    const expectedRaw = sha256Hex(withDocsFiles[rawRel]!);
+    const docDest = path.join(live2.paths.dataDir, docRel);
+    const rawDest = path.join(live2.paths.dataDir, rawRel);
+    fs.rmSync(docDest, { force: true });
+    fs.rmSync(rawDest, { force: true });
+    const liveDocs = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+    try {
+      const result = await restoreBackup({
+        db: liveDocs.db,
+        liveSqlite: liveDocs.sqlite,
+        dataDir: liveDocs.paths.dataDir,
+        dbPath: liveDocs.paths.dbPath,
+        archivePath: withDocs.archivePath,
+        passphrase,
+      });
+      return (
+        Boolean(result.restoreId) &&
+        fs.existsSync(docDest) &&
+        fs.existsSync(rawDest) &&
+        sha256Hex(fs.readFileSync(docDest)) === expectedDoc &&
+        sha256Hex(fs.readFileSync(rawDest)) === expectedRaw &&
+        (result.restoredPayloadCount ?? 0) >= 2
+      );
+    } catch {
+      return false;
+    }
+  })(),
+);
 add(
   'document-resync-state',
   Boolean(restored.restoreId) &&
     withDocs.manifest.files.some((f) => f.path.startsWith('documents/')),
 );
-add(
-  'portable-unencrypted-warning',
-  (
-    await createBackup({
-      db: live2.db,
-      sqlite: live2.sqlite,
-      dataDir: live2.paths.dataDir,
-      dbPath: live2.paths.dbPath,
-      tier: 'portable_core',
-      allowUnencrypted: true,
-    })
-  ).manifest.notes.some((n) => /WARNING: unencrypted/i.test(n)),
-);
-
+{
+  const liveWarn = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+  try {
+    add(
+      'portable-unencrypted-warning',
+      (
+        await createBackup({
+          db: liveWarn.db,
+          sqlite: liveWarn.sqlite,
+          dataDir: liveWarn.paths.dataDir,
+          dbPath: liveWarn.paths.dbPath,
+          tier: 'portable_core',
+          allowUnencrypted: true,
+        })
+      ).manifest.notes.some((n) => /WARNING: unencrypted/i.test(n)),
+    );
+  } finally {
+    try {
+      liveWarn.sqlite.close();
+    } catch {
+      /* */
+    }
+  }
+}
 {
   const files = extractZip(openBackupArchive(fs.readFileSync(portableStable), passphrase).zip);
   const manifest = JSON.parse(files['manifest.json']!.toString('utf8')) as Record<string, unknown>;
@@ -541,12 +594,13 @@ add(
   const p = path.join(temp, 'future-schema.healthspan-backup');
   fs.writeFileSync(p, sealed);
   let futureRejected = false;
+  const liveFuture = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
   try {
     await restoreBackup({
-      db: live2.db,
-      liveSqlite: live2.sqlite,
-      dataDir: live2.paths.dataDir,
-      dbPath: live2.paths.dbPath,
+      db: liveFuture.db,
+      liveSqlite: liveFuture.sqlite,
+      dataDir: liveFuture.paths.dataDir,
+      dbPath: liveFuture.paths.dbPath,
       archivePath: p,
       passphrase,
       dryRun: true,
@@ -554,13 +608,19 @@ add(
   } catch (e) {
     futureRejected =
       e instanceof Error && /future-schema-rejected|preflight_failed/.test(e.message);
+  } finally {
+    try {
+      liveFuture.sqlite.close();
+    } catch {
+      /* */
+    }
   }
   add('future-schema-rejected', futureRejected);
 }
 
 add(
   'older-schema-migrated-in-temp',
-  (() => {
+  await (async () => {
     const files = extractZip(openBackupArchive(fs.readFileSync(portableStable), passphrase).zip);
     const manifest = JSON.parse(files['manifest.json']!.toString('utf8')) as Record<
       string,
@@ -588,46 +648,156 @@ add(
     );
     const p = path.join(temp, 'older-schema.healthspan-backup');
     fs.writeFileSync(p, sealed);
-    const pf = restorePreflight({ archivePath: p, passphrase });
-    return (
-      pf.ok === true &&
-      typeof pf.schemaVersion === 'number' &&
-      pf.schemaVersion < (pf.expectedSchema as number)
-    );
+    // Re-open live handle for restore path that migrates in temp.
+    const liveOlder = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+    try {
+      const result = await restoreBackup({
+        db: liveOlder.db,
+        liveSqlite: liveOlder.sqlite,
+        dataDir: liveOlder.paths.dataDir,
+        dbPath: liveOlder.paths.dbPath,
+        archivePath: p,
+        passphrase,
+      });
+      return Boolean(result.restoreId && result.checkpoint);
+    } catch {
+      return false;
+    }
   })(),
 );
 
 add(
   'post-swap-failure-rollback',
-  (() => {
-    // Simulate rollback path: corrupt DB bytes after rename would restore from .pre-restore
-    const probe = `${live2.paths.dbPath}.pre-restore-eval`;
-    fs.copyFileSync(live2.paths.dbPath, probe);
-    const before = sha256Hex(fs.readFileSync(live2.paths.dbPath));
-    fs.writeFileSync(live2.paths.dbPath, Buffer.from('not-a-sqlite-db'));
-    fs.copyFileSync(probe, live2.paths.dbPath);
-    const after = sha256Hex(fs.readFileSync(live2.paths.dbPath));
-    fs.rmSync(probe, { force: true });
-    return before === after;
+  await (async () => {
+    process.env.HEALTHSPAN_BACKUP_TEST_HOOKS = '1';
+    const liveHook = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+    liveHook.sqlite.exec(
+      `CREATE TABLE IF NOT EXISTS _eval_rollback_marker(x TEXT); DELETE FROM _eval_rollback_marker; INSERT INTO _eval_rollback_marker(x) VALUES ('keep-me');`,
+    );
+    try {
+      await restoreBackup({
+        db: liveHook.db,
+        liveSqlite: liveHook.sqlite,
+        dataDir: liveHook.paths.dataDir,
+        dbPath: liveHook.paths.dbPath,
+        archivePath: portableStable,
+        passphrase,
+        testFailAt: 'after-restored-db-placement',
+      });
+      return false;
+    } catch (e) {
+      const verify = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+      try {
+        const row = verify.sqlite.prepare(`SELECT x FROM _eval_rollback_marker`).get() as
+          { x?: string } | undefined;
+        const ok =
+          e instanceof Error &&
+          e.message.includes('injected-failure:after-restored-db-placement') &&
+          row?.x === 'keep-me';
+        return ok;
+      } finally {
+        try {
+          verify.sqlite.close();
+        } catch {
+          /* */
+        }
+      }
+    } finally {
+      delete process.env.HEALTHSPAN_BACKUP_TEST_HOOKS;
+      try {
+        liveHook.sqlite.close();
+      } catch {
+        /* */
+      }
+    }
   })(),
 );
 
 add(
   'interrupted-create-cleanup',
-  (() => {
-    const stagingLike = fs.mkdtempSync(path.join(os.tmpdir(), 'healthspan-backup-stage-eval-'));
-    fs.writeFileSync(path.join(stagingLike, 'partial.tmp'), 'x');
-    fs.rmSync(stagingLike, { recursive: true, force: true });
-    return !fs.existsSync(stagingLike);
+  await (async () => {
+    process.env.HEALTHSPAN_BACKUP_TEST_HOOKS = '1';
+    const liveCreate = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+    const before = new Set(
+      fs
+        .readdirSync(path.join(liveCreate.paths.dataDir, 'backups'))
+        .filter((n) => n.endsWith('.healthspan-backup')),
+    );
+    try {
+      await createBackup({
+        db: liveCreate.db,
+        sqlite: liveCreate.sqlite,
+        dataDir: liveCreate.paths.dataDir,
+        dbPath: liveCreate.paths.dbPath,
+        tier: 'portable_core',
+        allowUnencrypted: true,
+        testFailAt: 'after-staging-snapshot',
+      });
+      return false;
+    } catch (e) {
+      const after = fs
+        .readdirSync(path.join(liveCreate.paths.dataDir, 'backups'))
+        .filter((n) => n.endsWith('.healthspan-backup'));
+      const leaked = after.some((n) => !before.has(n));
+      return (
+        e instanceof Error &&
+        e.message.includes('injected-failure:after-staging-snapshot') &&
+        !leaked
+      );
+    } finally {
+      delete process.env.HEALTHSPAN_BACKUP_TEST_HOOKS;
+      try {
+        liveCreate.sqlite.close();
+      } catch {
+        /* */
+      }
+    }
   })(),
 );
 add(
   'interrupted-restore-cleanup',
-  (() => {
-    const stagingDb = path.join(os.tmpdir(), `healthspan-restore-eval-${Date.now()}.sqlite3`);
-    fs.writeFileSync(stagingDb, 'tmp');
-    fs.rmSync(stagingDb, { force: true });
-    return !fs.existsSync(stagingDb);
+  await (async () => {
+    process.env.HEALTHSPAN_BACKUP_TEST_HOOKS = '1';
+    const liveRest = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+    liveRest.sqlite.exec(
+      `CREATE TABLE IF NOT EXISTS _eval_interrupt_marker(x TEXT); DELETE FROM _eval_interrupt_marker; INSERT INTO _eval_interrupt_marker(x) VALUES ('keep-interrupt');`,
+    );
+    try {
+      await restoreBackup({
+        db: liveRest.db,
+        liveSqlite: liveRest.sqlite,
+        dataDir: liveRest.paths.dataDir,
+        dbPath: liveRest.paths.dbPath,
+        archivePath: withDocs.archivePath,
+        passphrase,
+        testFailAt: 'while-restoring-documents',
+      });
+      return false;
+    } catch (e) {
+      const verify = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
+      try {
+        const row = verify.sqlite.prepare(`SELECT x FROM _eval_interrupt_marker`).get() as
+          { x?: string } | undefined;
+        const ok =
+          e instanceof Error &&
+          e.message.includes('injected-failure:while-restoring-documents') &&
+          row?.x === 'keep-interrupt';
+        return ok;
+      } finally {
+        try {
+          verify.sqlite.close();
+        } catch {
+          /* */
+        }
+      }
+    } finally {
+      delete process.env.HEALTHSPAN_BACKUP_TEST_HOOKS;
+      try {
+        liveRest.sqlite.close();
+      } catch {
+        /* */
+      }
+    }
   })(),
 );
 
