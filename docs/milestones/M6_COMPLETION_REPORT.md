@@ -6,7 +6,7 @@
 **Entry-gate commit:** `36a281015176ea73fc24fde6344bfc15bfe22308`  
 **Original first M6 implementation commit:** `ae6419f3db2b4f4799970c7529822242cdae3197`  
 **Remediation base:** `40540025f468fdefbf018ded9b9dbb4f1b00de2d`  
-**Remediation feature-complete commit:** `PENDING_FEATURE_COMPLETE`  
+**Remediation feature-complete commit:** `7853708edce228c53a49e374d602ee4012e81b95`  
 **Final branch tip:** `PENDING_FINAL_TIP`  
 **Controlling brief:** `docs/milestones/healthspan_dashboard_milestone_6_execution_brief.md`  
 **Brief SHA-256:** `f78eeb73b7e735c9ce24103b99de617a94951101133ce010c3401667a8355118`  
@@ -27,7 +27,7 @@ Milestone 6 personalisation/production hardening is remediated against the offic
 | Entry gate                            | `36a281015176ea73fc24fde6344bfc15bfe22308` |
 | Original first M6 feature commit      | `ae6419f3db2b4f4799970c7529822242cdae3197` |
 | Pro-challenged tip / remediation base | `40540025f468fdefbf018ded9b9dbb4f1b00de2d` |
-| Remediation feature-complete          | `PENDING_FEATURE_COMPLETE`                 |
+| Remediation feature-complete          | `7853708edce228c53a49e374d602ee4012e81b95` |
 | Final branch tip                      | `PENDING_FINAL_TIP`                        |
 
 ## 3. One-row acceptance checklist
