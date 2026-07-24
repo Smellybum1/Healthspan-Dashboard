@@ -1279,7 +1279,7 @@ export function personalisationImportApply(
       completedAt: now(),
     })
     .run();
-  return { ...preview, imported, importId: id };
+  return { ...preview, imported, skipped, importId: id };
 }
 
 export function personalisedToday(db: HealthspanDb) {
