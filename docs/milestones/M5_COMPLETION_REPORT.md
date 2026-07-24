@@ -13,7 +13,7 @@ Pro has held M6 until official-brief closure. Do **not** authorise Milestone 6 f
 | --- | --- |
 | Base (M4 final) | `f809ffbbcb39a5d2fd50a9a2beb18a329f488233` |
 | Corpora + document lifecycle + Review Queue | `2b79560` / tip after report sync |
-| Final HEAD | *(set after this packet push)* |
+| Final HEAD | `0dc1e70` (jobs/compliance/export/doctors + gate re-cert) |
 
 ## 1. Executive summary
 
