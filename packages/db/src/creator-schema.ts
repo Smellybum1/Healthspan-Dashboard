@@ -353,9 +353,16 @@ export const creatorDocuments = sqliteTable(
     parsedTextExcerpt: text('parsed_text_excerpt'),
     lifecycleState: text('lifecycle_state').default('current'),
     reviewState: text('review_state').notNull().default('accepted'),
+    replacesDocumentId: text('replaces_document_id'),
+    deletedAt: tsNull('deleted_at'),
+    purgedAt: tsNull('purged_at'),
+    storagePurged: bool('storage_purged').default(false),
     createdAt: ts('created_at'),
   },
-  (t) => [index('creator_documents_rights_eligible').on(t.rightsBasis, t.claimEligible)],
+  (t) => [
+    index('creator_documents_rights_eligible').on(t.rightsBasis, t.claimEligible),
+    index('creator_documents_replaces').on(t.replacesDocumentId),
+  ],
 );
 
 export const creatorDocumentSegments = sqliteTable(
@@ -540,15 +547,20 @@ export const creatorClaimFindings = sqliteTable(
   {
     id: id(),
     assessmentId: text('assessment_id').notNull(),
+    claimId: text('claim_id'),
     findingType: text('finding_type').notNull(),
     findingState: text('finding_state').notNull().default('candidate'),
     explanation: text('explanation').notNull(),
     reviewRequired: bool('review_required').default(true),
     reviewDecision: text('review_decision'),
+    publishedToProfile: bool('published_to_profile').default(false),
     createdAt: ts('created_at'),
     reviewedAt: tsNull('reviewed_at'),
   },
-  (t) => [index('creator_claim_findings_assessment').on(t.assessmentId, t.findingState)],
+  (t) => [
+    index('creator_claim_findings_assessment').on(t.assessmentId, t.findingState),
+    index('creator_claim_findings_claim').on(t.claimId, t.findingState),
+  ],
 );
 
 export const creatorClaimRelationships = sqliteTable(

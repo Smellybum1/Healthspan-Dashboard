@@ -63,6 +63,7 @@ import {
   bootstrapCreatorCatalog,
   creatorWatchItems,
   importCreatorDocument,
+  deleteCreatorDocument,
   listCreatorClaims,
   listCreators,
   ensureXBudgetRow,
@@ -71,6 +72,12 @@ import {
   addXAccount,
   createManualCreatorClaim,
 } from './creator-service.js';
+import {
+  listCreatorReviewTasks,
+  resolveCreatorReviewTask,
+  CREATOR_REVIEW_ACTIONS,
+  type CreatorReviewAction,
+} from './creator-review-service.js';
 import {
   getYoutubeQuotaLedger,
   syncYoutubeMonitoredAccounts,
@@ -225,7 +232,7 @@ export function createApp() {
         status: doctor.ok ? 'healthy' : 'degraded',
         integrity: doctor.integrity,
         journalMode: doctor.journalMode,
-        migrationVersion: '0007_m5_creator_schema_depth',
+        migrationVersion: '0008_m5_document_lifecycle',
       },
       scheduler: scheduler.getStatus(),
       asOf: new Date().toISOString(),
@@ -1158,6 +1165,8 @@ export function createApp() {
       contentBase64?: string;
       rightsBasis?: string;
       mediaType?: string;
+      replacesDocumentId?: string;
+      claimEligible?: boolean;
     };
     if (!body.filename || !body.contentBase64 || !body.rightsBasis) {
       return c.json({ error: 'filename, contentBase64, and rightsBasis are required' }, 400);
@@ -1174,6 +1183,52 @@ export function createApp() {
         | 'fair_dealing_research_notes'
         | 'other_declared',
       mediaType: body.mediaType,
+      replacesDocumentId: body.replacesDocumentId,
+      claimEligible: body.claimEligible,
+      dataDir: live.paths.dataDir,
+    });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.delete('/api/creators/:creatorId/documents/:documentId', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const result = deleteCreatorDocument(live.db, {
+      documentId: c.req.param('documentId'),
+      dataDir: live.paths.dataDir,
+    });
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ accepted: true, ...result });
+  });
+
+  app.get('/api/creator-review/tasks', (c) => {
+    if (currentMode() === 'demo') return c.json({ dataMode: 'demo', tasks: [] });
+    const tasks = listCreatorReviewTasks(live.db, {
+      limit: Number(c.req.query('limit') ?? 100),
+    });
+    return c.json({ dataMode: 'live', tasks });
+  });
+
+  app.post('/api/creator-review/tasks/:id/resolve', async (c) => {
+    try {
+      assertAdminMutationAllowed();
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'Forbidden' }, 403);
+    }
+    if (currentMode() === 'demo') return c.json({ error: 'Live-only' }, 400);
+    const body = (await c.req.json().catch(() => ({}))) as { action?: string; notes?: string };
+    if (!body.action || !CREATOR_REVIEW_ACTIONS.includes(body.action as CreatorReviewAction)) {
+      return c.json({ error: 'action must be accept|reject|dismiss' }, 400);
+    }
+    const result = resolveCreatorReviewTask(live.db, {
+      findingId: c.req.param('id'),
+      action: body.action as CreatorReviewAction,
+      notes: body.notes,
     });
     if (!result.ok) return c.json({ error: result.error }, result.status);
     return c.json({ accepted: true, ...result });

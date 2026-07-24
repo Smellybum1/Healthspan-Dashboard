@@ -274,9 +274,33 @@ export function CreatorProfilePage() {
             ) : (
               <ul className="space-y-1 text-sm">
                 {documents.map((d) => (
-                  <li key={String(d.id)}>
-                    {String(d.filename)} · {String(d.documentKind)} · rights {String(d.rightsBasis)}
-                    {d.claimEligible ? ' · claim-eligible' : ''}
+                  <li key={String(d.id)} className="flex flex-wrap items-center gap-2">
+                    <span>
+                      {String(d.filename)} · {String(d.documentKind)} · rights {String(d.rightsBasis)}
+                      {d.claimEligible ? ' · claim-eligible' : ''}
+                    </span>
+                    <button
+                      type="button"
+                      className="text-xs underline text-[var(--muted)]"
+                      onClick={() => {
+                        void (async () => {
+                          const res = await fetch(`/api/creators/${id}/documents/${String(d.id)}`, {
+                            method: 'DELETE',
+                          });
+                          const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+                          if (!res.ok) {
+                            setImportMessage(String(body.error ?? `Delete failed: ${res.status}`));
+                            return;
+                          }
+                          setImportMessage(
+                            `Deleted document; ${String(body.staleClaims ?? 0)} dependent claims marked source-unavailable.`,
+                          );
+                          reload();
+                        })();
+                      }}
+                    >
+                      Delete
+                    </button>
                   </li>
                 ))}
               </ul>

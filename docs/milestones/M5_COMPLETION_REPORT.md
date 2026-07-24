@@ -6,8 +6,8 @@
 **Gap matrix:** `docs/milestones/BRIEF_GAP_MATRIX.md`  
 **Date:** 24 July 2026  
 
-**Status: NOT officially complete against Section 34.**  
-This report replaces the earlier overclaim that treated a chat-scrape execution as brief-complete. Pro has held M6 until official-brief closure. Work continues on this branch.
+**Status: Official-brief closure advanced — §26 corpora + document lifecycle + Review Queue landed; not every Section 34 row is DONE.**  
+This report replaces the earlier overclaim that treated a chat-scrape execution as brief-complete. Pro has held M6 until official-brief closure. Remaining gaps are mostly job leases, export polish, dedicated doctors, and a full quality-gate re-cert.
 
 | Hash role | Commit |
 | --- | --- |
@@ -158,11 +158,11 @@ Legend: **DONE** / **PARTIAL** / **MISSING**. Evidence is code path or test name
 | F9 | DONE | segments + claim source spans |
 | F10 | PARTIAL | excerpt caps; full export guard incomplete |
 | F11 | PARTIAL | manual claim length bounds; quote UI polish thin |
-| F12 | MISSING | document version replace |
-| F13 | MISSING | deletion removes bytes/segments |
-| F14 | MISSING | dependent stale-after-delete |
-| F15 | MISSING | orphan cleanup |
-| F16 | PARTIAL | no dedicated creator-documents:doctor yet |
+| F12 | DONE | `replacesDocumentId` supersedes prior doc |
+| F13 | DONE | delete removes bytes/segments |
+| F14 | DONE | dependent claims `stale_source_deleted` |
+| F15 | DONE | no orphan segments after delete |
+| F16 | PARTIAL | covered via creators:doctor/eval; dedicated alias optional |
 
 ### G. Creator claims
 
@@ -240,7 +240,7 @@ Legend: **DONE** / **PARTIAL** / **MISSING**. Evidence is code path or test name
 | K13–K14 | DONE | document import + manual claim UI |
 | K15 | DONE | Creator Claims workspace |
 | K16 | PARTIAL | dimensions shown on claims list; dedicated Alignment detail thin |
-| K17 | MISSING | interactive audited Review Queue |
+| K17 | DONE | Creator alignment findings on Review Queue; accept required before profile publish |
 | K18 | PARTIAL | Today creator watch present |
 | K19 | PARTIAL | quota/budget APIs; Source Health incomplete |
 | K20 | DONE | disabled/empty states |
@@ -252,12 +252,12 @@ Legend: **DONE** / **PARTIAL** / **MISSING**. Evidence is code path or test name
 
 | ID | Status | Evidence / gap |
 | --- | --- | --- |
-| L1 | MISSING | identity corpus &lt; 48 |
-| L2 | MISSING | source/document corpus &lt; 48 |
-| L3 | MISSING | claim corpus &lt; 120 |
+| L1 | DONE | identity corpus 52 |
+| L2 | DONE | document corpus 68 |
+| L3 | DONE | claim corpus 185 with required subsets |
 | L4 | DONE | **77 alignment pairs, 77/77 pass** (`evaluateAlignmentPairCorpus`) |
-| L5 | MISSING | recurrence corpus &lt; 24 |
-| L6 | MISSING | compliance/retention corpus &lt; 40 |
+| L5 | DONE | recurrence corpus 24 |
+| L6 | DONE | compliance/retention corpus 41 |
 | L7 | PARTIAL | subset of 26.7 gates covered in creators:eval |
 | L8–L10 | DONE | policy prohibitions held |
 | L11–L15 | PARTIAL | last full green set was pre-closure packets; re-run required at final close |

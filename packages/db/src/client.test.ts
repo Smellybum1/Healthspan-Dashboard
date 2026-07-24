@@ -63,6 +63,12 @@ describe('sqlite database', () => {
     expect(names.has('claim_fingerprint')).toBe(true);
     expect(names.has('lifecycle_state')).toBe(true);
     expect(names.has('review_status')).toBe(true);
+    const docCols = sqlite
+      .prepare(`PRAGMA table_info(creator_documents)`)
+      .all() as Array<{ name: string }>;
+    const docNames = new Set(docCols.map((c) => c.name));
+    expect(docNames.has('replaces_document_id')).toBe(true);
+    expect(docNames.has('deleted_at')).toBe(true);
     closeDatabase(sqlite);
   });
 

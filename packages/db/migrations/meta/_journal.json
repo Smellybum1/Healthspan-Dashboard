@@ -57,6 +57,13 @@
       "when": 1784930000000,
       "tag": "0007_m5_creator_schema_depth",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784940000000,
+      "tag": "0008_m5_document_lifecycle",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { desc, eq } from 'drizzle-orm';
 import {
   creatorAliases,
@@ -95,10 +97,12 @@ function persistClaimAlignment(
       .values({
         id: randomUUID(),
         assessmentId,
+        claimId: opts.claimId,
         findingType: finding,
         findingState: 'candidate',
         explanation: `Candidate finding from ${ALIGNMENT_RULES_VERSION}; adverse Live prominence requires human review.`,
         reviewRequired: true,
+        publishedToProfile: false,
         createdAt: opts.at,
       })
       .run();
@@ -185,12 +189,17 @@ export function importCreatorDocument(
     bytes: Buffer;
     rightsBasis: RightsBasis;
     mediaType?: string;
+    replacesDocumentId?: string;
+    dataDir?: string;
+    /** When false, store document but do not extract claims. */
+    claimEligible?: boolean;
   },
 ) {
   bootstrapCreatorCatalog(db);
   const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, opts.creatorId)).all()[0];
   if (!creator) return { ok: false as const, status: 404 as const, error: 'Creator not found' };
 
+  const claimEligible = opts.claimEligible ?? true;
   const parsed = parseTranscriptDocument({
     filename: opts.filename,
     bytes: opts.bytes,
@@ -199,6 +208,32 @@ export function importCreatorDocument(
   const sha256 = createHash('sha256').update(opts.bytes).digest('hex');
   const docId = randomUUID();
   const now = Date.now();
+  const storageKey = `creator-docs/${sha256.slice(0, 2)}/${sha256}`;
+  if (opts.dataDir) {
+    const abs = path.join(opts.dataDir, storageKey);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, opts.bytes);
+  }
+
+  if (opts.replacesDocumentId) {
+    const prior = db
+      .select()
+      .from(creatorDocuments)
+      .all()
+      .find((d) => d.id === opts.replacesDocumentId && d.creatorId === opts.creatorId);
+    if (!prior) return { ok: false as const, status: 404 as const, error: 'Document to replace not found' };
+    db.update(creatorDocuments)
+      .set({ lifecycleState: 'superseded' })
+      .where(eq(creatorDocuments.id, prior.id))
+      .run();
+    for (const claim of db.select().from(creatorClaims).all().filter((c) => c.documentId === prior.id)) {
+      db.update(creatorClaims)
+        .set({ lifecycleState: 'stale_replaced', reviewStatus: 'stale' })
+        .where(eq(creatorClaims.id, claim.id))
+        .run();
+    }
+  }
+
   db.insert(creatorDocuments)
     .values({
       id: docId,
@@ -206,15 +241,16 @@ export function importCreatorDocument(
       filename: opts.filename,
       documentKind: parsed.kind,
       rightsBasis: opts.rightsBasis,
-      storageKey: `creator-docs/${sha256.slice(0, 2)}/${sha256}`,
+      storageKey,
       byteLength: opts.bytes.length,
       sha256,
       parsedTextExcerpt: parsed.text.slice(0, 2000),
       reviewState: 'accepted',
-      claimEligible: true,
+      claimEligible,
       rightsDeclaredAt: now,
       lifecycleState: 'current',
       mimeType: opts.mediaType ?? null,
+      replacesDocumentId: opts.replacesDocumentId ?? null,
       createdAt: now,
     })
     .run();
@@ -233,84 +269,86 @@ export function importCreatorDocument(
         text: seg.text,
         textHash: createHash('sha256').update(seg.text).digest('hex'),
         sourceLineOrCueIds: seg.sourceLineOrCueIds ?? null,
-        claimEligible: true,
+        claimEligible,
         createdAt: now,
       })
       .run();
   }
 
-  const drafts = extractCreatorClaimsFromText(parsed.text);
   let claimsCreated = 0;
   let disclosures = 0;
-  for (const draft of drafts) {
-    const claimId = randomUUID();
-    const fingerprint = claimRecurrenceKey(draft.claimText);
-    const matchingIdx = parsed.segments.findIndex((s) =>
-      s.text.includes(draft.excerpt.slice(0, Math.min(40, draft.excerpt.length))),
-    );
-    const segIdx = matchingIdx >= 0 ? matchingIdx : 0;
-    const matchingSeg = parsed.segments[segIdx];
-    const matchingSegId = segmentIds[segIdx] ?? null;
-    db.insert(creatorClaims)
-      .values({
-        id: claimId,
-        creatorId: opts.creatorId,
-        documentId: docId,
-        claimFingerprint: fingerprint,
-        claimText: draft.claimText,
-        assertionRole: draft.assertionRole,
-        excerpt: draft.excerpt,
-        fieldPath: draft.fieldPath,
-        confidence: draft.confidence,
-        recurrenceKey: fingerprint,
-        active: true,
-        reviewStatus: 'unreviewed',
-        lifecycleState: 'current',
-        alignmentJson: JSON.stringify({ pending: true }),
-        extractionVersion: CLAIM_EXTRACT_VERSION,
-        createdAt: now,
-      })
-      .run();
-    const alignment = persistClaimAlignment(db, {
-      claimId,
-      claimText: draft.claimText,
-      assertionRole: draft.assertionRole,
-      confidence: draft.confidence,
-      at: now,
-    });
-    db.update(creatorClaims)
-      .set({ alignmentJson: JSON.stringify(alignment) })
-      .where(eq(creatorClaims.id, claimId))
-      .run();
-    db.insert(creatorClaimSourceSpans)
-      .values({
-        id: randomUUID(),
-        claimId,
-        documentId: docId,
-        segmentId: matchingSegId,
-        charStart: matchingSeg?.charStart ?? null,
-        charEnd: matchingSeg?.charEnd ?? null,
-        boundedExcerpt: draft.excerpt.slice(0, 240),
-        excerptWordCount: draft.excerpt.split(/\s+/).filter(Boolean).length,
-        spanHash: createHash('sha256').update(draft.excerpt).digest('hex'),
-        primarySupport: true,
-        displayEligible: true,
-        createdAt: now,
-      })
-      .run();
-    claimsCreated += 1;
-    if (draft.assertionRole === 'disclosure') {
-      db.insert(creatorDisclosures)
+  if (claimEligible) {
+    const drafts = extractCreatorClaimsFromText(parsed.text);
+    for (const draft of drafts) {
+      const claimId = randomUUID();
+      const fingerprint = claimRecurrenceKey(draft.claimText);
+      const matchingIdx = parsed.segments.findIndex((s) =>
+        s.text.includes(draft.excerpt.slice(0, Math.min(40, draft.excerpt.length))),
+      );
+      const segIdx = matchingIdx >= 0 ? matchingIdx : 0;
+      const matchingSeg = parsed.segments[segIdx];
+      const matchingSegId = segmentIds[segIdx] ?? null;
+      db.insert(creatorClaims)
         .values({
-          id: randomUUID(),
+          id: claimId,
           creatorId: opts.creatorId,
-          creatorClaimId: claimId,
-          disclosureText: draft.claimText,
-          source: 'document',
+          documentId: docId,
+          claimFingerprint: fingerprint,
+          claimText: draft.claimText,
+          assertionRole: draft.assertionRole,
+          excerpt: draft.excerpt,
+          fieldPath: draft.fieldPath,
+          confidence: draft.confidence,
+          recurrenceKey: fingerprint,
+          active: true,
+          reviewStatus: 'unreviewed',
+          lifecycleState: 'current',
+          alignmentJson: JSON.stringify({ pending: true }),
+          extractionVersion: CLAIM_EXTRACT_VERSION,
           createdAt: now,
         })
         .run();
-      disclosures += 1;
+      const alignment = persistClaimAlignment(db, {
+        claimId,
+        claimText: draft.claimText,
+        assertionRole: draft.assertionRole,
+        confidence: draft.confidence,
+        at: now,
+      });
+      db.update(creatorClaims)
+        .set({ alignmentJson: JSON.stringify(alignment) })
+        .where(eq(creatorClaims.id, claimId))
+        .run();
+      db.insert(creatorClaimSourceSpans)
+        .values({
+          id: randomUUID(),
+          claimId,
+          documentId: docId,
+          segmentId: matchingSegId,
+          charStart: matchingSeg?.charStart ?? null,
+          charEnd: matchingSeg?.charEnd ?? null,
+          boundedExcerpt: draft.excerpt.slice(0, 240),
+          excerptWordCount: draft.excerpt.split(/\s+/).filter(Boolean).length,
+          spanHash: createHash('sha256').update(draft.excerpt).digest('hex'),
+          primarySupport: true,
+          displayEligible: true,
+          createdAt: now,
+        })
+        .run();
+      claimsCreated += 1;
+      if (draft.assertionRole === 'disclosure') {
+        db.insert(creatorDisclosures)
+          .values({
+            id: randomUUID(),
+            creatorId: opts.creatorId,
+            creatorClaimId: claimId,
+            disclosureText: draft.claimText,
+            source: 'document',
+            createdAt: now,
+          })
+          .run();
+        disclosures += 1;
+      }
     }
   }
 
@@ -341,6 +379,83 @@ export function importCreatorDocument(
     disclosures,
     warnings: parsed.warnings,
     cueCount: parsed.cueCount,
+    claimEligible,
+    replaced: Boolean(opts.replacesDocumentId),
+  };
+}
+
+/** Delete document bytes/segments and mark dependent claims stale. */
+export function deleteCreatorDocument(
+  db: HealthspanDb,
+  opts: { documentId: string; dataDir?: string },
+) {
+  const doc = db.select().from(creatorDocuments).all().find((d) => d.id === opts.documentId);
+  if (!doc) return { ok: false as const, status: 404 as const, error: 'Document not found' };
+  if (doc.lifecycleState === 'deleted') {
+    return { ok: true as const, alreadyDeleted: true, staleClaims: 0 };
+  }
+  const now = Date.now();
+  let bytesRemoved = false;
+  if (opts.dataDir && doc.storageKey && !doc.storagePurged) {
+    const abs = path.join(opts.dataDir, doc.storageKey);
+    try {
+      if (fs.existsSync(abs)) {
+        fs.unlinkSync(abs);
+        bytesRemoved = true;
+      }
+    } catch {
+      // continue with DB purge even if file missing
+    }
+  }
+  const segments = db
+    .select()
+    .from(creatorDocumentSegments)
+    .all()
+    .filter((s) => s.documentId === doc.id);
+  for (const seg of segments) {
+    db.delete(creatorDocumentSegments).where(eq(creatorDocumentSegments.id, seg.id)).run();
+  }
+  db.update(creatorDocuments)
+    .set({
+      lifecycleState: 'deleted',
+      deletedAt: now,
+      purgedAt: now,
+      storagePurged: true,
+      parsedTextExcerpt: null,
+      claimEligible: false,
+      byteLength: 0,
+    })
+    .where(eq(creatorDocuments.id, doc.id))
+    .run();
+
+  let staleClaims = 0;
+  for (const claim of db.select().from(creatorClaims).all().filter((c) => c.documentId === doc.id)) {
+    db.update(creatorClaims)
+      .set({
+        active: false,
+        lifecycleState: 'stale_source_deleted',
+        reviewStatus: 'source_unavailable',
+      })
+      .where(eq(creatorClaims.id, claim.id))
+      .run();
+    for (const span of db
+      .select()
+      .from(creatorClaimSourceSpans)
+      .all()
+      .filter((s) => s.claimId === claim.id)) {
+      db.update(creatorClaimSourceSpans)
+        .set({ displayEligible: false, boundedExcerpt: '[source deleted]' })
+        .where(eq(creatorClaimSourceSpans.id, span.id))
+        .run();
+    }
+    staleClaims += 1;
+  }
+  return {
+    ok: true as const,
+    alreadyDeleted: false,
+    bytesRemoved,
+    segmentsRemoved: segments.length,
+    staleClaims,
   };
 }
 
@@ -386,13 +501,14 @@ export function getCreatorDetail(db: HealthspanDb, id: string) {
     .select()
     .from(creatorDocuments)
     .all()
-    .filter((d) => d.creatorId === id)
+    .filter((d) => d.creatorId === id && d.lifecycleState !== 'deleted')
     .map((d) => ({
       id: d.id,
       filename: d.filename,
       documentKind: d.documentKind,
       rightsBasis: d.rightsBasis,
       claimEligible: Boolean(d.claimEligible),
+      lifecycleState: d.lifecycleState,
       createdAt: new Date(d.createdAt).toISOString(),
     }));
   const now = Date.now();
