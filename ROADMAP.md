@@ -10,10 +10,14 @@
 
 ## Current
 
-- Milestone 6 — Personalisation, briefings & production hardening (`milestone-6/personalisation-production-hardening`) — **feature-complete pending final report hash**
-  - Controlling brief: `docs/milestones/healthspan_dashboard_milestone_6_execution_brief.md`
-  - Entry-gate commit: `36a281015176ea73fc24fde6344bfc15bfe22308`
-  - Completion report: `docs/milestones/M6_COMPLETION_REPORT.md`
+- _(none — awaiting owner merge decision; do not merge to main unless instructed)_
+
+## Just completed
+
+- Milestone 6 — Personalisation, briefings & production hardening (`milestone-6/personalisation-production-hardening`)
+  - Final HEAD: `ae6419f3db2b4f4799970c7529822242cdae3197`
+  - Entry-gate: `36a281015176ea73fc24fde6344bfc15bfe22308`
+  - Report: `docs/milestones/M6_COMPLETION_REPORT.md`
 
 ## Later
 

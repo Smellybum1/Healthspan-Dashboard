@@ -17,7 +17,7 @@ Milestone 6 delivers the mandatory M2–M4 official-brief entry gate, then the s
 | --- | --- |
 | M5 tip / M6 base | `575489cf913812291f75266975e77c8953058968` |
 | Entry gate | `36a281015176ea73fc24fde6344bfc15bfe22308` |
-| Feature-complete / Final HEAD | _(filled after final commit)_ |
+| Feature-complete / Final HEAD | `ae6419f3db2b4f4799970c7529822242cdae3197` |
 
 ## Entry-gate decision and sequencing
 
