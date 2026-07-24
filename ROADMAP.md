@@ -16,7 +16,7 @@
 
 - Milestone 6 — Personalisation, briefings & production hardening (`milestone-6/personalisation-production-hardening`)
   - Remediation base (Pro-challenged tip): `40540025f468fdefbf018ded9b9dbb4f1b00de2d`
-  - Remediation feature-complete: `7853708edce228c53a49e374d602ee4012e81b95`; Final tip: `11b920216326d4aaac6c5be0b5bfe45e847b1d23`
+  - Remediation feature-complete: `7853708edce228c53a49e374d602ee4012e81b95`; Final tip: `7323b30a484ea9424b56df50cad5587bd6a146bc`
   - Entry-gate: `36a281015176ea73fc24fde6344bfc15bfe22308`
   - Controlling remediation: `docs/milestones/M6_CLOSURE_REMEDIATION.md`
   - Report: `docs/milestones/M6_COMPLETION_REPORT.md`
