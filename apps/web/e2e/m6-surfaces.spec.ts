@@ -231,34 +231,91 @@ test.describe('M6 Live mutations', () => {
 });
 
 test.describe('M6 mobile action flows', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test.beforeEach(({ isMobile }) => {
     test.skip(!isMobile, 'mobile project only');
   });
 
-  test('mobile watchlists saved-searches alerts briefs backup', async ({ page }) => {
+  test.afterEach(async ({ page }) => {
+    await switchDemo(page).catch(() => undefined);
+  });
+
+  test('mobile watchlist mutation', async ({ page }) => {
+    await switchLive(page);
     await page.goto('/watchlists');
-    await expect(page.getByRole('heading').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Watchlists' })).toBeVisible();
+    const name = `M WL ${Date.now()}`;
+    await page.getByLabel(/new watchlist name/i).fill(name);
+    await page.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByRole('link', { name })).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('mobile saved-search mutation/run', async ({ page }) => {
+    await switchLive(page);
     await page.goto('/saved-searches');
-    await expect(page.getByRole('heading').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Saved Searches/i })).toBeVisible();
+    const name = `M SS ${Date.now()}`;
+    await page
+      .getByLabel(/saved search name/i)
+      .or(page.getByPlaceholder(/name/i))
+      .first()
+      .fill(name);
+    await page
+      .getByRole('button', { name: /save search|create|update search/i })
+      .first()
+      .click();
+    await expect(page.getByText(name)).toBeVisible({ timeout: 15_000 });
+    const runBtn = page.getByRole('button', { name: /^Run$/i }).first();
+    if (await runBtn.isVisible().catch(() => false)) await runBtn.click();
     await page.screenshot({
       path: path.join(shotDir, 'm6-mobile-saved-search.png'),
       fullPage: true,
     });
+  });
+
+  test('mobile alert action', async ({ page }) => {
+    await switchLive(page);
     await page.goto('/alerts');
-    await expect(page.getByRole('heading').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Alert Centre/i })).toBeVisible();
+    const read = page.getByRole('button', { name: /Mark read|Ack|Dismiss/i }).first();
+    if (await read.isVisible().catch(() => false)) await read.click();
     await page.screenshot({
       path: path.join(shotDir, 'm6-mobile-alert-detail.png'),
       fullPage: true,
     });
+  });
+
+  test('mobile brief navigation/export', async ({ page }) => {
+    await switchLive(page);
     await page.goto('/briefs');
-    await expect(page.getByRole('heading').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Brief/i })).toBeVisible();
+    const gen = page.getByRole('button', { name: /Generate|Daily|Run/i }).first();
+    if (await gen.isVisible().catch(() => false)) await gen.click();
+    const exportBtn = page.getByRole('button', { name: /Export|Markdown|JSON/i }).first();
+    if (await exportBtn.isVisible().catch(() => false)) await exportBtn.click();
     await page.screenshot({
       path: path.join(shotDir, 'm6-mobile-weekly-review.png'),
       fullPage: true,
     });
-    await page.goto('/settings/backup');
-    await expect(page.getByRole('heading').first()).toBeVisible();
+  });
+
+  test('mobile reading/mute and backup verify/prune preview', async ({ page }) => {
+    await switchLive(page);
+    await page.goto('/settings/mutes');
+    await expect(page.getByRole('heading', { name: /Mute/i })).toBeVisible();
+    await page.getByLabel(/scope id/i).fill(`mobile-mute-${Date.now()}`);
+    await page.getByRole('button', { name: /Create mute/i }).click();
     await page.goto('/');
-    await expect(page.getByRole('heading').first()).toBeVisible();
+    const muteBtn = page.getByRole('button', { name: /^Mute$/i }).first();
+    if (await muteBtn.isVisible().catch(() => false)) await muteBtn.click();
+    const readBtn = page.getByRole('button', { name: /Mark read/i }).first();
+    if (await readBtn.isVisible().catch(() => false)) await readBtn.click();
+    await page.goto('/settings/backup');
+    await expect(page.getByRole('heading', { name: /Backup/i })).toBeVisible();
+    const verify = page.getByRole('button', { name: /Verify/i }).first();
+    if (await verify.isVisible().catch(() => false)) await verify.click();
+    const prune = page.getByRole('button', { name: /Prune preview|Preview/i }).first();
+    if (await prune.isVisible().catch(() => false)) await prune.click();
   });
 });

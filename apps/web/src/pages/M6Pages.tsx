@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { DemoBanner, SkeletonBlock } from '@healthspan/ui';
 import { DEMO_SNAPSHOT_NOTICE } from '@healthspan/core';
@@ -35,9 +35,70 @@ const ALERT_RULE_TARGETS = [
   'source',
   'event_type',
   'all_official_safety',
+  'database_integrity',
 ] as const;
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const TAXONOMY = {
+  source: ['pubmed', 'clinicaltrials', 'tga', 'fda', 'who', 'ema', 'manual'],
+  contentType: ['paper', 'trial', 'intervention', 'peptide', 'creator', 'safety_notice', 'claim'],
+  entityTypes: ['paper', 'trial', 'intervention', 'peptide', 'creator', 'content_item', 'claim'],
+  studyDesign: [
+    'rct',
+    'observational',
+    'meta_analysis',
+    'systematic_review',
+    'in_vitro',
+    'animal',
+    'case_report',
+  ],
+  evidenceMaturity: ['strong', 'moderate', 'emerging', 'preliminary', 'insufficient'],
+  evidenceAvailability: ['full_text', 'abstract', 'registry_only', 'summary', 'unavailable'],
+  organism: ['human', 'mouse', 'rat', 'nonhuman_primate', 'in_vitro', 'other'],
+  population: ['healthy_adults', 'older_adults', 'clinical', 'athletic', 'mixed', 'unknown'],
+  outcomeFamily: [
+    'longevity',
+    'metabolic',
+    'cognitive',
+    'cardiovascular',
+    'musculoskeletal',
+    'safety',
+    'other',
+  ],
+  translationGap: ['none', 'narrow', 'moderate', 'wide', 'unknown'],
+  trialStatus: ['recruiting', 'active', 'completed', 'terminated', 'withdrawn', 'unknown'],
+  regulatoryStanding: [
+    'approved',
+    'cleared',
+    'investigational',
+    'compounding',
+    'unapproved',
+    'withdrawn',
+  ],
+  creatorClaimFinding: ['supported', 'partial', 'unsupported', 'insufficient', 'retracted'],
+  sort: ['newest', 'oldest', 'importance'] as const,
+  alertPriority: ['low', 'medium', 'high', 'critical'] as const,
+  alertEventFamily: [
+    'watchlist_change',
+    'saved_search_match',
+    'official_safety',
+    'database_integrity',
+    'source_health',
+    'regulatory',
+    'research',
+  ],
+  muteScopes: ['object', 'topic', 'source', 'event_type', 'watchable'] as const,
+  briefingSections: [
+    'urgent_alerts',
+    'since_last_visit',
+    'watchlist_changes',
+    'saved_search_matches',
+    'continue_reading',
+    'daily_brief',
+    'source_coverage',
+  ] as const,
+};
 
 type SavedSearchQueryV2 = {
   searchSchemaVersion: 2;
@@ -45,11 +106,30 @@ type SavedSearchQueryV2 = {
   entityTypes?: string[];
   filters?: {
     source?: string[];
-    evidenceMaturity?: string[];
+    contentType?: string[];
     studyDesign?: string[];
+    evidenceMaturity?: string[];
+    evidenceAvailability?: string[];
+    organism?: string[];
+    population?: string[];
+    outcomeFamily?: string[];
+    translationGap?: string[];
+    trialStatus?: string[];
+    regulatoryStanding?: string[];
+    safetyItemPresent?: boolean;
+    intervention?: string[];
+    peptide?: string[];
+    creator?: string[];
+    creatorClaimFinding?: string[];
   };
+  dateRange?: { from?: string; to?: string };
+  sort?: 'newest' | 'oldest' | 'importance';
   includeRetracted?: boolean;
+  includeUnavailable?: boolean;
 };
+
+const FLOOR_LOCKED_TARGETS = new Set(['all_official_safety', 'database_integrity']);
+const PRIORITY_RANK: Record<string, number> = { low: 0, medium: 1, high: 2, critical: 3 };
 
 function useLiveMode() {
   const modeState = useAsync(() => fetchMode(), []);
@@ -75,6 +155,38 @@ function parseCsv(value: string): string[] {
 
 function joinCsv(values: string[] | undefined): string {
   return (values ?? []).join(', ');
+}
+
+function parseQueryFromItem(raw: unknown): SavedSearchQueryV2 {
+  const parsed = parseJsonField(raw);
+  const filters = (parsed.filters as SavedSearchQueryV2['filters']) ?? {};
+  return {
+    searchSchemaVersion: 2,
+    textQuery: String(parsed.textQuery ?? parsed.text ?? ''),
+    entityTypes: (parsed.entityTypes as string[]) ?? (parsed.targetTypes as string[]) ?? [],
+    filters: {
+      source: filters.source ?? (parsed.sources as string[]) ?? [],
+      contentType: filters.contentType ?? [],
+      studyDesign: filters.studyDesign ?? [],
+      evidenceMaturity: filters.evidenceMaturity ?? [],
+      evidenceAvailability: filters.evidenceAvailability ?? [],
+      organism: filters.organism ?? [],
+      population: filters.population ?? [],
+      outcomeFamily: filters.outcomeFamily ?? [],
+      translationGap: filters.translationGap ?? [],
+      trialStatus: filters.trialStatus ?? [],
+      regulatoryStanding: filters.regulatoryStanding ?? [],
+      safetyItemPresent: filters.safetyItemPresent,
+      intervention: filters.intervention ?? [],
+      peptide: filters.peptide ?? [],
+      creator: filters.creator ?? [],
+      creatorClaimFinding: filters.creatorClaimFinding ?? [],
+    },
+    dateRange: (parsed.dateRange as SavedSearchQueryV2['dateRange']) ?? {},
+    sort: (parsed.sort as SavedSearchQueryV2['sort']) ?? 'newest',
+    includeRetracted: Boolean(parsed.includeRetracted),
+    includeUnavailable: Boolean(parsed.includeUnavailable),
+  };
 }
 
 function downloadText(filename: string, body: string, mime: string) {
@@ -135,12 +247,31 @@ function HealthBadge({ status }: { status: string }) {
   );
 }
 
-function AvailabilityBadge({ availability }: { availability?: string }) {
+function AvailabilityBadge({
+  availability,
+  redirectedTo,
+  targetType,
+}: {
+  availability?: string;
+  redirectedTo?: string | null;
+  targetType?: string;
+}) {
   if (!availability || availability === 'available') return null;
   const tone = availability === 'redirected' ? 'text-amber-600' : 'text-rose-600';
+  const href =
+    availability === 'redirected' && redirectedTo
+      ? itemPath(String(targetType || 'content_item'), String(redirectedTo))
+      : null;
   return (
-    <span className={`rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] uppercase ${tone}`}>
-      {availability}
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <span className={`rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] uppercase ${tone}`}>
+        {availability}
+      </span>
+      {href ? (
+        <Link className="text-[10px] underline" to={href}>
+          Open replacement ({String(redirectedTo)})
+        </Link>
+      ) : null}
     </span>
   );
 }
@@ -156,7 +287,157 @@ function WhyIncludedPreview({ value }: { value: unknown }) {
       {entries.map(([k, v]) => (
         <div key={k} className="flex flex-wrap gap-1">
           <dt className="font-medium text-[var(--muted)]">{k}:</dt>
-          <dd>{typeof v === 'string' ? v : JSON.stringify(v)}</dd>
+          <dd>
+            {k.toLowerCase().includes('link') || k.toLowerCase().includes('url') ? (
+              <a className="underline" href={String(v)} target="_blank" rel="noreferrer">
+                {String(v)}
+              </a>
+            ) : typeof v === 'string' ? (
+              v
+            ) : (
+              JSON.stringify(v)
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function MultiSelectCheckboxes({
+  label,
+  options,
+  values,
+  onChange,
+}: {
+  label: string;
+  options: readonly string[];
+  values: string[];
+  onChange: (next: string[]) => void;
+}) {
+  return (
+    <fieldset className="rounded-lg border border-[var(--border)] p-2">
+      <legend className="px-1 text-xs font-medium text-[var(--muted)]">{label}</legend>
+      <div className="flex max-h-36 flex-wrap gap-x-3 gap-y-1 overflow-auto text-xs">
+        {options.map((opt) => {
+          const checked = values.includes(opt);
+          return (
+            <label key={opt} className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => {
+                  if (e.target.checked) onChange([...values, opt]);
+                  else onChange(values.filter((v) => v !== opt));
+                }}
+              />
+              {opt}
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+function TagListInput({
+  label,
+  values,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState('');
+  return (
+    <label className="block text-sm">
+      {label}
+      <div className="mt-1 flex flex-wrap gap-1">
+        {values.map((v) => (
+          <button
+            key={v}
+            type="button"
+            className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-xs"
+            onClick={() => onChange(values.filter((x) => x !== v))}
+          >
+            {v} ×
+          </button>
+        ))}
+      </div>
+      <input
+        className={`mt-1 w-full ${inputClass}`}
+        value={draft}
+        placeholder={placeholder ?? 'Type value and press Enter'}
+        aria-label={label}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          const next = draft.trim();
+          if (!next || values.includes(next)) return;
+          onChange([...values, next]);
+          setDraft('');
+        }}
+      />
+    </label>
+  );
+}
+
+function SavedSearchQueryPreview({ query }: { query: SavedSearchQueryV2 }) {
+  const rows: Array<[string, string]> = [
+    ['Text', query.textQuery?.trim() || '—'],
+    ['Entity types', joinCsv(query.entityTypes) || '—'],
+    ['Source', joinCsv(query.filters?.source) || '—'],
+    ['Content type', joinCsv(query.filters?.contentType) || '—'],
+    ['Study design', joinCsv(query.filters?.studyDesign) || '—'],
+    ['Evidence maturity', joinCsv(query.filters?.evidenceMaturity) || '—'],
+    ['Evidence availability', joinCsv(query.filters?.evidenceAvailability) || '—'],
+    ['Organism', joinCsv(query.filters?.organism) || '—'],
+    ['Population', joinCsv(query.filters?.population) || '—'],
+    ['Outcome family', joinCsv(query.filters?.outcomeFamily) || '—'],
+    ['Translation gap', joinCsv(query.filters?.translationGap) || '—'],
+    ['Trial status', joinCsv(query.filters?.trialStatus) || '—'],
+    ['Regulatory standing', joinCsv(query.filters?.regulatoryStanding) || '—'],
+    [
+      'Safety item present',
+      query.filters?.safetyItemPresent === undefined
+        ? '—'
+        : query.filters.safetyItemPresent
+          ? 'yes'
+          : 'no',
+    ],
+    ['Intervention', joinCsv(query.filters?.intervention) || '—'],
+    ['Peptide', joinCsv(query.filters?.peptide) || '—'],
+    ['Creator', joinCsv(query.filters?.creator) || '—'],
+    ['Creator-claim finding', joinCsv(query.filters?.creatorClaimFinding) || '—'],
+    ['Date from', query.dateRange?.from || '—'],
+    ['Date to', query.dateRange?.to || '—'],
+    ['Sort', query.sort ?? 'newest'],
+    ['Include retracted', query.includeRetracted ? 'yes' : 'no'],
+    ['Include unavailable', query.includeUnavailable ? 'yes' : 'no'],
+  ];
+  return (
+    <dl className="grid gap-1 text-xs sm:grid-cols-2">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex flex-wrap gap-1">
+          <dt className="font-medium text-[var(--muted)]">{k}:</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function StatusDl({ entries }: { entries: Array<[string, unknown]> }) {
+  return (
+    <dl className="space-y-1 text-sm">
+      {entries.map(([k, v]) => (
+        <div key={k} className="flex flex-wrap justify-between gap-2">
+          <dt className="text-[var(--muted)]">{k}</dt>
+          <dd>{v == null || v === '' ? '—' : typeof v === 'string' ? v : JSON.stringify(v)}</dd>
         </div>
       ))}
     </dl>
@@ -176,23 +457,35 @@ export function WatchlistsPage() {
   const [lists, setLists] = useState<Array<Record<string, unknown>>>([]);
   const [selected, setSelected] = useState<string | null>(routeId ?? null);
   const [entries, setEntries] = useState<Array<Record<string, unknown>>>([]);
+  const [entriesTotal, setEntriesTotal] = useState(0);
+  const [entriesPage, setEntriesPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [changes, setChanges] = useState<Array<Record<string, unknown>>>([]);
+  const [changesTotal, setChangesTotal] = useState(0);
+  const [changesPage, setChangesPage] = useState(1);
   const [targetId, setTargetId] = useState('');
   const [targetType, setTargetType] = useState('content_item');
+  const [batchText, setBatchText] = useState('');
   const [filterType, setFilterType] = useState('');
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   const loadEntries = useCallback(
     async (watchlistId: string) => {
-      const r = await m6Api.getWatchlist(
-        watchlistId,
-        filterType ? { targetType: filterType } : undefined,
-      );
+      const r = await m6Api.getWatchlist(watchlistId, {
+        targetType: filterType || undefined,
+        page: entriesPage,
+        pageSize,
+      });
       setEntries(r.items ?? r.entries ?? []);
-      const ch = await m6Api.watchlistChanges(watchlistId);
+      setEntriesTotal(Number(r.total ?? (r.items ?? []).length));
+      const ch = await m6Api.watchlistChanges(watchlistId, {
+        page: changesPage,
+        pageSize,
+      });
       setChanges(ch.items ?? []);
+      setChangesTotal(Number(ch.total ?? (ch.items ?? []).length));
     },
-    [filterType],
+    [filterType, entriesPage, changesPage, pageSize],
   );
 
   async function reload() {
@@ -243,6 +536,40 @@ export function WatchlistsPage() {
     await loadEntries(selected);
   }
 
+  async function batchAdd() {
+    if (!selected) return;
+    const lines = batchText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const actions = lines.map((line) => {
+      const parts = line.split(':');
+      const typePart = parts[0] ?? '';
+      const idPart = parts.slice(1).join(':').trim();
+      if (parts.length < 2 || !idPart) {
+        return {
+          op: 'add' as const,
+          targetType,
+          targetId: typePart.trim(),
+          displayTitle: typePart.trim(),
+        };
+      }
+      return {
+        op: 'add' as const,
+        targetType: typePart.trim() || targetType,
+        targetId: idPart,
+        displayTitle: idPart,
+      };
+    });
+    if (actions.length === 0) return;
+    await m6Api.batchWatchlistItems(selected, actions);
+    setBatchText('');
+    await loadEntries(selected);
+  }
+
+  const entriesPageCount = Math.max(1, Math.ceil(entriesTotal / pageSize));
+  const changesPageCount = Math.max(1, Math.ceil(changesTotal / pageSize));
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -274,6 +601,25 @@ export function WatchlistsPage() {
                 onChange={(e) => setIncludeArchived(e.target.checked)}
               />
               Include archived
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              Page size
+              <select
+                className={btnSmClass}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setEntriesPage(1);
+                  setChangesPage(1);
+                }}
+                aria-label="Page size"
+              >
+                {[10, 25, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
@@ -396,11 +742,46 @@ export function WatchlistsPage() {
                 ) : null
               }
             >
+              {selectedList ? (
+                <div className="mb-3 flex flex-wrap gap-3 text-xs">
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selectedList.alertEnabled)}
+                      onChange={(e) =>
+                        void m6Api
+                          .updateWatchlistSettings(String(selectedList.id), {
+                            alertEnabled: e.target.checked,
+                          })
+                          .then(reload)
+                      }
+                    />
+                    List alerts
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selectedList.briefEnabled)}
+                      onChange={(e) =>
+                        void m6Api
+                          .updateWatchlistSettings(String(selectedList.id), {
+                            briefEnabled: e.target.checked,
+                          })
+                          .then(reload)
+                      }
+                    />
+                    List briefs
+                  </label>
+                </div>
+              ) : null}
               <div className="mb-2 flex flex-wrap gap-2">
                 <select
                   className={btnSmClass}
                   value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
+                  onChange={(e) => {
+                    setFilterType(e.target.value);
+                    setEntriesPage(1);
+                  }}
                   aria-label="Filter by target type"
                 >
                   <option value="">All types</option>
@@ -450,6 +831,24 @@ export function WatchlistsPage() {
                   Add
                 </button>
               </form>
+              <div className="mt-3 space-y-2">
+                <label className="block text-xs text-[var(--muted)]">
+                  Batch add (one `targetType:targetId` per line, or bare IDs using type above)
+                  <textarea
+                    className={`mt-1 min-h-20 w-full font-mono text-xs ${inputClass}`}
+                    value={batchText}
+                    onChange={(e) => setBatchText(e.target.value)}
+                    aria-label="Batch add targets"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={btnSmClass}
+                  onClick={() => void batchAdd().catch((e) => setError(String(e)))}
+                >
+                  Batch add
+                </button>
+              </div>
               <ul className="mt-3 divide-y divide-[var(--border)] text-sm">
                 {entries.map((e) => {
                   const w = e.watchable as Record<string, unknown> | null;
@@ -472,7 +871,11 @@ export function WatchlistsPage() {
                           <span className="text-[var(--muted)]">
                             ({String(w?.targetType ?? '')})
                           </span>{' '}
-                          <AvailabilityBadge availability={String(w?.availability ?? '')} />
+                          <AvailabilityBadge
+                            availability={String(w?.availability ?? '')}
+                            redirectedTo={w?.redirectedTo != null ? String(w.redirectedTo) : null}
+                            targetType={w?.targetType != null ? String(w.targetType) : undefined}
+                          />
                         </span>
                       </label>
                       <button
@@ -491,6 +894,27 @@ export function WatchlistsPage() {
                   );
                 })}
               </ul>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <button
+                  type="button"
+                  className={btnSmClass}
+                  disabled={entriesPage <= 1}
+                  onClick={() => setEntriesPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </button>
+                <span>
+                  Page {entriesPage} / {entriesPageCount} ({entriesTotal} items)
+                </span>
+                <button
+                  type="button"
+                  className={btnSmClass}
+                  disabled={entriesPage >= entriesPageCount}
+                  onClick={() => setEntriesPage((p) => p + 1)}
+                >
+                  Next
+                </button>
+              </div>
             </Panel>
           </div>
 
@@ -505,7 +929,11 @@ export function WatchlistsPage() {
                     return (
                       <li key={String(c.id)} className="flex flex-wrap items-center gap-2">
                         <span>{String(w?.displayTitle ?? w?.targetId ?? c.watchableId)}</span>
-                        <AvailabilityBadge availability={String(w?.availability ?? '')} />
+                        <AvailabilityBadge
+                          availability={String(w?.availability ?? '')}
+                          redirectedTo={w?.redirectedTo != null ? String(w.redirectedTo) : null}
+                          targetType={w?.targetType != null ? String(w.targetType) : undefined}
+                        />
                         <span className="text-xs text-[var(--muted)]">
                           {formatWhen(new Date(Number(c.addedAt)).toISOString())}
                         </span>
@@ -514,6 +942,27 @@ export function WatchlistsPage() {
                   })}
                 </ul>
               )}
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <button
+                  type="button"
+                  className={btnSmClass}
+                  disabled={changesPage <= 1}
+                  onClick={() => setChangesPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </button>
+                <span>
+                  Page {changesPage} / {changesPageCount} ({changesTotal} changes)
+                </span>
+                <button
+                  type="button"
+                  className={btnSmClass}
+                  disabled={changesPage >= changesPageCount}
+                  onClick={() => setChangesPage((p) => p + 1)}
+                >
+                  Next
+                </button>
+              </div>
             </Panel>
           ) : null}
         </>
@@ -562,15 +1011,241 @@ const emptySearchQuery = (): SavedSearchQueryV2 => ({
   searchSchemaVersion: 2,
   textQuery: '',
   entityTypes: [],
-  filters: { source: [], evidenceMaturity: [], studyDesign: [] },
+  filters: {
+    source: [],
+    contentType: [],
+    studyDesign: [],
+    evidenceMaturity: [],
+    evidenceAvailability: [],
+    organism: [],
+    population: [],
+    outcomeFamily: [],
+    translationGap: [],
+    trialStatus: [],
+    regulatoryStanding: [],
+    safetyItemPresent: undefined,
+    intervention: [],
+    peptide: [],
+    creator: [],
+    creatorClaimFinding: [],
+  },
+  dateRange: {},
+  sort: 'newest',
   includeRetracted: false,
+  includeUnavailable: false,
 });
+
+function SavedSearchBuilderFields({
+  query,
+  setQuery,
+}: {
+  query: SavedSearchQueryV2;
+  setQuery: (updater: (q: SavedSearchQueryV2) => SavedSearchQueryV2) => void;
+}) {
+  const setFilter = (key: keyof NonNullable<SavedSearchQueryV2['filters']>, values: string[]) => {
+    setQuery((q) => ({ ...q, filters: { ...q.filters, [key]: values } }));
+  };
+  return (
+    <div className="space-y-3">
+      <input
+        className={`w-full ${inputClass}`}
+        placeholder="Text query"
+        value={query.textQuery ?? ''}
+        onChange={(ev) => setQuery((q) => ({ ...q, textQuery: ev.target.value }))}
+        aria-label="Text query"
+      />
+      <MultiSelectCheckboxes
+        label="Entity types / content types"
+        options={TAXONOMY.entityTypes}
+        values={query.entityTypes ?? []}
+        onChange={(next) => setQuery((q) => ({ ...q, entityTypes: next }))}
+      />
+      <div className="grid gap-2 lg:grid-cols-2">
+        <MultiSelectCheckboxes
+          label="Source"
+          options={TAXONOMY.source}
+          values={query.filters?.source ?? []}
+          onChange={(next) => setFilter('source', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Content type"
+          options={TAXONOMY.contentType}
+          values={query.filters?.contentType ?? []}
+          onChange={(next) => setFilter('contentType', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Study design"
+          options={TAXONOMY.studyDesign}
+          values={query.filters?.studyDesign ?? []}
+          onChange={(next) => setFilter('studyDesign', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Evidence maturity"
+          options={TAXONOMY.evidenceMaturity}
+          values={query.filters?.evidenceMaturity ?? []}
+          onChange={(next) => setFilter('evidenceMaturity', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Evidence availability"
+          options={TAXONOMY.evidenceAvailability}
+          values={query.filters?.evidenceAvailability ?? []}
+          onChange={(next) => setFilter('evidenceAvailability', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Organism"
+          options={TAXONOMY.organism}
+          values={query.filters?.organism ?? []}
+          onChange={(next) => setFilter('organism', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Population"
+          options={TAXONOMY.population}
+          values={query.filters?.population ?? []}
+          onChange={(next) => setFilter('population', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Outcome family"
+          options={TAXONOMY.outcomeFamily}
+          values={query.filters?.outcomeFamily ?? []}
+          onChange={(next) => setFilter('outcomeFamily', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Translation gap"
+          options={TAXONOMY.translationGap}
+          values={query.filters?.translationGap ?? []}
+          onChange={(next) => setFilter('translationGap', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Trial status"
+          options={TAXONOMY.trialStatus}
+          values={query.filters?.trialStatus ?? []}
+          onChange={(next) => setFilter('trialStatus', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Regulatory standing"
+          options={TAXONOMY.regulatoryStanding}
+          values={query.filters?.regulatoryStanding ?? []}
+          onChange={(next) => setFilter('regulatoryStanding', next)}
+        />
+        <MultiSelectCheckboxes
+          label="Creator-claim finding"
+          options={TAXONOMY.creatorClaimFinding}
+          values={query.filters?.creatorClaimFinding ?? []}
+          onChange={(next) => setFilter('creatorClaimFinding', next)}
+        />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <TagListInput
+          label="Intervention IDs"
+          values={query.filters?.intervention ?? []}
+          onChange={(next) => setFilter('intervention', next)}
+        />
+        <TagListInput
+          label="Peptide IDs"
+          values={query.filters?.peptide ?? []}
+          onChange={(next) => setFilter('peptide', next)}
+        />
+        <TagListInput
+          label="Creator IDs"
+          values={query.filters?.creator ?? []}
+          onChange={(next) => setFilter('creator', next)}
+        />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <label className="block text-sm">
+          Date from
+          <input
+            type="date"
+            className={`mt-1 w-full ${inputClass}`}
+            value={query.dateRange?.from?.slice(0, 10) ?? ''}
+            onChange={(e) =>
+              setQuery((q) => ({
+                ...q,
+                dateRange: { ...q.dateRange, from: e.target.value || undefined },
+              }))
+            }
+          />
+        </label>
+        <label className="block text-sm">
+          Date to
+          <input
+            type="date"
+            className={`mt-1 w-full ${inputClass}`}
+            value={query.dateRange?.to?.slice(0, 10) ?? ''}
+            onChange={(e) =>
+              setQuery((q) => ({
+                ...q,
+                dateRange: { ...q.dateRange, to: e.target.value || undefined },
+              }))
+            }
+          />
+        </label>
+        <label className="block text-sm">
+          Sort
+          <select
+            className={`mt-1 w-full ${inputClass}`}
+            value={query.sort ?? 'newest'}
+            onChange={(e) =>
+              setQuery((q) => ({
+                ...q,
+                sort: e.target.value as SavedSearchQueryV2['sort'],
+              }))
+            }
+            aria-label="Sort"
+          >
+            {TAXONOMY.sort.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={query.filters?.safetyItemPresent === true}
+            onChange={(e) =>
+              setQuery((q) => ({
+                ...q,
+                filters: {
+                  ...q.filters,
+                  safetyItemPresent: e.target.checked ? true : undefined,
+                },
+              }))
+            }
+          />
+          Official safety item present
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={Boolean(query.includeRetracted)}
+            onChange={(e) => setQuery((q) => ({ ...q, includeRetracted: e.target.checked }))}
+          />
+          Include retracted
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={Boolean(query.includeUnavailable)}
+            onChange={(e) => setQuery((q) => ({ ...q, includeUnavailable: e.target.checked }))}
+          />
+          Include unavailable
+        </label>
+      </div>
+    </div>
+  );
+}
 
 export function SavedSearchesPage() {
   const mode = useLiveMode();
   const [items, setItems] = useState<Array<Record<string, unknown>>>([]);
   const [name, setName] = useState('');
   const [query, setQuery] = useState<SavedSearchQueryV2>(emptySearchQuery);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [runResults, setRunResults] = useState<Record<string, Record<string, unknown>>>({});
   const [historyId, setHistoryId] = useState<string | null>(null);
   const [history, setHistory] = useState<Array<Record<string, unknown>>>([]);
@@ -586,11 +1261,37 @@ export function SavedSearchesPage() {
     void reload().catch((e) => setError(String(e)));
   }, [mode]);
 
-  function updateFilter(key: 'source' | 'evidenceMaturity' | 'studyDesign', value: string) {
-    setQuery((q) => ({
-      ...q,
-      filters: { ...q.filters, [key]: parseCsv(value) },
-    }));
+  function loadIntoBuilder(item: Record<string, unknown>) {
+    setEditingId(String(item.id));
+    setName(String(item.name ?? ''));
+    setQuery(parseQueryFromItem(item.queryJson));
+    setShowPreview(true);
+  }
+
+  async function saveSearch(e: FormEvent) {
+    e.preventDefault();
+    const payload = {
+      ...query,
+      textQuery: query.textQuery?.trim() || undefined,
+    };
+    try {
+      if (editingId) {
+        await m6Api.updateSavedSearch(editingId, {
+          name: name.trim() || 'Untitled search',
+          query: payload,
+          needsUpdate: false,
+        });
+      } else {
+        await m6Api.createSavedSearch(name.trim() || 'Untitled search', payload);
+      }
+      setName('');
+      setQuery(emptySearchQuery());
+      setEditingId(null);
+      setShowPreview(false);
+      await reload();
+    } catch (err) {
+      setError(String(err));
+    }
   }
 
   return (
@@ -605,22 +1306,27 @@ export function SavedSearchesPage() {
         <>
           <form
             className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void m6Api
-                .createSavedSearch(name.trim() || 'Untitled search', {
-                  ...query,
-                  textQuery: query.textQuery?.trim() || undefined,
-                })
-                .then(() => {
-                  setName('');
-                  setQuery(emptySearchQuery());
-                  return reload();
-                })
-                .catch((err) => setError(String(err)));
-            }}
+            onSubmit={(e) => void saveSearch(e)}
           >
-            <h2 className="text-sm font-semibold">Builder (schema v2)</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">
+                {editingId ? 'Edit search (schema v2)' : 'Builder (schema v2)'}
+              </h2>
+              {editingId ? (
+                <button
+                  type="button"
+                  className={btnSmClass}
+                  onClick={() => {
+                    setEditingId(null);
+                    setName('');
+                    setQuery(emptySearchQuery());
+                    setShowPreview(false);
+                  }}
+                >
+                  Cancel edit
+                </button>
+              ) : null}
+            </div>
             <input
               className={`w-full ${inputClass}`}
               placeholder="Name"
@@ -628,60 +1334,20 @@ export function SavedSearchesPage() {
               onChange={(ev) => setName(ev.target.value)}
               aria-label="Saved search name"
             />
-            <input
-              className={`w-full ${inputClass}`}
-              placeholder="Text query"
-              value={query.textQuery ?? ''}
-              onChange={(ev) => setQuery((q) => ({ ...q, textQuery: ev.target.value }))}
-              aria-label="Text query"
-            />
-            <label className="block text-sm">
-              Entity types (comma-separated)
-              <input
-                className={`mt-1 w-full ${inputClass}`}
-                value={joinCsv(query.entityTypes)}
-                onChange={(ev) =>
-                  setQuery((q) => ({ ...q, entityTypes: parseCsv(ev.target.value) }))
-                }
-              />
-            </label>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <label className="block text-sm">
-                Source filter
-                <input
-                  className={`mt-1 w-full ${inputClass}`}
-                  value={joinCsv(query.filters?.source)}
-                  onChange={(ev) => updateFilter('source', ev.target.value)}
-                />
-              </label>
-              <label className="block text-sm">
-                Evidence maturity
-                <input
-                  className={`mt-1 w-full ${inputClass}`}
-                  value={joinCsv(query.filters?.evidenceMaturity)}
-                  onChange={(ev) => updateFilter('evidenceMaturity', ev.target.value)}
-                />
-              </label>
-              <label className="block text-sm">
-                Study design
-                <input
-                  className={`mt-1 w-full ${inputClass}`}
-                  value={joinCsv(query.filters?.studyDesign)}
-                  onChange={(ev) => updateFilter('studyDesign', ev.target.value)}
-                />
-              </label>
+            <SavedSearchBuilderFields query={query} setQuery={setQuery} />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={btnClass} onClick={() => setShowPreview((v) => !v)}>
+                {showPreview ? 'Hide preview' : 'Preview before save'}
+              </button>
+              <button type="submit" className={btnClass}>
+                {editingId ? 'Update search' : 'Save search'}
+              </button>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={Boolean(query.includeRetracted)}
-                onChange={(e) => setQuery((q) => ({ ...q, includeRetracted: e.target.checked }))}
-              />
-              Include retracted
-            </label>
-            <button type="submit" className={btnClass}>
-              Save search
-            </button>
+            {showPreview ? (
+              <Panel title="Query preview">
+                <SavedSearchQueryPreview query={query} />
+              </Panel>
+            ) : null}
           </form>
 
           <Panel title="Saved">
@@ -730,6 +1396,25 @@ export function SavedSearchesPage() {
                         />
                         Briefs
                       </label>
+                      <button
+                        type="button"
+                        className="underline"
+                        onClick={() => loadIntoBuilder(s)}
+                      >
+                        Edit
+                      </button>
+                      {s.needsUpdate ? (
+                        <button
+                          type="button"
+                          className="underline text-amber-700"
+                          onClick={() => {
+                            loadIntoBuilder(s);
+                            setShowPreview(true);
+                          }}
+                        >
+                          Repair query
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="underline"
@@ -835,40 +1520,109 @@ export function SavedSearchesPage() {
 
 export function SavedSearchDetailPage() {
   const { id = '' } = useParams();
+  const mode = useLiveMode();
   const [item, setItem] = useState<Record<string, unknown> | null>(null);
   const [matches, setMatches] = useState<Array<Record<string, unknown>>>([]);
+  const [history, setHistory] = useState<Array<Record<string, unknown>>>([]);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [query, setQuery] = useState<SavedSearchQueryV2>(emptySearchQuery);
+  const [error, setError] = useState<string | null>(null);
+
+  async function reload() {
+    const [detail, matchRes, histRes] = await Promise.all([
+      m6Api.getSavedSearch(id),
+      m6Api.savedSearchMatches(id),
+      m6Api.savedSearchHistory(id),
+    ]);
+    setItem(detail.item);
+    setName(String(detail.item.name ?? ''));
+    setQuery(parseQueryFromItem(detail.item.queryJson));
+    setMatches(matchRes.items ?? []);
+    setHistory(histRes.items ?? []);
+  }
+
   useEffect(() => {
-    void m6Api.listSavedSearches().then((r) => {
-      setItem(r.items.find((x) => String(x.id) === id) ?? null);
-    });
-    void m6Api.savedSearchMatches(id).then((r) => setMatches(r.items ?? []));
+    void reload().catch((e) => setError(String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-  const parsed = parseJsonField(item?.queryJson);
+
+  async function saveEdits() {
+    try {
+      await m6Api.updateSavedSearch(id, {
+        name: name.trim() || 'Untitled search',
+        query: { ...query, textQuery: query.textQuery?.trim() || undefined },
+        needsUpdate: false,
+      });
+      setEditing(false);
+      await reload();
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader
         title={String(item?.name ?? 'Saved search')}
         description="Structured saved search detail"
       />
+      {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {item?.needsUpdate ? (
-        <p className="text-sm text-amber-600">This search was migrated and may need review.</p>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-amber-700">
+          <p>This search was migrated and may need review.</p>
+          <button
+            type="button"
+            className={btnSmClass}
+            onClick={() => {
+              setEditing(true);
+              setQuery(parseQueryFromItem(item.queryJson));
+            }}
+          >
+            Review & repair
+          </button>
+        </div>
       ) : null}
-      <Panel title="Query">
-        <dl className="grid gap-2 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-[var(--muted)]">Text</dt>
-            <dd>{String(parsed.textQuery ?? parsed.text ?? '—')}</dd>
+
+      {editing ? (
+        <Panel
+          title="Edit query"
+          actions={
+            <div className="flex gap-2">
+              <button type="button" className={btnSmClass} onClick={() => void saveEdits()}>
+                Save update
+              </button>
+              <button type="button" className={btnSmClass} onClick={() => setEditing(false)}>
+                Cancel
+              </button>
+            </div>
+          }
+        >
+          <input
+            className={`mb-3 w-full ${inputClass}`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label="Saved search name"
+          />
+          <SavedSearchBuilderFields query={query} setQuery={setQuery} />
+          <div className="mt-3">
+            <SavedSearchQueryPreview query={query} />
           </div>
-          <div>
-            <dt className="text-[var(--muted)]">Entity types</dt>
-            <dd>{joinCsv((parsed.entityTypes as string[]) ?? []) || '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-[var(--muted)]">Include retracted</dt>
-            <dd>{parsed.includeRetracted ? 'yes' : 'no'}</dd>
-          </div>
-        </dl>
-      </Panel>
+        </Panel>
+      ) : (
+        <Panel
+          title="Query"
+          actions={
+            <button type="button" className={btnSmClass} onClick={() => setEditing(true)}>
+              Edit
+            </button>
+          }
+        >
+          <SavedSearchQueryPreview query={query} />
+        </Panel>
+      )}
+
       <Panel title="Recent matches">
         {matches.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No matches recorded yet.</p>
@@ -885,9 +1639,39 @@ export function SavedSearchDetailPage() {
           </ul>
         )}
       </Panel>
-      <Link className="text-sm underline" to="/saved-searches">
-        Back to saved searches
-      </Link>
+
+      <Panel title="Evaluation history">
+        {history.length === 0 ? (
+          <p className="text-sm text-[var(--muted)]">No evaluation history yet.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {history.map((h) => (
+              <li key={String(h.id)}>
+                {formatWhen(new Date(Number(h.completedAt ?? h.startedAt)).toISOString())} —{' '}
+                {String(h.status)} · matched {String(h.matchedCount)} · new {String(h.newCount)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <div className="flex flex-wrap gap-3 text-sm">
+        <button
+          type="button"
+          className={btnClass}
+          onClick={() =>
+            void m6Api
+              .runSavedSearch(id)
+              .then(reload)
+              .catch((e) => setError(String(e)))
+          }
+        >
+          Run now
+        </button>
+        <Link className="underline" to="/saved-searches">
+          Back to saved searches
+        </Link>
+      </div>
     </div>
   );
 }
@@ -897,14 +1681,27 @@ export function AlertsPage() {
   const [items, setItems] = useState<Array<Record<string, unknown>>>([]);
   const [stateFilter, setStateFilter] = useState('all');
   const [familyFilter, setFamilyFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [eventFilter, setEventFilter] = useState('all');
+  const [watchlistFilter, setWatchlistFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
+  const [snoozeHours, setSnoozeHours] = useState('4');
+  const [snoozeUntilLocal, setSnoozeUntilLocal] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   async function reload() {
     await m6Api.evaluateAlerts().catch(() => undefined);
-    const res = await m6Api.listAlerts(
-      familyFilter === 'all' ? undefined : { family: familyFilter },
-    );
+    const res = await m6Api.listAlerts({
+      state: stateFilter === 'all' ? undefined : stateFilter,
+      family: familyFilter === 'all' ? undefined : familyFilter,
+      priority: priorityFilter === 'all' ? undefined : priorityFilter,
+      source: sourceFilter === 'all' ? undefined : sourceFilter,
+      eventKind: eventFilter === 'all' ? undefined : eventFilter,
+      watchlistId: watchlistFilter.trim() || undefined,
+      savedSearchId: searchFilter.trim() || undefined,
+    });
     setItems(res.items);
     setSelected(new Set());
   }
@@ -913,18 +1710,145 @@ export function AlertsPage() {
     if (mode !== 'live') return;
     void reload().catch((e) => setError(String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, familyFilter]);
+  }, [mode, stateFilter, familyFilter, priorityFilter, sourceFilter, eventFilter]);
 
-  const filtered = useMemo(
-    () => (stateFilter === 'all' ? items : items.filter((a) => String(a.state) === stateFilter)),
-    [items, stateFilter],
-  );
+  function snoozePayload() {
+    if (snoozeUntilLocal) {
+      const ms = new Date(snoozeUntilLocal).getTime();
+      if (!Number.isNaN(ms)) return { snoozeUntil: ms };
+    }
+    const hours = Number(snoozeHours) || 4;
+    return { snoozeUntil: Date.now() + hours * 3600_000 };
+  }
 
-  async function batchRead() {
+  async function batchAction(action: 'read' | 'acknowledge' | 'dismiss' | 'resolve') {
     if (selected.size === 0) return;
-    const actions = [...selected].map((alertId) => ({ alertId, action: 'read' as const }));
+    const actions = [...selected].map((alertId) => ({ alertId, action }));
     await m6Api.batchAlerts(actions);
     await reload();
+  }
+
+  const researchItems = items.filter((a) => String(a.family ?? 'research') !== 'operational');
+  const operationalItems = items.filter((a) => String(a.family) === 'operational');
+
+  function renderAlertList(list: Array<Record<string, unknown>>, title: string) {
+    if (list.length === 0) return null;
+    return (
+      <Panel title={title}>
+        <ul className="divide-y divide-[var(--border)]">
+          {list.map((a) => {
+            const aid = String(a.id);
+            const why = a.whyIncluded ?? parseJsonField(a.whyIncludedJson);
+            const whyObj = why as Record<string, unknown>;
+            return (
+              <li key={aid} className="space-y-2 py-3 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(aid)}
+                      onChange={(e) => {
+                        const next = new Set(selected);
+                        if (e.target.checked) next.add(aid);
+                        else next.delete(aid);
+                        setSelected(next);
+                      }}
+                    />
+                    <div>
+                      <Link className="font-medium underline" to={`/alerts/${aid}`}>
+                        {String(a.title)}
+                      </Link>
+                      <p className="text-xs text-[var(--muted)]">
+                        {String(a.family ?? 'research')} · {String(a.importance)} ·{' '}
+                        {String(a.state)} · detected{' '}
+                        {formatWhen(new Date(Number(a.createdAt ?? a.occurredAt)).toISOString())}
+                        {a.occurredAt ? (
+                          <> · source {formatWhen(new Date(Number(a.occurredAt)).toISOString())}</>
+                        ) : null}
+                      </p>
+                    </div>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        ['read', 'Read'],
+                        ['acknowledge', 'Ack'],
+                        ['dismiss', 'Dismiss'],
+                        ['resolve', 'Resolve'],
+                      ] as const
+                    ).map(([action, label]) => (
+                      <button
+                        key={action}
+                        type="button"
+                        className="text-xs underline"
+                        onClick={() =>
+                          void m6Api
+                            .alertAction(aid, action)
+                            .then(reload)
+                            .catch((e) => setError(String(e)))
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="text-xs underline"
+                      onClick={() =>
+                        void m6Api
+                          .alertAction(aid, 'snooze', snoozePayload())
+                          .then(reload)
+                          .catch((e) => setError(String(e)))
+                      }
+                    >
+                      Snooze
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs underline"
+                      onClick={() =>
+                        void m6Api
+                          .createMute({
+                            scopeType: 'object',
+                            scopeId: a.watchableId ? String(a.watchableId) : aid,
+                            reason: `muted from alert ${aid}`,
+                            scopeEventType: String(a.kind ?? ''),
+                          })
+                          .then(reload)
+                          .catch((e) => setError(String(e)))
+                      }
+                    >
+                      Mute
+                    </button>
+                  </div>
+                </div>
+                <details>
+                  <summary className="cursor-pointer text-xs text-[var(--muted)]">
+                    Why included
+                  </summary>
+                  <div className="mt-1">
+                    <WhyIncludedPreview value={why} />
+                    {whyObj.sourceLink || whyObj.sourceUrl ? (
+                      <p className="mt-1 text-xs">
+                        Source:{' '}
+                        <a
+                          className="underline"
+                          href={String(whyObj.sourceLink ?? whyObj.sourceUrl)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {String(whyObj.sourceLink ?? whyObj.sourceUrl)}
+                        </a>
+                      </p>
+                    ) : null}
+                  </div>
+                </details>
+              </li>
+            );
+          })}
+        </ul>
+      </Panel>
+    );
   }
 
   return (
@@ -936,102 +1860,145 @@ export function AlertsPage() {
       {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
-        {['all', 'new', 'read', 'dismissed', 'resolved'].map((s) => (
-          <button
-            key={s}
-            type="button"
-            className={btnSmClass}
-            aria-pressed={stateFilter === s}
-            onClick={() => setStateFilter(s)}
-          >
-            {s}
-          </button>
-        ))}
-        <span className="mx-1 text-[var(--muted)]">|</span>
-        {['all', 'research', 'operational'].map((f) => (
-          <button
-            key={f}
-            type="button"
-            className={btnSmClass}
-            aria-pressed={familyFilter === f}
-            onClick={() => setFamilyFilter(f)}
-          >
-            {f}
-          </button>
-        ))}
-        {selected.size > 0 ? (
-          <button type="button" className={btnSmClass} onClick={() => void batchRead()}>
-            Mark selected read ({selected.size})
-          </button>
-        ) : null}
+        <select
+          className={btnSmClass}
+          value={stateFilter}
+          onChange={(e) => setStateFilter(e.target.value)}
+          aria-label="State filter"
+        >
+          {['all', 'new', 'read', 'acknowledged', 'snoozed', 'dismissed', 'resolved'].map((s) => (
+            <option key={s} value={s}>
+              state: {s}
+            </option>
+          ))}
+        </select>
+        <select
+          className={btnSmClass}
+          value={familyFilter}
+          onChange={(e) => setFamilyFilter(e.target.value)}
+          aria-label="Family filter"
+        >
+          {['all', 'research', 'operational'].map((f) => (
+            <option key={f} value={f}>
+              family: {f}
+            </option>
+          ))}
+        </select>
+        <select
+          className={btnSmClass}
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          aria-label="Priority filter"
+        >
+          <option value="all">priority: all</option>
+          {TAXONOMY.alertPriority.map((p) => (
+            <option key={p} value={p}>
+              priority: {p}
+            </option>
+          ))}
+        </select>
+        <select
+          className={btnSmClass}
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          aria-label="Source filter"
+        >
+          <option value="all">source: all</option>
+          {TAXONOMY.source.map((s) => (
+            <option key={s} value={s}>
+              source: {s}
+            </option>
+          ))}
+        </select>
+        <select
+          className={btnSmClass}
+          value={eventFilter}
+          onChange={(e) => setEventFilter(e.target.value)}
+          aria-label="Event family filter"
+        >
+          <option value="all">event: all</option>
+          {TAXONOMY.alertEventFamily.map((s) => (
+            <option key={s} value={s}>
+              event: {s}
+            </option>
+          ))}
+        </select>
+        <input
+          className={btnSmClass}
+          placeholder="Watchlist id"
+          value={watchlistFilter}
+          onChange={(e) => setWatchlistFilter(e.target.value)}
+          aria-label="Watchlist filter"
+        />
+        <input
+          className={btnSmClass}
+          placeholder="Saved search id"
+          value={searchFilter}
+          onChange={(e) => setSearchFilter(e.target.value)}
+          aria-label="Saved search filter"
+        />
         <button type="button" className={btnSmClass} onClick={() => void reload()}>
-          Refresh
+          Apply filters
         </button>
       </div>
-      <ul className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-        {filtered.map((a) => {
-          const aid = String(a.id);
-          const why = a.whyIncluded ?? parseJsonField(a.whyIncludedJson);
-          return (
-            <li key={aid} className="space-y-2 px-4 py-3 text-sm">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <label className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(aid)}
-                    onChange={(e) => {
-                      const next = new Set(selected);
-                      if (e.target.checked) next.add(aid);
-                      else next.delete(aid);
-                      setSelected(next);
-                    }}
-                  />
-                  <div>
-                    <Link className="font-medium underline" to={`/alerts/${aid}`}>
-                      {String(a.title)}
-                    </Link>
-                    <p className="text-xs text-[var(--muted)]">
-                      {String(a.family ?? 'research')} · {String(a.importance)} · {String(a.state)}{' '}
-                      · {formatWhen(new Date(Number(a.occurredAt)).toISOString())}
-                    </p>
-                  </div>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      ['read', 'Read'],
-                      ['acknowledge', 'Ack'],
-                      ['snooze', 'Snooze'],
-                      ['dismiss', 'Dismiss'],
-                      ['resolve', 'Resolve'],
-                    ] as const
-                  ).map(([action, label]) => (
-                    <button
-                      key={action}
-                      type="button"
-                      className="text-xs underline"
-                      onClick={() =>
-                        void m6Api
-                          .alertAction(
-                            aid,
-                            action,
-                            action === 'snooze' ? { snoozeUntil: Date.now() + 4 * 3600_000 } : {},
-                          )
-                          .then(reload)
-                          .catch((e) => setError(String(e)))
-                      }
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <WhyIncludedPreview value={why} />
-            </li>
-          );
-        })}
-      </ul>
-      {filtered.length === 0 ? (
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <label className="flex items-center gap-1">
+          Snooze hours
+          <select
+            className={btnSmClass}
+            value={snoozeHours}
+            onChange={(e) => setSnoozeHours(e.target.value)}
+            aria-label="Snooze hours"
+          >
+            {['1', '4', '8', '24', '72'].map((h) => (
+              <option key={h} value={h}>
+                {h}h
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-1">
+          or until
+          <input
+            type="datetime-local"
+            className={btnSmClass}
+            value={snoozeUntilLocal}
+            onChange={(e) => setSnoozeUntilLocal(e.target.value)}
+            aria-label="Snooze until"
+          />
+        </label>
+        {selected.size > 0 ? (
+          <>
+            <button type="button" className={btnSmClass} onClick={() => void batchAction('read')}>
+              Mark read ({selected.size})
+            </button>
+            <button
+              type="button"
+              className={btnSmClass}
+              onClick={() => void batchAction('acknowledge')}
+            >
+              Ack selected
+            </button>
+            <button
+              type="button"
+              className={btnSmClass}
+              onClick={() => void batchAction('dismiss')}
+            >
+              Dismiss selected
+            </button>
+            <button
+              type="button"
+              className={btnSmClass}
+              onClick={() => void batchAction('resolve')}
+            >
+              Resolve selected
+            </button>
+          </>
+        ) : null}
+      </div>
+      {renderAlertList(operationalItems, 'Operational integrity')}
+      {renderAlertList(researchItems, 'Research & safety')}
+      {items.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No alerts in this filter.</p>
       ) : null}
     </div>
@@ -1042,6 +2009,8 @@ export function AlertDetailPage() {
   const { id = '' } = useParams();
   const [item, setItem] = useState<Record<string, unknown> | null>(null);
   const [history, setHistory] = useState<Array<Record<string, unknown>>>([]);
+  const [snoozeUntilLocal, setSnoozeUntilLocal] = useState('');
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     void m6Api
       .getAlert(id)
@@ -1054,7 +2023,10 @@ export function AlertDetailPage() {
         setHistory([]);
       });
   }, [id]);
-  const why = item?.whyIncluded ?? parseJsonField(item?.whyIncludedJson);
+  const why = (item?.whyIncluded ?? parseJsonField(item?.whyIncludedJson)) as Record<
+    string,
+    unknown
+  >;
   const severity = (item?.severity ?? parseJsonField(item?.severityJson)) as Record<
     string,
     unknown
@@ -1065,6 +2037,7 @@ export function AlertDetailPage() {
         title={String(item?.title ?? 'Alert')}
         description="Alert detail and why-included payload"
       />
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <Panel title="Summary">
         <p className="text-sm">
           <strong>State:</strong> {String(item?.state ?? '—')} · <strong>Family:</strong>{' '}
@@ -1072,6 +2045,80 @@ export function AlertDetailPage() {
           {String(item?.importance ?? '—')}
         </p>
         <p className="mt-2 text-sm">{String(item?.summary ?? '')}</p>
+        <dl className="mt-3 grid gap-1 text-xs sm:grid-cols-2">
+          <div>
+            <dt className="text-[var(--muted)]">Source date</dt>
+            <dd>
+              {item?.occurredAt
+                ? formatWhen(new Date(Number(item.occurredAt)).toISOString())
+                : String(why.sourceDate ?? '—')}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[var(--muted)]">Detection date</dt>
+            <dd>
+              {item?.createdAt
+                ? formatWhen(new Date(Number(item.createdAt)).toISOString())
+                : String(why.detectionDate ?? '—')}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-[var(--muted)]">Source link</dt>
+            <dd>
+              {why.sourceLink || why.sourceUrl ? (
+                <a
+                  className="underline"
+                  href={String(why.sourceLink ?? why.sourceUrl)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {String(why.sourceLink ?? why.sourceUrl)}
+                </a>
+              ) : (
+                '—'
+              )}
+            </dd>
+          </div>
+        </dl>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            type="datetime-local"
+            className={btnSmClass}
+            value={snoozeUntilLocal}
+            onChange={(e) => setSnoozeUntilLocal(e.target.value)}
+            aria-label="Snooze until"
+          />
+          <button
+            type="button"
+            className={btnSmClass}
+            onClick={() => {
+              const ms = snoozeUntilLocal
+                ? new Date(snoozeUntilLocal).getTime()
+                : Date.now() + 4 * 3600_000;
+              void m6Api
+                .alertAction(id, 'snooze', { snoozeUntil: ms })
+                .then((r) => setItem((r as { item?: Record<string, unknown> }).item ?? item))
+                .catch((e) => setError(String(e)));
+            }}
+          >
+            Snooze
+          </button>
+          <button
+            type="button"
+            className={btnSmClass}
+            onClick={() =>
+              void m6Api
+                .createMute({
+                  scopeType: 'object',
+                  scopeId: item?.watchableId ? String(item.watchableId) : id,
+                  reason: `muted from alert detail ${id}`,
+                })
+                .catch((e) => setError(String(e)))
+            }
+          >
+            Mute
+          </button>
+        </div>
       </Panel>
       <Panel title="Severity">
         <WhyIncludedPreview value={severity} />
@@ -1144,6 +2191,10 @@ export function BriefsPage() {
               <dd>{String((schedule as { timezone?: string }).timezone ?? '—')}</dd>
             </div>
             <div>
+              <dt className="text-[var(--muted)]">Catch-up</dt>
+              <dd>{String(status.catchUpPolicy ?? '—')}</dd>
+            </div>
+            <div>
               <dt className="text-[var(--muted)]">Daily</dt>
               <dd>
                 {String(
@@ -1183,7 +2234,18 @@ export function BriefsPage() {
                 ) : null}
               </dd>
             </div>
+            <div>
+              <dt className="text-[var(--muted)]">Job state</dt>
+              <dd>
+                {((status.recentRuns as Array<Record<string, unknown>>) ?? [])[0]
+                  ? String(((status.recentRuns as Array<Record<string, unknown>>) ?? [])[0]?.status)
+                  : 'idle'}
+              </dd>
+            </div>
           </dl>
+          <Link className="mt-2 inline-block text-xs underline" to="/settings/briefings">
+            Open briefing settings
+          </Link>
         </Panel>
       ) : null}
 
@@ -1287,6 +2349,7 @@ export function BriefDetailPage() {
   }, [id]);
 
   const coverage = parseJsonField(data?.brief.sourceCoverageJson);
+  const overflowCount = Number(data?.brief.overflowCount ?? coverage.overflow ?? 0);
 
   async function exportBrief(format: 'markdown' | 'json') {
     try {
@@ -1321,40 +2384,71 @@ export function BriefDetailPage() {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <Panel title="Source coverage">
         <WhyIncludedPreview value={coverage} />
+        {((coverage.partialReasons as string[]) ?? []).length > 0 ? (
+          <p className="mt-2 text-xs text-amber-700">
+            Partial: {((coverage.partialReasons as string[]) ?? []).join(', ')}
+          </p>
+        ) : null}
+        {overflowCount > 0 ? (
+          <p className="mt-2 text-xs">
+            Overflow: {overflowCount} additional candidates not shown.{' '}
+            <Link className="underline" to="/briefs">
+              Continue reading related briefs
+            </Link>
+          </p>
+        ) : null}
       </Panel>
       <Panel title="Items">
         <ul className="space-y-2 text-sm">
-          {(data?.items ?? []).map((i) => (
-            <li
-              key={String(i.id)}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-2"
-            >
-              <div>
-                <p className="font-medium">{String(i.title ?? i.section ?? i.id)}</p>
-                <p className="text-xs text-[var(--muted)]">
-                  {String(i.readingState ?? 'unread')} · {String(i.reason ?? '')}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="text-xs underline"
-                  onClick={() => void setBriefItemReading(id, String(i.id), 'read').then(reload)}
-                >
-                  Mark read
-                </button>
-                <button
-                  type="button"
-                  className="text-xs underline"
-                  onClick={() =>
-                    void setBriefItemReading(id, String(i.id), 'dismissed').then(reload)
-                  }
-                >
-                  Dismiss
-                </button>
-              </div>
-            </li>
-          ))}
+          {(data?.items ?? []).map((i) => {
+            const payload = parseJsonField(i.payloadJson);
+            const why = payload.whyIncluded ?? payload;
+            const badges = [
+              i.readingState === 'dismissed' ? 'dismissed' : null,
+              payload.stale ? 'stale' : null,
+              payload.retracted ? 'retracted' : null,
+              payload.redacted ? 'redacted' : null,
+              payload.sourceUnavailable ? 'source unavailable' : null,
+            ].filter(Boolean);
+            return (
+              <li
+                key={String(i.id)}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-2"
+              >
+                <div>
+                  <p className="font-medium">{String(i.title ?? i.section ?? i.id)}</p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {String(i.readingState ?? 'unread')} · {String(i.reason ?? '')}
+                    {badges.length ? ` · ${badges.join(' · ')}` : ''}
+                  </p>
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-xs text-[var(--muted)]">
+                      Why included
+                    </summary>
+                    <WhyIncludedPreview value={why} />
+                  </details>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="text-xs underline"
+                    onClick={() => void setBriefItemReading(id, String(i.id), 'read').then(reload)}
+                  >
+                    Mark read
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs underline"
+                    onClick={() =>
+                      void setBriefItemReading(id, String(i.id), 'dismissed').then(reload)
+                    }
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </Panel>
       <Link className="text-sm underline" to="/briefs">
@@ -1380,6 +2474,10 @@ export function OperationsPage() {
     }
   }
 
+  const scheduler = (panels?.scheduler ?? {}) as Record<string, unknown>;
+  const jobs = (panels?.jobs as Array<Record<string, unknown>>) ?? [];
+  const fdaSchedules = (scheduler.fdaBulkSchedules as Array<Record<string, unknown>>) ?? [];
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -1395,25 +2493,15 @@ export function OperationsPage() {
           <Panel title="Overall health">
             <HealthBadge status={String(panels.overall ?? 'unknown')} />
           </Panel>
-          <Panel title="Versions">
-            <dl className="space-y-1 text-sm">
-              {Object.entries((panels.versions as Record<string, unknown>) ?? {}).map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-2">
-                  <dt className="text-[var(--muted)]">{k}</dt>
-                  <dd>{String(v)}</dd>
-                </div>
-              ))}
-            </dl>
+          <Panel title="Runtime & schema">
+            <StatusDl
+              entries={Object.entries((panels.versions as Record<string, unknown>) ?? {})}
+            />
           </Panel>
-          <Panel title="Database">
-            <dl className="space-y-1 text-sm">
-              {Object.entries((panels.database as Record<string, unknown>) ?? {}).map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-2">
-                  <dt className="text-[var(--muted)]">{k}</dt>
-                  <dd>{String(v)}</dd>
-                </div>
-              ))}
-            </dl>
+          <Panel title="Database integrity">
+            <StatusDl
+              entries={Object.entries((panels.database as Record<string, unknown>) ?? {})}
+            />
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -1431,10 +2519,108 @@ export function OperationsPage() {
               </button>
             </div>
           </Panel>
+          <Panel title="Worker">
+            <StatusDl
+              entries={Object.entries(
+                (panels.worker as Record<string, unknown>) ?? { status: '—' },
+              )}
+            />
+          </Panel>
           <Panel title="Scheduler">
-            <pre className="max-h-48 overflow-auto text-xs" tabIndex={0}>
-              {JSON.stringify(panels.scheduler ?? {}, null, 2)}
-            </pre>
+            <StatusDl
+              entries={[
+                ['enabled', scheduler.enabled],
+                ['timezone', scheduler.timezone],
+                ['schedule', scheduler.schedule],
+                ['next run', scheduler.nextRunAt],
+                ['last enqueued', scheduler.lastEnqueuedAt],
+                ['last completed', scheduler.lastCompletedAt],
+                ['last catch-up', scheduler.lastCatchupReason],
+              ]}
+            />
+            {fdaSchedules.length > 0 ? (
+              <table className="mt-3 w-full text-left text-xs">
+                <caption className="sr-only">FDA bulk schedules</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Job</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fdaSchedules.map((row, idx) => (
+                    <tr key={String(row.id ?? row.name ?? idx)}>
+                      <td>{String(row.id ?? row.name ?? row.sourceId ?? `job-${idx}`)}</td>
+                      <td>{String(row.status ?? row.enabled ?? row.cadence ?? '—')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : null}
+          </Panel>
+          <Panel title="Jobs">
+            {jobs.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No recent jobs.</p>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <caption className="sr-only">Recent jobs</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Kind</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobs.map((job) => (
+                    <tr key={String(job.id)}>
+                      <td>{String(job.kind ?? job.name ?? job.id)}</td>
+                      <td>
+                        <HealthBadge status={String(job.status ?? 'unknown')} />
+                      </td>
+                      <td>
+                        {job.updatedAt || job.completedAt || job.createdAt
+                          ? formatWhen(
+                              new Date(
+                                Number(job.updatedAt ?? job.completedAt ?? job.createdAt),
+                              ).toISOString(),
+                            )
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Panel>
+          <Panel title="Sources">
+            <StatusDl entries={Object.entries((panels.sources as Record<string, unknown>) ?? {})} />
+          </Panel>
+          <Panel title="Intelligence">
+            <StatusDl
+              entries={Object.entries((panels.intelligence as Record<string, unknown>) ?? {})}
+            />
+          </Panel>
+          <Panel title="Dossiers & creators">
+            <StatusDl
+              entries={[
+                ...Object.entries(
+                  (panels.dossiers as Record<string, unknown>) ?? {
+                    note: 'See intervention dossiers routes',
+                  },
+                ),
+                ...Object.entries(
+                  (panels.creators as Record<string, unknown>) ?? {
+                    note: 'See creator routes',
+                  },
+                ),
+              ]}
+            />
+          </Panel>
+          <Panel title="Alerts & briefs">
+            <StatusDl
+              entries={Object.entries((panels.alertsBriefs as Record<string, unknown>) ?? {})}
+            />
           </Panel>
           <Panel title="Backups">
             <ul className="space-y-1 text-sm">
@@ -1443,7 +2629,7 @@ export function OperationsPage() {
               ))}
             </ul>
           </Panel>
-          <Panel title="Storage">
+          <Panel title="Storage & retention">
             <ul className="space-y-1 text-sm">
               {((panels.storage as Array<Record<string, unknown>>) ?? []).map((s) => (
                 <li key={String(s.category ?? s.path)}>
@@ -1451,18 +2637,23 @@ export function OperationsPage() {
                 </li>
               ))}
             </ul>
+            <div className="mt-2">
+              <StatusDl
+                entries={Object.entries((panels.retention as Record<string, unknown>) ?? {})}
+              />
+            </div>
           </Panel>
-          <Panel title="Security">
-            <dl className="space-y-1 text-sm">
-              {Object.entries((panels.security as Record<string, unknown>) ?? {}).map(([k, v]) => (
-                <div key={k}>
-                  <dt className="text-[var(--muted)]">{k}</dt>
-                  <dd>{typeof v === 'string' ? v : JSON.stringify(v)}</dd>
-                </div>
-              ))}
-            </dl>
+          <Panel title="Platform compliance">
+            <StatusDl
+              entries={Object.entries((panels.platformCompliance as Record<string, unknown>) ?? {})}
+            />
           </Panel>
-          <Panel title="Recent errors">
+          <Panel title="Security gates">
+            <StatusDl
+              entries={Object.entries((panels.security as Record<string, unknown>) ?? {})}
+            />
+          </Panel>
+          <Panel title="Recent redacted errors">
             {((panels.recentErrors as Array<Record<string, unknown>>) ?? []).length === 0 ? (
               <p className="text-sm text-[var(--muted)]">No recent warnings or errors.</p>
             ) : (
@@ -1488,6 +2679,16 @@ export function OperationsPage() {
           onClick={() => void runAction('Diagnostics', () => m6Api.opsDiagnostics())}
         >
           Create diagnostic bundle
+        </button>
+        <button
+          type="button"
+          className={btnClass}
+          onClick={() => {
+            const body = JSON.stringify(diagRaw ?? overview.data ?? {}, null, 2);
+            downloadText('operations-diagnostics.json', body, 'application/json');
+          }}
+        >
+          Download raw diagnostics
         </button>
       </div>
 
@@ -2111,22 +3312,58 @@ export function PrivacySecurityPage() {
         </div>
         {message ? <p className="mt-2 text-sm text-[var(--muted)]">{message}</p> : null}
       </Panel>
+
+      <Panel title="Mute rules">
+        <p className="text-sm text-[var(--muted)]">
+          Manage source, topic, event-type, and object mutes with optional expiry.
+        </p>
+        <Link className="mt-2 inline-block text-sm underline" to="/settings/mutes">
+          Open Mute Rules
+        </Link>
+      </Panel>
     </div>
   );
 }
 
 export function BriefingsSettingsPage() {
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
+  const [sections, setSections] = useState<Record<string, boolean>>({});
+  const [status, setStatus] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void m6Api.briefingSettings().then((r) => setSettings(r.settings));
+    void Promise.all([
+      m6Api.briefingSettings(),
+      m6Api.getPreference('briefingSections'),
+      m6Api.briefingStatus(),
+    ])
+      .then(([r, pref, st]) => {
+        setSettings(r.settings);
+        const val = (pref.preference?.value ?? {}) as Record<string, boolean>;
+        const next: Record<string, boolean> = {};
+        for (const key of TAXONOMY.briefingSections) {
+          next[key] = val[key] !== false;
+        }
+        setSections(next);
+        setStatus(st.status ?? null);
+      })
+      .catch((e) => setError(String(e)));
   }, []);
 
-  async function patch(patch: Record<string, unknown>) {
+  async function patch(patchBody: Record<string, unknown>) {
     try {
-      const r = await m6Api.updateBriefingSettings(patch);
+      const r = await m6Api.updateBriefingSettings(patchBody);
       setSettings((r as { settings: Record<string, unknown> }).settings);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function patchSection(key: string, enabled: boolean) {
+    const next = { ...sections, [key]: enabled };
+    setSections(next);
+    try {
+      await m6Api.setPreference('briefingSections', next);
     } catch (e) {
       setError(String(e));
     }
@@ -2134,11 +3371,13 @@ export function BriefingsSettingsPage() {
 
   if (!settings) return <SkeletonBlock className="h-48 w-full" />;
 
+  const schedule = (status?.schedule ?? {}) as Record<string, unknown>;
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Briefing settings"
-        description="Daily/weekly schedule toggles for the local profile."
+        description="Daily/weekly schedule, caps, and section toggles for the local profile."
       />
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <Panel title="Schedule">
@@ -2219,6 +3458,54 @@ export function BriefingsSettingsPage() {
           </label>
         </div>
       </Panel>
+
+      <Panel title="Section toggles">
+        <ul className="space-y-2 text-sm">
+          {TAXONOMY.briefingSections.map((key) => (
+            <li key={key}>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={sections[key] !== false}
+                  onChange={(e) => void patchSection(key, e.target.checked)}
+                />
+                {key.replaceAll('_', ' ')}
+              </label>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
+      {status ? (
+        <Panel title="Status">
+          <StatusDl
+            entries={[
+              ['timezone', (schedule as { timezone?: string }).timezone],
+              ['catch-up policy', status.catchUpPolicy],
+              [
+                'last daily',
+                status.lastDailyRun
+                  ? formatWhen(
+                      new Date(
+                        Number((status.lastDailyRun as Record<string, unknown>).completedAt),
+                      ).toISOString(),
+                    )
+                  : '—',
+              ],
+              [
+                'last weekly',
+                status.lastWeeklyRun
+                  ? formatWhen(
+                      new Date(
+                        Number((status.lastWeeklyRun as Record<string, unknown>).completedAt),
+                      ).toISOString(),
+                    )
+                  : '—',
+              ],
+            ]}
+          />
+        </Panel>
+      ) : null}
     </div>
   );
 }
@@ -2232,6 +3519,7 @@ export function AlertsSettingsPage() {
     targetRef: '',
     eventKinds: '',
     family: 'research',
+    priorityFloor: 'medium',
     enabled: true,
   });
   const [error, setError] = useState<string | null>(null);
@@ -2245,6 +3533,9 @@ export function AlertsSettingsPage() {
     void reload().catch((e) => setError(String(e)));
   }, []);
 
+  const floorLocked = FLOOR_LOCKED_TARGETS.has(form.targetType);
+  const minFloor = floorLocked ? 'medium' : 'low';
+
   function resetForm() {
     setEditing(null);
     setForm({
@@ -2253,6 +3544,7 @@ export function AlertsSettingsPage() {
       targetRef: '',
       eventKinds: '',
       family: 'research',
+      priorityFloor: 'medium',
       enabled: true,
     });
   }
@@ -2266,17 +3558,23 @@ export function AlertsSettingsPage() {
       targetRef: String(rule.targetRef ?? ''),
       eventKinds: (JSON.parse(String(rule.eventKindsJson ?? '[]')) as string[]).join(', '),
       family: String(sev.family ?? 'research'),
+      priorityFloor: String(sev.priorityFloor ?? 'medium'),
       enabled: Boolean(rule.enabled),
     });
   }
 
   async function saveRule() {
+    let priorityFloor = form.priorityFloor;
+    if (FLOOR_LOCKED_TARGETS.has(form.targetType) && (PRIORITY_RANK[priorityFloor] ?? 0) < 1) {
+      priorityFloor = 'medium';
+    }
     const body = {
       name: form.name.trim(),
       targetType: form.targetType,
       targetRef: form.targetRef.trim() || null,
       eventKinds: parseCsv(form.eventKinds),
       family: form.family,
+      priorityFloor,
       enabled: form.enabled,
     };
     try {
@@ -2309,7 +3607,18 @@ export function AlertsSettingsPage() {
           <select
             className={inputClass}
             value={form.targetType}
-            onChange={(e) => setForm((f) => ({ ...f, targetType: e.target.value }))}
+            onChange={(e) => {
+              const targetType = e.target.value;
+              setForm((f) => ({
+                ...f,
+                targetType,
+                priorityFloor:
+                  FLOOR_LOCKED_TARGETS.has(targetType) && (PRIORITY_RANK[f.priorityFloor] ?? 0) < 1
+                    ? 'medium'
+                    : f.priorityFloor,
+                family: FLOOR_LOCKED_TARGETS.has(targetType) ? 'operational' : f.family,
+              }));
+            }}
             aria-label="Target type"
           >
             {ALERT_RULE_TARGETS.map((t) => (
@@ -2334,6 +3643,26 @@ export function AlertsSettingsPage() {
             <option value="research">research</option>
             <option value="operational">operational</option>
           </select>
+          <label className="block text-sm sm:col-span-2">
+            Priority floor
+            <select
+              className={`mt-1 w-full ${inputClass}`}
+              value={form.priorityFloor}
+              onChange={(e) => setForm((f) => ({ ...f, priorityFloor: e.target.value }))}
+              aria-label="Priority floor"
+            >
+              {TAXONOMY.alertPriority.map((p) => (
+                <option
+                  key={p}
+                  value={p}
+                  disabled={(PRIORITY_RANK[p] ?? 0) < (PRIORITY_RANK[minFloor] ?? 0)}
+                >
+                  {p}
+                  {floorLocked && p === 'low' ? ' (blocked for integrity targets)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
           <input
             className={`sm:col-span-2 ${inputClass}`}
             placeholder="Event kinds (comma-separated)"
@@ -2350,6 +3679,11 @@ export function AlertsSettingsPage() {
             Enabled
           </label>
         </div>
+        {floorLocked ? (
+          <p className="mt-2 text-xs text-amber-700">
+            Integrity targets cannot be set below medium priority floor.
+          </p>
+        ) : null}
         <div className="mt-3 flex gap-2">
           <button type="button" className={btnClass} onClick={() => void saveRule()}>
             {editing ? 'Update rule' : 'Create rule'}
@@ -2384,7 +3718,8 @@ export function AlertsSettingsPage() {
                     <p className="text-xs text-[var(--muted)]">
                       {String(r.targetType)}
                       {r.targetRef ? ` · ${String(r.targetRef)}` : ''} ·{' '}
-                      {String(sev.family ?? 'research')}
+                      {String(sev.family ?? 'research')} · floor{' '}
+                      {String(sev.priorityFloor ?? 'medium')}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -2412,6 +3747,207 @@ export function AlertsSettingsPage() {
       <Link className="text-sm underline" to="/alerts">
         Open Alert Centre
       </Link>
+    </div>
+  );
+}
+
+export function MuteRulesPage() {
+  const mode = useLiveMode();
+  const [items, setItems] = useState<Array<Record<string, unknown>>>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    scopeType: 'object',
+    scopeId: '',
+    scopeEventType: '',
+    reason: '',
+    forever: false,
+    expiresLocal: '',
+  });
+
+  async function reload() {
+    const res = await m6Api.listMutes();
+    setItems(res.items ?? []);
+  }
+
+  useEffect(() => {
+    if (mode !== 'live') return;
+    void reload().catch((e) => setError(String(e)));
+  }, [mode]);
+
+  async function onCreate(e: FormEvent) {
+    e.preventDefault();
+    try {
+      const expiresAt = form.forever
+        ? null
+        : form.expiresLocal
+          ? new Date(form.expiresLocal).getTime()
+          : Date.now() + 7 * 86400000;
+      await m6Api.createMute({
+        scopeType: form.scopeType,
+        scopeId: form.scopeId.trim() || undefined,
+        scopeEventType: form.scopeEventType.trim() || undefined,
+        reason: form.reason.trim() || undefined,
+        expiresAt,
+      });
+      setForm({
+        scopeType: 'object',
+        scopeId: '',
+        scopeEventType: '',
+        reason: '',
+        forever: false,
+        expiresLocal: '',
+      });
+      await reload();
+    } catch (err) {
+      setError(String(err));
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Mute rules"
+        description="Silence objects, topics, sources, or event types for a period or forever."
+      />
+      {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {mode === 'live' ? (
+        <>
+          <form
+            className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+            onSubmit={(e) => void onCreate(e)}
+          >
+            <h2 className="text-sm font-semibold">Create mute</h2>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <select
+                className={inputClass}
+                value={form.scopeType}
+                onChange={(e) => setForm((f) => ({ ...f, scopeType: e.target.value }))}
+                aria-label="Scope type"
+              >
+                {TAXONOMY.muteScopes.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <input
+                className={inputClass}
+                placeholder="Scope id / object id"
+                value={form.scopeId}
+                onChange={(e) => setForm((f) => ({ ...f, scopeId: e.target.value }))}
+                aria-label="Scope id"
+              />
+              <input
+                className={inputClass}
+                placeholder="Event type (optional)"
+                value={form.scopeEventType}
+                onChange={(e) => setForm((f) => ({ ...f, scopeEventType: e.target.value }))}
+                aria-label="Event type"
+              />
+              <input
+                className={inputClass}
+                placeholder="Reason"
+                value={form.reason}
+                onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
+                aria-label="Reason"
+              />
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.forever}
+                  onChange={(e) => setForm((f) => ({ ...f, forever: e.target.checked }))}
+                />
+                Forever
+              </label>
+              {!form.forever ? (
+                <input
+                  type="datetime-local"
+                  className={inputClass}
+                  value={form.expiresLocal}
+                  onChange={(e) => setForm((f) => ({ ...f, expiresLocal: e.target.value }))}
+                  aria-label="Expires at"
+                />
+              ) : null}
+            </div>
+            <button type="submit" className={btnClass}>
+              Create mute
+            </button>
+          </form>
+
+          <Panel title="Active & recent mutes">
+            {items.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No mute rules yet.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {items.map((m) => {
+                  const expired =
+                    m.expiresAt != null &&
+                    Number(m.expiresAt) > 0 &&
+                    Number(m.expiresAt) <= Date.now();
+                  return (
+                    <li
+                      key={String(m.id)}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded border border-[var(--border)] p-2"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {String(m.scopeType)}
+                          {m.scopeId ? ` · ${String(m.scopeId)}` : ''}
+                          {!m.active || expired ? (
+                            <span className="ml-2 text-xs text-[var(--muted)]">
+                              ({expired ? 'expired' : 'disabled'})
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {String(m.reason ?? '—')}
+                          {m.expiresAt
+                            ? ` · until ${formatWhen(new Date(Number(m.expiresAt)).toISOString())}`
+                            : ' · forever'}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {m.active ? (
+                          <button
+                            type="button"
+                            className="text-xs underline"
+                            onClick={() =>
+                              void m6Api.updateMute(String(m.id), { active: false }).then(reload)
+                            }
+                          >
+                            Disable
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-xs underline"
+                            onClick={() =>
+                              void m6Api.updateMute(String(m.id), { active: true }).then(reload)
+                            }
+                          >
+                            Re-enable
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="text-xs text-rose-600 underline"
+                          onClick={() => {
+                            if (!window.confirm('Delete this mute rule?')) return;
+                            void m6Api.deleteMute(String(m.id)).then(reload);
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Panel>
+        </>
+      ) : null}
     </div>
   );
 }

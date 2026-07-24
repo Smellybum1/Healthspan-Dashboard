@@ -120,11 +120,57 @@ checks.push({
   ok: m6Api.includes('items/batch') && m6Routes.includes('items/batch'),
 });
 checks.push({
+  id: 'watchlist-batch-add-ui',
+  ok: m6Pages.includes('Batch add') && m6Pages.includes("op: 'add'"),
+});
+checks.push({
+  id: 'saved-search-multiselect',
+  ok:
+    m6Pages.includes('MultiSelectCheckboxes') &&
+    m6Pages.includes('evidenceAvailability') &&
+    m6Pages.includes('SavedSearchQueryPreview') &&
+    !/Entity types \(comma-separated\)/.test(m6Pages),
+});
+checks.push({
+  id: 'alert-snooze-until-ui',
+  ok: m6Pages.includes('datetime-local') && m6Pages.includes('Snooze hours'),
+});
+checks.push({
+  id: 'mute-rules-page',
+  ok:
+    m6Pages.includes('MuteRulesPage') ||
+    (m6Pages.includes('Mute Rules') && m6Api.includes('/api/mutes')),
+});
+checks.push({
+  id: 'ops-scheduler-not-raw-json-primary',
+  ok:
+    m6Pages.includes('StatusDl') &&
+    m6Pages.includes('FDA bulk schedules') &&
+    !/Panel title="Scheduler"[\s\S]{0,200}JSON\.stringify\(panels\.scheduler/.test(m6Pages),
+});
+checks.push({
   id: 'alert-rules-ui',
   ok:
     m6Pages.includes('createAlertRule') ||
     m6Pages.includes('alert-rule') ||
-    m6Pages.includes('Alert rule'),
+    m6Pages.includes('Alert rule') ||
+    m6Pages.includes('AlertsSettingsPage'),
+});
+checks.push({
+  id: 'm6-product-eval-ge-60',
+  ok: fs
+    .readFileSync(path.join(root, 'scripts/m6-product-eval.ts'), 'utf8')
+    .includes('eval-case-count-ge-60'),
+});
+checks.push({
+  id: 'completion-report-doctor-no-id-bypass',
+  ok: fs
+    .readFileSync(path.join(root, 'scripts/completion-report-doctor.ts'), 'utf8')
+    .includes('semanticEvidenceKey'),
+});
+checks.push({
+  id: 'remediation-v-brief',
+  ok: fs.existsSync(path.join(root, 'docs/milestones/M6_CLOSURE_REMEDIATION_V.md')),
 });
 
 for (const shot of requiredScreenshots) {

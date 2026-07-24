@@ -53,16 +53,22 @@ export const m6Api = {
     getJson<{ dataMode: string; items: Array<Record<string, unknown>> }>(
       `/api/watchlists${includeArchived ? '?includeArchived=1' : ''}`,
     ),
-  getWatchlist: (id: string, opts?: { targetType?: string }) =>
-    getJson<{
+  getWatchlist: (id: string, opts?: { targetType?: string; page?: number; pageSize?: number }) => {
+    const q = new URLSearchParams();
+    if (opts?.targetType) q.set('targetType', opts.targetType);
+    if (opts?.page) q.set('page', String(opts.page));
+    if (opts?.pageSize) q.set('pageSize', String(opts.pageSize));
+    const qs = q.toString();
+    return getJson<{
       dataMode: string;
       item: Record<string, unknown>;
       items: Array<Record<string, unknown>>;
       entries?: Array<Record<string, unknown>>;
       total?: number;
-    }>(
-      `/api/watchlists/${id}${opts?.targetType ? `?targetType=${encodeURIComponent(opts.targetType)}` : ''}`,
-    ),
+      page?: number;
+      pageSize?: number;
+    }>(`/api/watchlists/${id}${qs ? `?${qs}` : ''}`);
+  },
   createWatchlist: (name: string, description?: string) =>
     postJson('/api/watchlists', { name, description }),
   renameWatchlist: (id: string, name: string) => patchJson(`/api/watchlists/${id}`, { name }),
@@ -81,8 +87,18 @@ export const m6Api = {
     deleteJson(`/api/watchlists/${id}/items/${watchableId}`),
   batchWatchlistItems: (id: string, actions: unknown[]) =>
     postJson(`/api/watchlists/${id}/items/batch`, { actions }),
-  watchlistChanges: (id: string) =>
-    getJson<{ items: Array<Record<string, unknown>> }>(`/api/watchlists/${id}/changes`),
+  watchlistChanges: (id: string, opts?: { page?: number; pageSize?: number }) => {
+    const q = new URLSearchParams();
+    if (opts?.page) q.set('page', String(opts.page));
+    if (opts?.pageSize) q.set('pageSize', String(opts.pageSize));
+    const qs = q.toString();
+    return getJson<{
+      items: Array<Record<string, unknown>>;
+      total?: number;
+      page?: number;
+      pageSize?: number;
+    }>(`/api/watchlists/${id}/changes${qs ? `?${qs}` : ''}`);
+  },
   follow: (body: {
     targetType: string;
     targetId: string;
@@ -95,6 +111,8 @@ export const m6Api = {
     ),
   listSavedSearches: () =>
     getJson<{ items: Array<Record<string, unknown>> }>('/api/saved-searches'),
+  getSavedSearch: (id: string) =>
+    getJson<{ dataMode: string; item: Record<string, unknown> }>(`/api/saved-searches/${id}`),
   createSavedSearch: (name: string, query: unknown) =>
     postJson('/api/saved-searches', { name, query }),
   updateSavedSearch: (id: string, patch: Record<string, unknown>) =>
@@ -112,12 +130,34 @@ export const m6Api = {
   updateAlertRule: (id: string, body: Record<string, unknown>) =>
     patchJson(`/api/alert-rules/${id}`, body),
   deleteAlertRule: (id: string) => deleteJson(`/api/alert-rules/${id}`),
-  listAlerts: (opts?: { state?: string; family?: string }) => {
+  listAlerts: (opts?: {
+    state?: string;
+    family?: string;
+    priority?: string;
+    source?: string;
+    eventKind?: string;
+    watchlistId?: string;
+    savedSearchId?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
     const q = new URLSearchParams();
     if (opts?.state) q.set('state', opts.state);
     if (opts?.family) q.set('family', opts.family);
+    if (opts?.priority) q.set('priority', opts.priority);
+    if (opts?.source) q.set('source', opts.source);
+    if (opts?.eventKind) q.set('eventKind', opts.eventKind);
+    if (opts?.watchlistId) q.set('watchlist', opts.watchlistId);
+    if (opts?.savedSearchId) q.set('savedSearch', opts.savedSearchId);
+    if (opts?.page) q.set('page', String(opts.page));
+    if (opts?.pageSize) q.set('pageSize', String(opts.pageSize));
     const qs = q.toString();
-    return getJson<{ items: Array<Record<string, unknown>> }>(`/api/alerts${qs ? `?${qs}` : ''}`);
+    return getJson<{
+      items: Array<Record<string, unknown>>;
+      total?: number;
+      page?: number;
+      pageSize?: number;
+    }>(`/api/alerts${qs ? `?${qs}` : ''}`);
   },
   getAlert: (id: string) =>
     getJson<{ item: Record<string, unknown>; history?: Array<Record<string, unknown>> }>(

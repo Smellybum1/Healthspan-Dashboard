@@ -211,15 +211,37 @@ export function batchWatchlistItems(
   return { results, count: results.length };
 }
 
-export function listWatchlistChanges(db: HealthspanDb, watchlistId: string, limit = 50) {
+function enrichWatchableState<T extends { targetId: string; canonicalUrl?: string | null }>(w: T) {
+  const availability = w.targetId.startsWith('unavailable-')
+    ? 'unavailable'
+    : w.targetId.startsWith('redirected-')
+      ? 'redirected'
+      : 'available';
+  const redirectedTo =
+    availability === 'redirected'
+      ? w.canonicalUrl || w.targetId.replace(/^redirected-/, '') || null
+      : null;
+  return { ...w, availability, redirectedTo };
+}
+
+export function listWatchlistChanges(
+  db: HealthspanDb,
+  watchlistId: string,
+  optsOrLimit?: number | { limit?: number; page?: number; pageSize?: number },
+) {
+  const opts = typeof optsOrLimit === 'number' ? { limit: optsOrLimit } : (optsOrLimit ?? {});
+  const pageSize = Math.min(Math.max(opts.pageSize ?? opts.limit ?? 50, 1), 200);
+  const page = Math.max(opts.page ?? 1, 1);
   const entries = db
     .select()
     .from(watchlistEntries)
     .where(eq(watchlistEntries.watchlistId, watchlistId))
     .orderBy(desc(watchlistEntries.addedAt))
-    .all()
-    .slice(0, Math.min(limit, 200));
-  return entries.map((e) => {
+    .all();
+  const total = entries.length;
+  const start = (page - 1) * pageSize;
+  const pageEntries = entries.slice(start, start + pageSize);
+  const items = pageEntries.map((e) => {
     const w = db
       .select()
       .from(watchableObjects)
@@ -227,18 +249,10 @@ export function listWatchlistChanges(db: HealthspanDb, watchlistId: string, limi
       .all()[0];
     return {
       ...e,
-      watchable: w
-        ? {
-            ...w,
-            availability: w.targetId.startsWith('unavailable-')
-              ? 'unavailable'
-              : w.targetId.startsWith('redirected-')
-                ? 'redirected'
-                : 'available',
-          }
-        : null,
+      watchable: w ? enrichWatchableState(w) : null,
     };
   });
+  return { items, total, page, pageSize };
 }
 
 export function listWatchlistItemsFiltered(
@@ -250,16 +264,7 @@ export function listWatchlistItemsFiltered(
   const page = Math.max(opts?.page ?? 1, 1);
   let items = listWatchlistItems(db, watchlistId).map((e) => ({
     ...e,
-    watchable: e.watchable
-      ? {
-          ...e.watchable,
-          availability: e.watchable.targetId.startsWith('unavailable-')
-            ? 'unavailable'
-            : e.watchable.targetId.startsWith('redirected-')
-              ? 'redirected'
-              : 'available',
-        }
-      : null,
+    watchable: e.watchable ? enrichWatchableState(e.watchable) : null,
   }));
   if (opts?.targetType) {
     items = items.filter((i) => i.watchable?.targetType === opts.targetType);
@@ -278,6 +283,7 @@ export function updateSavedSearch(
     alertEnabled?: boolean;
     briefEnabled?: boolean;
     state?: 'active' | 'archived';
+    needsUpdate?: boolean;
   },
 ) {
   const current = getSavedSearch(db, id);
@@ -293,6 +299,9 @@ export function updateSavedSearch(
     hash = canonicalSearchHash(migrated.query);
     querySchemaVersion = 2;
     needsUpdate = migrated.needsUpdate;
+  }
+  if (typeof patch.needsUpdate === 'boolean') {
+    needsUpdate = patch.needsUpdate;
   }
   db.update(savedSearches)
     .set({
@@ -780,15 +789,53 @@ export function enrichAlert(db: HealthspanDb, id: string) {
 
 export function listAlertsFiltered(
   db: HealthspanDb,
-  opts?: { state?: string; family?: string; page?: number; pageSize?: number },
+  opts?: {
+    state?: string;
+    family?: string;
+    priority?: string;
+    source?: string;
+    eventKind?: string;
+    watchlistId?: string;
+    savedSearchId?: string;
+    page?: number;
+    pageSize?: number;
+  },
 ) {
   let items = listAlerts(db).map((a) => ({
     ...a,
-    whyIncluded: JSON.parse(a.whyIncludedJson || '{}'),
-    severity: JSON.parse(a.severityJson || '{}'),
+    whyIncluded: JSON.parse(a.whyIncludedJson || '{}') as Record<string, unknown>,
+    severity: JSON.parse(a.severityJson || '{}') as Record<string, unknown>,
   }));
   if (opts?.state) items = items.filter((a) => a.state === opts.state);
   if (opts?.family) items = items.filter((a) => a.family === opts.family);
+  if (opts?.priority) items = items.filter((a) => a.importance === opts.priority);
+  if (opts?.eventKind)
+    items = items.filter((a) => a.kind === opts.eventKind || a.kind.includes(opts.eventKind!));
+  if (opts?.source) {
+    items = items.filter((a) => {
+      const why = a.whyIncluded;
+      const src = String(why.source ?? why.sourceId ?? why.sourceName ?? '');
+      return src === opts.source || a.kind.includes(opts.source!);
+    });
+  }
+  if (opts?.watchlistId) {
+    items = items.filter((a) => {
+      const why = a.whyIncluded;
+      return (
+        String(why.watchlistId ?? why.watchlist ?? '') === opts.watchlistId ||
+        a.dedupeKey.includes(opts.watchlistId!)
+      );
+    });
+  }
+  if (opts?.savedSearchId) {
+    items = items.filter((a) => {
+      const why = a.whyIncluded;
+      return (
+        String(why.savedSearchId ?? why.savedSearch ?? '') === opts.savedSearchId ||
+        a.dedupeKey.includes(opts.savedSearchId!)
+      );
+    });
+  }
   const pageSize = Math.min(Math.max(opts?.pageSize ?? 50, 1), 200);
   const page = Math.max(opts?.page ?? 1, 1);
   const total = items.length;
@@ -1163,11 +1210,16 @@ export function personalisationImportApply(
     }
   }
   let imported = 0;
+  let skipped = 0;
   if (Array.isArray(data.watchlists)) {
     for (const wl of data.watchlists as Array<{ name?: string; description?: string }>) {
       if (!wl.name) continue;
-      createWatchlist(db, wl.name, wl.description);
-      imported += 1;
+      try {
+        createWatchlist(db, wl.name, wl.description);
+        imported += 1;
+      } catch {
+        skipped += 1; // duplicate slug / protected default
+      }
     }
   }
   if (Array.isArray(data.savedSearches)) {
@@ -1177,9 +1229,14 @@ export function personalisationImportApply(
       query?: unknown;
     }>) {
       if (!s.name) continue;
-      const query = s.query ?? (s.queryJson ? JSON.parse(s.queryJson) : { searchSchemaVersion: 2 });
-      createSavedSearch(db, s.name, query);
-      imported += 1;
+      try {
+        const query =
+          s.query ?? (s.queryJson ? JSON.parse(s.queryJson) : { searchSchemaVersion: 2 });
+        createSavedSearch(db, s.name, query);
+        imported += 1;
+      } catch {
+        skipped += 1;
+      }
     }
   }
   if (Array.isArray(data.alertRules)) {
@@ -1246,7 +1303,7 @@ export function personalisedToday(db: HealthspanDb) {
       .map((m) => ({ ...m, savedSearchId: s.id, savedSearchName: s.name })),
   );
   const wlChanges = listAllWatchlists(db).flatMap((wl) =>
-    listWatchlistChanges(db, wl.id, 5).map((c) => ({
+    listWatchlistChanges(db, wl.id, 5).items.map((c) => ({
       ...c,
       watchlistId: wl.id,
       watchlistName: wl.name,

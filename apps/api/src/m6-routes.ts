@@ -163,10 +163,13 @@ export function registerM6RemediationRoutes(
   });
 
   app.get('/api/watchlists/:id/changes', (c) => {
-    if (demoBlock()) return c.json({ dataMode: 'demo', items: [] });
+    if (demoBlock()) return c.json({ dataMode: 'demo', items: [], total: 0, page: 1, pageSize: 50 });
     return c.json({
       dataMode: 'live',
-      items: listWatchlistChanges(live.db, c.req.param('id')),
+      ...listWatchlistChanges(live.db, c.req.param('id'), {
+        page: Number(c.req.query('page') || 1),
+        pageSize: Number(c.req.query('pageSize') || 50),
+      }),
     });
   });
 
@@ -390,12 +393,17 @@ export function registerM6RemediationRoutes(
   });
 
   app.get('/api/alerts', (c) => {
-    if (demoBlock()) return c.json({ dataMode: 'demo', items: [] });
+    if (demoBlock()) return c.json({ dataMode: 'demo', items: [], total: 0, page: 1, pageSize: 50 });
     return c.json({
       dataMode: 'live',
       ...listAlertsFiltered(live.db, {
         state: c.req.query('state') || undefined,
         family: c.req.query('family') || undefined,
+        priority: c.req.query('priority') || undefined,
+        source: c.req.query('source') || undefined,
+        eventKind: c.req.query('eventKind') || c.req.query('event') || undefined,
+        watchlistId: c.req.query('watchlist') || c.req.query('watchlistId') || undefined,
+        savedSearchId: c.req.query('savedSearch') || c.req.query('savedSearchId') || undefined,
         page: Number(c.req.query('page') || 1),
         pageSize: Number(c.req.query('pageSize') || 50),
       }),

@@ -34,6 +34,7 @@ import {
   OperationsPage,
   PersonalisationMigrationPage,
   PrivacySecurityPage,
+  MuteRulesPage,
   SavedSearchDetailPage,
   SavedSearchesPage,
   WatchlistsPage,
@@ -79,6 +80,7 @@ export function App() {
         <Route path="settings/personalisation" element={<PersonalisationMigrationPage />} />
         <Route path="settings/briefings" element={<BriefingsSettingsPage />} />
         <Route path="settings/alerts" element={<AlertsSettingsPage />} />
+        <Route path="settings/mutes" element={<MuteRulesPage />} />
         <Route path="settings/backup" element={<BackupSettingsPage />} />
         <Route path="settings/privacy-security" element={<PrivacySecurityPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

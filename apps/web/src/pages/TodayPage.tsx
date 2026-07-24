@@ -39,82 +39,124 @@ function TodayRowActions({
   kind,
   id,
   watchableId,
+  targetType,
+  targetId,
+  whyIncluded,
   onDone,
 }: {
   kind: 'alert' | 'reading' | 'change';
   id: string;
   watchableId?: string;
+  targetType?: string;
+  targetId?: string;
+  whyIncluded?: unknown;
   onDone: () => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2 text-xs">
-      {kind === 'alert' ? (
-        <>
-          <button
-            type="button"
-            className="underline"
-            onClick={() => void m6Api.alertAction(id, 'read').then(onDone)}
-          >
-            Mark read
-          </button>
-          <button
-            type="button"
-            className="underline"
-            onClick={() => void m6Api.alertAction(id, 'dismiss').then(onDone)}
-          >
-            Dismiss
-          </button>
-          <button
-            type="button"
-            className="underline"
-            onClick={() =>
-              void m6Api
-                .createMute({ scopeType: 'object', scopeId: id, reason: 'muted from Today' })
-                .then(onDone)
-            }
-          >
-            Mute
-          </button>
-        </>
-      ) : (
-        <>
-          <button
-            type="button"
-            className="underline"
-            onClick={() => {
-              if (!watchableId) return;
-              void m6Api.setReadingState(watchableId, 'read').then(onDone);
-            }}
-          >
-            Mark read
-          </button>
-          <button
-            type="button"
-            className="underline"
-            onClick={() => {
-              if (!watchableId) return;
-              void m6Api.setReadingState(watchableId, 'dismissed').then(onDone);
-            }}
-          >
-            Dismiss
-          </button>
-          <button
-            type="button"
-            className="underline"
-            onClick={() =>
-              void m6Api
-                .createMute({
-                  scopeType: watchableId ? 'watchable' : 'event_type',
-                  scopeId: watchableId ?? id,
-                  reason: 'muted from Today',
-                })
-                .then(onDone)
-            }
-          >
-            Mute
-          </button>
-        </>
-      )}
+    <div className="mt-1 space-y-1">
+      {whyIncluded != null ? (
+        <details>
+          <summary className="cursor-pointer text-xs text-[var(--muted)]">Why included</summary>
+          <dl className="mt-1 grid gap-1 text-xs">
+            {Object.entries(
+              typeof whyIncluded === 'object' && whyIncluded
+                ? (whyIncluded as Record<string, unknown>)
+                : { reason: String(whyIncluded) },
+            ).map(([k, v]) => (
+              <div key={k} className="flex flex-wrap gap-1">
+                <dt className="font-medium text-[var(--muted)]">{k}:</dt>
+                <dd>{typeof v === 'string' ? v : JSON.stringify(v)}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      ) : null}
+      <div className="flex flex-wrap gap-2 text-xs">
+        {kind === 'alert' ? (
+          <>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => void m6Api.alertAction(id, 'read').then(onDone)}
+            >
+              Mark read
+            </button>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => void m6Api.alertAction(id, 'dismiss').then(onDone)}
+            >
+              Dismiss
+            </button>
+            <button
+              type="button"
+              className="underline"
+              onClick={() =>
+                void m6Api
+                  .createMute({ scopeType: 'object', scopeId: id, reason: 'muted from Today' })
+                  .then(onDone)
+              }
+            >
+              Mute
+            </button>
+          </>
+        ) : (
+          <>
+            {targetType && targetId ? (
+              <button
+                type="button"
+                className="underline"
+                onClick={() =>
+                  void m6Api
+                    .follow({
+                      targetType,
+                      targetId,
+                      displayTitle: targetId,
+                    })
+                    .then(onDone)
+                }
+              >
+                Watch
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                if (!watchableId) return;
+                void m6Api.setReadingState(watchableId, 'read').then(onDone);
+              }}
+            >
+              Mark read
+            </button>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                if (!watchableId) return;
+                void m6Api.setReadingState(watchableId, 'dismissed').then(onDone);
+              }}
+            >
+              Dismiss
+            </button>
+            <button
+              type="button"
+              className="underline"
+              onClick={() =>
+                void m6Api
+                  .createMute({
+                    scopeType: watchableId ? 'watchable' : 'event_type',
+                    scopeId: watchableId ?? id,
+                    reason: 'muted from Today',
+                  })
+                  .then(onDone)
+              }
+            >
+              Mute
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -232,6 +274,7 @@ export function TodayPage() {
                     <TodayRowActions
                       kind="alert"
                       id={String(a.id)}
+                      whyIncluded={a.whyIncluded ?? a.whyIncludedJson}
                       onDone={() => void loadPersonalised()}
                     />
                   </li>
@@ -261,6 +304,10 @@ export function TodayPage() {
                     <TodayRowActions
                       kind="change"
                       id={String(item.id)}
+                      watchableId={item.watchableId ? String(item.watchableId) : undefined}
+                      targetType={item.targetType ? String(item.targetType) : undefined}
+                      targetId={item.targetId ? String(item.targetId) : String(item.id)}
+                      whyIncluded={item.whyIncluded ?? item.reason}
                       onDone={() => void loadPersonalised()}
                     />
                   </li>
@@ -295,23 +342,26 @@ export function TodayPage() {
               <p className="text-sm text-[var(--muted)]">No recent watchlist changes.</p>
             ) : (
               <ul className="space-y-2 text-sm">
-                {(sections.watchlistChanges ?? []).slice(0, 8).map((c) => (
-                  <li key={String(c.id)} className="rounded border border-[var(--border)] p-2">
-                    <p>
-                      {String(c.watchlistName ?? 'Watchlist')}:{' '}
-                      {String(
-                        (c.watchable as Record<string, unknown> | undefined)?.displayTitle ??
-                          c.watchableId,
-                      )}
-                    </p>
-                    <TodayRowActions
-                      kind="change"
-                      id={String(c.id)}
-                      watchableId={c.watchableId ? String(c.watchableId) : undefined}
-                      onDone={() => void loadPersonalised()}
-                    />
-                  </li>
-                ))}
+                {(sections.watchlistChanges ?? []).slice(0, 8).map((c) => {
+                  const w = c.watchable as Record<string, unknown> | undefined;
+                  return (
+                    <li key={String(c.id)} className="rounded border border-[var(--border)] p-2">
+                      <p>
+                        {String(c.watchlistName ?? 'Watchlist')}:{' '}
+                        {String(w?.displayTitle ?? c.watchableId)}
+                      </p>
+                      <TodayRowActions
+                        kind="change"
+                        id={String(c.id)}
+                        watchableId={c.watchableId ? String(c.watchableId) : undefined}
+                        targetType={w?.targetType ? String(w.targetType) : undefined}
+                        targetId={w?.targetId ? String(w.targetId) : undefined}
+                        whyIncluded={c.whyIncluded ?? { watchlist: c.watchlistName }}
+                        onDone={() => void loadPersonalised()}
+                      />
+                    </li>
+                  );
+                })}
               </ul>
             )}
             <Link className="mt-2 inline-block text-xs underline" to="/watchlists">
@@ -331,6 +381,7 @@ export function TodayPage() {
                       kind="reading"
                       id={String(r.id)}
                       watchableId={String(r.watchableId)}
+                      whyIncluded={r.whyIncluded ?? { surface: 'continue_reading' }}
                       onDone={() => void loadPersonalised()}
                     />
                   </li>
@@ -359,6 +410,11 @@ export function TodayPage() {
                       kind="reading"
                       id={String(m.id ?? m.watchableId)}
                       watchableId={m.watchableId ? String(m.watchableId) : undefined}
+                      whyIncluded={
+                        m.whyIncluded ?? {
+                          savedSearch: m.savedSearchName ?? m.savedSearchId,
+                        }
+                      }
                       onDone={() => void loadPersonalised()}
                     />
                   </li>

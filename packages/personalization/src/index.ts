@@ -146,6 +146,7 @@ export const AlertRuleTargetTypeSchema = z.enum([
   'source',
   'event_type',
   'all_official_safety',
+  'database_integrity',
 ]);
 
 export const AlertRuleSchema = z.object({

@@ -76,6 +76,9 @@ export function SettingsPage() {
         <Link className="underline" to="/settings/alerts">
           Alerts
         </Link>
+        <Link className="underline" to="/settings/mutes">
+          Mute rules
+        </Link>
         <Link className="underline" to="/settings/backup">
           Backup & Storage
         </Link>
