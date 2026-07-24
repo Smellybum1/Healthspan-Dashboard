@@ -19,7 +19,7 @@ This report replaces the earlier overclaim that treated a chat-scrape execution 
 | §11 alignment dims | `9569ee0…` |
 | Doctor/eval hardening | `53edae1…` |
 | Alignment corpus + honest §34 report | `0636c363c6114f9666622fe31d1147c2b180693b` |
-| Final HEAD | `2b79560` (corpora + document lifecycle + Review Queue) |
+| Final HEAD | `3b4ef34` (corpora + document lifecycle + Review Queue + report sync) |
 
 ## 1. Executive summary
 
