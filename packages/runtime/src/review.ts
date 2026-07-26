@@ -1,14 +1,25 @@
 import {
   claimStatusForAction,
+  isAdverseCreatorFinding,
   normaliseReviewLimit,
+  toCreatorReviewTaskDto,
   type ClaimReviewUpdate,
+  type CreatorFindingRow,
+  type CreatorReviewTaskDto,
+  type IdentityTaskDto,
   type ReviewAction,
   type ReviewDecisionDto,
   type ReviewRepository,
   type ReviewTaskDto,
 } from '@healthspan/core';
 
-export type { ReviewAction, ReviewDecisionDto, ReviewTaskDto };
+export type {
+  CreatorReviewTaskDto,
+  IdentityTaskDto,
+  ReviewAction,
+  ReviewDecisionDto,
+  ReviewTaskDto,
+};
 
 /**
  * Review tasks and decisions — the first domain with a write path.
@@ -150,4 +161,57 @@ export async function resolveReviewTask(
   }
 
   return { ok: true, decisionId, taskId: task.id, action: opts.action };
+}
+
+/**
+ * Creator-alignment findings awaiting human review before a profile may publish.
+ *
+ * The adverse-type test stays here rather than in the query: it is a prefix match over a
+ * list of type names, and pushing it into SQL would mean encoding that list into every
+ * adapter's WHERE clause — two places for one rule to drift.
+ *
+ * The retired implementation applied its limit *before* this filter, so a page could come
+ * back short. The limit now bounds the candidate rows the query returns and the filter
+ * narrows within them, which is the same ordering of operations; `creator-review-parity`
+ * cases in `review.contract.ts` pin it.
+ */
+export async function listCreatorReviewTasks(
+  repo: ReviewRepository,
+  opts: { limit?: number } = {},
+): Promise<CreatorReviewTaskDto[]> {
+  const rows = await repo.listCandidateCreatorFindings(normaliseReviewLimit(opts.limit));
+  return rows.filter((f) => isAdverseCreatorFinding(f.findingType)).map(toCreatorReviewTaskDto);
+}
+
+/**
+ * Findings a creator profile may show for one claim.
+ *
+ * Two different rules, which is why this cannot be a query: an adverse finding must have
+ * been accepted *and* published, while a non-adverse one only has to not be rejected.
+ */
+export async function listPublishedCreatorFindings(
+  repo: ReviewRepository,
+  claimId: string,
+): Promise<CreatorFindingRow[]> {
+  const rows = await repo.listClaimFindings(claimId);
+  return rows.filter((f) => {
+    if (!isAdverseCreatorFinding(f.findingType)) return f.findingState !== 'rejected';
+    return f.findingState === 'accepted' && Boolean(f.publishedToProfile);
+  });
+}
+
+export async function listIdentityTasks(
+  repo: ReviewRepository,
+  limit = 50,
+): Promise<IdentityTaskDto[]> {
+  const rows = await repo.listIdentityTasks(normaliseReviewLimit(limit));
+  return rows.map((t) => ({
+    id: t.id,
+    accountId: t.accountId,
+    reason: t.reason,
+    proposedCreatorId: t.proposedCreatorId,
+    priority: t.priority,
+    reviewStatus: t.reviewStatus,
+    createdAt: new Date(t.createdAt).toISOString(),
+  }));
 }

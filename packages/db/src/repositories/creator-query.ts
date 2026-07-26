@@ -1,5 +1,6 @@
 import { and, desc, eq, sql, type SQL } from 'drizzle-orm';
 import {
+  creatorClaimEvidenceLinks,
   creatorClaims,
   creatorContentItems,
   creatorDisclosures,
@@ -89,6 +90,7 @@ export const recurrenceSnapshotOrder = desc(claimRecurrenceSnapshots.createdAt);
 
 export {
   claimRecurrenceSnapshots,
+  creatorClaimEvidenceLinks,
   creatorClaims,
   creatorContentItems,
   creatorDisclosures,

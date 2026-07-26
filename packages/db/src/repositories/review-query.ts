@@ -1,6 +1,7 @@
-import { desc } from 'drizzle-orm';
+import { and, desc, eq, or } from 'drizzle-orm';
 import type { ReviewDecisionDto, ReviewTaskDto } from '@healthspan/core';
 import { liveReviewTasks, reviewDecisions } from '../intelligence-schema.js';
+import { creatorClaimFindings, creatorClaims, creatorIdentityTasks } from '../creator-schema.js';
 
 /**
  * Query semantics and row mapping shared by the local SQLite and Sites D1 review
@@ -54,3 +55,43 @@ export function toReviewDecisionDto(row: DecisionRow): ReviewDecisionDto {
     notes: row.notes,
   };
 }
+
+/**
+ * Candidate creator findings joined to their claim.
+ *
+ * The retired implementation loaded every finding, filtered in memory, then re-selected
+ * the whole `creator_claims` table once per surviving finding to attach the claim. The
+ * join below does both in one statement.
+ *
+ * A **left** join: `creator_claim_findings.claim_id` is nullable, and a finding with no
+ * claim still produced a task (titled by its finding type). An inner join would drop it.
+ */
+export const creatorFindingSelection = {
+  id: creatorClaimFindings.id,
+  claimId: creatorClaimFindings.claimId,
+  findingType: creatorClaimFindings.findingType,
+  findingState: creatorClaimFindings.findingState,
+  explanation: creatorClaimFindings.explanation,
+  reviewRequired: creatorClaimFindings.reviewRequired,
+  publishedToProfile: creatorClaimFindings.publishedToProfile,
+  createdAt: creatorClaimFindings.createdAt,
+  claimText: creatorClaims.claimText,
+  claimCreatorId: creatorClaims.creatorId,
+  claimConfidence: creatorClaims.confidence,
+};
+
+/** Candidates requiring review. The adverse-type test is a prefix match and stays in the service. */
+export const candidateFindingWhere = and(
+  eq(creatorClaimFindings.findingState, 'candidate'),
+  eq(creatorClaimFindings.reviewRequired, true),
+);
+
+export const identityTaskOrder = desc(creatorIdentityTasks.priority);
+
+/** Open or pending — the retired filter, as a predicate. */
+export const identityTaskWhere = or(
+  eq(creatorIdentityTasks.reviewStatus, 'pending'),
+  eq(creatorIdentityTasks.currentState, 'open'),
+);
+
+export { creatorClaimFindings, creatorClaims, creatorIdentityTasks };

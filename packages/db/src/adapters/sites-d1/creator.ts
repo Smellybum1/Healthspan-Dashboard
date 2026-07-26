@@ -9,6 +9,7 @@ import {
   creatorClaimOrder,
   creatorClaims,
   creatorClaimsWhere,
+  creatorClaimEvidenceLinks,
   creatorContentItems,
   creatorDisclosures,
   creatorDocuments,
@@ -193,6 +194,24 @@ export function createSitesCreatorReadRepository(db: SitesD1Database): CreatorRe
         sourceUnavailableCount: s.sourceUnavailableCount,
         formulaVersion: s.formulaVersion,
         createdAt: s.createdAt,
+      }));
+    },
+
+    async listClaimEvidenceLinks(claimId) {
+      const rows = await db
+        .select()
+        .from(creatorClaimEvidenceLinks)
+        .where(eq(creatorClaimEvidenceLinks.creatorClaimId, claimId));
+      return rows.map((l) => ({
+        id: l.id,
+        targetType: l.targetType,
+        targetId: l.targetId,
+        linkRole: l.linkRole,
+        detectionMethod: l.detectionMethod,
+        linkState: l.linkState,
+        rationale: l.rationale,
+        compatibilityDimensionsJson: l.compatibilityDimensionsJson,
+        createdAt: l.createdAt,
       }));
     },
   };

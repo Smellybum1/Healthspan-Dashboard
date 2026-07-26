@@ -3,6 +3,7 @@ import type { CreatorReadRepository } from '@healthspan/core';
 import {
   creatorWatchItems,
   getCreatorDetail,
+  listClaimEvidenceLinks,
   listCreatorClaims,
   listCreators,
   listRecurrenceSnapshots,
@@ -180,6 +181,24 @@ export function runCreatorContract(harness: CreatorContractHarness) {
         meta: 'Creator claim (not a person score)',
         href: '/creator-claims/claim-b1',
       });
+    });
+
+    it('lists evidence links for a claim, parsing the compatibility dimensions', async () => {
+      const repo = await harness.create();
+      const links = await listClaimEvidenceLinks(repo, 'claim-a1');
+      expect(links).toHaveLength(1);
+      expect(links[0]).toMatchObject({
+        id: 'evidence-a1',
+        targetType: 'live_claim',
+        linkRole: 'supports',
+        linkState: 'candidate',
+        compatibilityDimensions: ['direction'],
+      });
+    });
+
+    it('returns no links for a claim that has none', async () => {
+      const repo = await harness.create();
+      expect(await listClaimEvidenceLinks(repo, 'claim-b1')).toEqual([]);
     });
   });
 }

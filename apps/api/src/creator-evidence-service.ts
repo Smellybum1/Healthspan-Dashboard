@@ -97,25 +97,6 @@ export function linkCreatorClaimEvidence(db: HealthspanDb, claimId: string) {
   };
 }
 
-export function listClaimEvidenceLinks(db: HealthspanDb, claimId: string) {
-  return db
-    .select()
-    .from(creatorClaimEvidenceLinks)
-    .all()
-    .filter((l) => l.creatorClaimId === claimId)
-    .map((l) => ({
-      id: l.id,
-      targetType: l.targetType,
-      targetId: l.targetId,
-      linkRole: l.linkRole,
-      detectionMethod: l.detectionMethod,
-      linkState: l.linkState,
-      rationale: l.rationale,
-      compatibilityDimensions: JSON.parse(l.compatibilityDimensionsJson || '[]'),
-      createdAt: new Date(l.createdAt).toISOString(),
-    }));
-}
-
 /** Mark creator profile/alignment stale when linked evidence changes (H16). */
 export function markCreatorAlignmentStaleForEvidence(
   db: HealthspanDb,

@@ -4,11 +4,16 @@ Milestone 7, Amendment I §3. Every module that touches data or the request path
 classified here. **No row may read `UNKNOWN`.**
 
 **Baseline commit:** `a59d202a481f8ef4982ad314f88350024b2373cf`
-**Status:** classification complete. Conversion in progress — **4 of 20 convertible rows
-`done`** (content, review, assessment, creator reads). All four domains are served end to
-end in hosted mode by D1 adapters, with the review _write_ path ported but deliberately
-not exposed (§6). A row may only be marked `done` once its module is a declared root in
+**Status:** classification complete. Conversion in progress — **8 of 20 convertible rows
+`done`**: content, review, assessment, creator reads, creator-review reads, identity-task
+reads, evidence-link reads, and entity resolution (classified `local` — it has no reads).
+Every hosted-reachable read in the creator and review surfaces is now served end to end by
+a D1 adapter. A row may only be marked `done` once its module is a declared root in
 `scripts/sites-bundle-doctor.ts` and that gate is green.
+
+**Remaining convertible rows:** `intelligence-service.ts`, the interventions trio
+(`dossier`, `comparison`, `regulatory-safety`), `trial-portfolio.ts`, `jobs.ts`,
+`operations-panels.ts`, the two route layers, and personalisation.
 
 **A row may split rather than move.** `creator-service.ts` held hosted-reachable reads and
 local-only writes in one file, so the reads moved to `@healthspan/runtime` and the writes
@@ -55,14 +60,17 @@ wrapping synchronous `better-sqlite3`; the D1 adapter uses the async driver.
 | `regulatory-safety-service.ts`                                                                        | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` regulatory                             | operational                                                       |
 | `packages/runtime/src/assessment.ts` (was `assessment-service.ts`)                                    | both  | `ClaimAssessmentRepository`                           | **async**  | none                                     | **done**   | `assessment.contract.ts`, `assessment-parity.test.ts` | operational                                                       |
 | `intelligence-service.ts`                                                                             | both  | `ClaimAssessmentRepository`                           | sync       | none                                     | pending    | `sites:parity` claims                                 | operational (read models only; analysis run is local-only)        |
-| `creator-evidence-service.ts`                                                                         | both  | `CreatorReadRepository`                               | sync       | none                                     | pending    | `sites:parity` creators                               | operational                                                       |
+| `packages/runtime/src/creator.ts` (evidence-link reads, was `creator-evidence-service.ts`)            | both  | `CreatorReadRepository`                               | **async**  | none                                     | **done**   | `creator.contract.ts`                                 | operational                                                       |
+| `creator-evidence-service.ts` (link creation, staleness marking)                                      | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | existing                                              | `disabled` (no hosted mutation — §6)                              |
 | `packages/runtime/src/creator.ts` (reads, was `creator-service.ts` + `creator-recurrence-service.ts`) | both  | `CreatorReadRepository`                               | **async**  | none                                     | **done**   | `creator.contract.ts`, `creator-parity.test.ts`       | operational                                                       |
 | `creator-service.ts` (writes: documents, accounts, manual claims, bootstrap)                          | local | none — direct `HealthspanDb`                          | sync       | `node:fs` (document write/delete)        | n/a        | existing                                              | `disabled`                                                        |
 | `creator-recurrence-service.ts` (`rebuildClaimRecurrence` only)                                       | local | none — direct `HealthspanDb`                          | sync       | `node:crypto` (source-scope hash)        | n/a        | existing                                              | `disabled`                                                        |
 | `packages/runtime/src/review.ts` (was `review-service.ts`)                                            | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts`                                  | reads operational; hosted resolve withheld — see §6               |
-| `creator-review-service.ts`                                                                           | both  | `ReviewRepository`                                    | sync       | none                                     | pending    | `sites:parity` review                                 | operational                                                       |
-| `entity-resolution-service.ts`                                                                        | both  | `ReviewRepository`                                    | sync       | none                                     | pending    | `sites:parity` review                                 | operational                                                       |
-| `creator-identity-service.ts`                                                                         | both  | `ReviewRepository`                                    | sync       | none                                     | pending    | `sites:parity` review                                 | operational                                                       |
+| `packages/runtime/src/review.ts` (creator-review reads, was `creator-review-service.ts`)              | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts` creator-review suite             | operational                                                       |
+| `creator-review-service.ts` (`resolveCreatorReviewTask` only)                                         | local | none — direct `HealthspanDb`                          | sync       | none                                     | n/a        | existing                                              | `disabled` (no hosted mutation — §6)                              |
+| `entity-resolution-service.ts` (`resolveEntityResolutionTask` only — it has no reads)                 | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | `entity-resolution-service.test.ts`                   | `disabled` (no hosted mutation — §6)                              |
+| `packages/runtime/src/review.ts` (identity-task reads, was `creator-identity-service.ts`)             | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts` creator-review suite             | operational                                                       |
+| `creator-identity-service.ts` (roles, snapshots, task resolution)                                     | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | existing                                              | `disabled` (no hosted mutation — §6)                              |
 | `personalization-service.ts`                                                                          | both  | `PersonalisationRepository`                           | sync       | none                                     | pending    | `sites:parity` personalisation                        | operational                                                       |
 | `personalization-iv.ts`                                                                               | both  | `PersonalisationRepository`, `AlertBriefRepository`   | sync       | none                                     | pending    | `sites:parity` alerts/briefs                          | operational                                                       |
 | `jobs.ts`                                                                                             | both  | `JobRepository`                                       | sync       | none                                     | pending    | `sites:parity` jobs                                   | operational (bounded, request-triggered)                          |
@@ -323,5 +331,55 @@ on the port would have cascaded async through three services for no hosted benef
 stays synchronous in `creator-service.ts`.
 
 `listCreatorRoles` now exists twice: on the port for creator detail, and still in
-`creator-identity-service.ts` for that module's own use. This is transitional and resolves
-when `creator-identity-service.ts` is ported.
+`creator-identity-service.ts`, where `rebuildCreatorProfileSnapshot` — a synchronous
+local-only write — calls it. Awaiting the port there would make that write async and
+cascade through its callers, which belongs to that row rather than this one. The
+duplication is a five-line select-and-map with no logic in it; it resolves when the
+identity writes are ported.
+
+---
+
+## 10. The review surface — reads ported, writes classified `local`
+
+The remaining `ReviewRepository` and evidence rows split the same way
+`creator-service.ts` did (§9), but with a sharper line: **every one of these modules had
+its reads ported and its writes left behind**, because no hosted mutation exists to serve
+and none may exist before the session provider lands (§6).
+
+That is a deliberate stopping point, not an unfinished one. The rows read `n/a` rather
+than `pending` because converting a write that the hosted runtime refuses at the
+middleware would add async signatures to local-only call paths for no reachable benefit —
+the same reasoning that kept `listMonitoredAccounts` synchronous (§9).
+
+`entity-resolution-service.ts` moved from the hosted-reachable slice to `local` outright.
+It exports one action list and one write; the `listEntityResolutionTasks` the ledger
+implied belonged to it actually lives in `dossier-service.ts` and travels with the
+interventions row.
+
+### Another N+1, and a second left join
+
+`listCreatorReviewTasks` loaded every `creator_claim_findings` row, filtered in memory,
+then re-selected the whole `creator_claims` table once per surviving finding. It is now
+one left join.
+
+Left again, and for the same class of reason as the video join: `claim_id` is nullable,
+and a finding with no claim still produced a task — titled by its finding type, with the
+default confidence. An inner join drops it silently. Flipping the D1 adapter to
+`innerJoin` fails two contract cases, which is how that is held.
+
+### Two rules that stayed out of SQL, on purpose
+
+`isAdverseCreatorFinding` is a prefix match over a list of finding-type names. Pushing it
+into a `WHERE` clause would mean encoding that list into both adapters — two copies of one
+rule, free to drift. It lives in `@healthspan/core` and runs in the shared service, over
+rows the query has already narrowed to candidates requiring review. The local-only
+`resolveCreatorReviewTask` now imports the same function rather than keeping its own copy.
+
+`listPublishedCreatorFindings` applies _two_ rules depending on the finding: an adverse
+one must be accepted **and** published; a non-adverse one merely must not be rejected. Also
+not expressible as one predicate, and also in the service.
+
+**Finding:** `listPublishedCreatorFindings` has no caller anywhere in the repository. It
+encodes the rule governing what a creator profile may display, so it was ported rather
+than deleted, and the contract pins both branches — but the absence of a caller is worth a
+decision. Either the profile-publish path should be using it, or it is dead.

@@ -180,6 +180,45 @@ export interface CreatorReadRepository {
   listRoles(creatorId: string): Promise<CreatorRoleRow[]>;
   listRecurrenceInputs(creatorId?: string): Promise<RecurrenceInputRow[]>;
   listRecurrenceSnapshots(limit: number): Promise<RecurrenceSnapshotRow[]>;
+  listClaimEvidenceLinks(claimId: string): Promise<ClaimEvidenceLinkRow[]>;
+}
+
+export type ClaimEvidenceLinkRow = {
+  id: string;
+  targetType: string;
+  targetId: string;
+  linkRole: string;
+  detectionMethod: string;
+  linkState: string;
+  rationale: string | null;
+  compatibilityDimensionsJson: string;
+  createdAt: number;
+};
+
+export type ClaimEvidenceLinkDto = {
+  id: string;
+  targetType: string;
+  targetId: string;
+  linkRole: string;
+  detectionMethod: string;
+  linkState: string;
+  rationale: string | null;
+  compatibilityDimensions: unknown[];
+  createdAt: string;
+};
+
+export function toClaimEvidenceLinkDto(row: ClaimEvidenceLinkRow): ClaimEvidenceLinkDto {
+  return {
+    id: row.id,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    linkRole: row.linkRole,
+    detectionMethod: row.detectionMethod,
+    linkState: row.linkState,
+    rationale: row.rationale,
+    compatibilityDimensions: JSON.parse(row.compatibilityDimensionsJson || '[]') as unknown[],
+    createdAt: new Date(row.createdAt).toISOString(),
+  };
 }
 
 export const CREATOR_PAGE_SIZE_MAX = 100;

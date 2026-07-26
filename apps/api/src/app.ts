@@ -63,6 +63,9 @@ import {
 import {
   creatorWatchItems,
   getAssessment,
+  listClaimEvidenceLinks,
+  listCreatorReviewTasks,
+  listIdentityTasks,
   getCreatorDetail,
   listAssessments,
   listContentItems,
@@ -155,7 +158,6 @@ import {
   createManualCreatorClaim,
 } from './creator-service.js';
 import {
-  listCreatorReviewTasks,
   resolveCreatorReviewTask,
   CREATOR_REVIEW_ACTIONS,
   type CreatorReviewAction,
@@ -175,13 +177,12 @@ import {
 import {
   addCreatorRole,
   addCommercialStatement,
-  listIdentityTasks,
   resolveIdentityTask,
   rebuildCreatorProfileSnapshot,
   redactProfileSnapshot,
 } from './creator-identity-service.js';
 import { rebuildClaimRecurrence } from './creator-recurrence-service.js';
-import { linkCreatorClaimEvidence, listClaimEvidenceLinks } from './creator-evidence-service.js';
+import { linkCreatorClaimEvidence } from './creator-evidence-service.js';
 import { runPlatformPolicyAudit, getPlatformSourceHealth } from './platform-policy-service.js';
 import {
   creatorAiPolicyNotes,
@@ -1785,9 +1786,9 @@ export function createApp() {
     return c.json({ accepted: true, ...result });
   });
 
-  app.get('/api/creator-review/tasks', (c) => {
+  app.get('/api/creator-review/tasks', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', tasks: [] });
-    const tasks = listCreatorReviewTasks(live.db, {
+    const tasks = await listCreatorReviewTasks(repositories.review, {
       limit: Number(c.req.query('limit') ?? 100),
     });
     return c.json({ dataMode: 'live', tasks });
@@ -1840,9 +1841,9 @@ export function createApp() {
     return c.json({ accepted: true, ...result });
   });
 
-  app.get('/api/creator-identity/tasks', (c) => {
+  app.get('/api/creator-identity/tasks', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', tasks: [] });
-    return c.json({ dataMode: 'live', tasks: listIdentityTasks(live.db) });
+    return c.json({ dataMode: 'live', tasks: await listIdentityTasks(repositories.review) });
   });
 
   app.post('/api/creator-identity/tasks/:id/resolve', async (c) => {
@@ -1972,9 +1973,12 @@ export function createApp() {
     });
   });
 
-  app.get('/api/creator-claims/:id/evidence', (c) => {
+  app.get('/api/creator-claims/:id/evidence', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', links: [] });
-    return c.json({ dataMode: 'live', links: listClaimEvidenceLinks(live.db, c.req.param('id')) });
+    return c.json({
+      dataMode: 'live',
+      links: await listClaimEvidenceLinks(repositories.creator, c.req.param('id')),
+    });
   });
 
   app.post('/api/creator-claims/:id/evidence/link', async (c) => {

@@ -4,6 +4,8 @@ import {
   type ClaimReviewUpdate,
   type ReviewDecisionDto,
   type ReviewDecisionInsert,
+  type CreatorFindingRow,
+  type IdentityTaskRow,
   type ReviewIntelligenceState,
   type ReviewRepository,
   type ReviewTaskDto,
@@ -17,6 +19,13 @@ import {
 import {
   reviewDecisionOrder,
   reviewTaskOrder,
+  candidateFindingWhere,
+  creatorClaimFindings,
+  creatorClaims,
+  creatorFindingSelection,
+  creatorIdentityTasks,
+  identityTaskOrder,
+  identityTaskWhere,
   toReviewDecisionDto,
   toReviewTaskDto,
 } from '../../repositories/review-query.js';
@@ -97,6 +106,43 @@ export function createSitesReviewRepository(db: SitesD1Database): ReviewReposito
         .update(contentIntelligenceState)
         .set({ lastReviewAt: at, updatedAt: at })
         .where(eq(contentIntelligenceState.contentItemId, contentItemId));
+    },
+
+    async listCandidateCreatorFindings(limit: number): Promise<CreatorFindingRow[]> {
+      const rows = await db
+        .select(creatorFindingSelection)
+        .from(creatorClaimFindings)
+        .leftJoin(creatorClaims, eq(creatorClaims.id, creatorClaimFindings.claimId))
+        .where(candidateFindingWhere)
+        .limit(limit);
+      return rows as CreatorFindingRow[];
+    },
+
+    async listClaimFindings(claimId: string): Promise<CreatorFindingRow[]> {
+      const rows = await db
+        .select(creatorFindingSelection)
+        .from(creatorClaimFindings)
+        .leftJoin(creatorClaims, eq(creatorClaims.id, creatorClaimFindings.claimId))
+        .where(eq(creatorClaimFindings.claimId, claimId));
+      return rows as CreatorFindingRow[];
+    },
+
+    async listIdentityTasks(limit: number): Promise<IdentityTaskRow[]> {
+      const rows = await db
+        .select()
+        .from(creatorIdentityTasks)
+        .where(identityTaskWhere)
+        .orderBy(identityTaskOrder)
+        .limit(limit);
+      return rows.map((t) => ({
+        id: t.id,
+        accountId: t.accountId,
+        reason: t.reason,
+        proposedCreatorId: t.proposedCreatorId,
+        priority: t.priority,
+        reviewStatus: t.reviewStatus,
+        createdAt: t.createdAt,
+      }));
     },
   };
 }

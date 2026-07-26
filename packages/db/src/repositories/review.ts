@@ -4,6 +4,8 @@ import {
   type ClaimReviewUpdate,
   type ReviewDecisionDto,
   type ReviewDecisionInsert,
+  type CreatorFindingRow,
+  type IdentityTaskRow,
   type ReviewIntelligenceState,
   type ReviewRepository,
   type ReviewTaskDto,
@@ -18,6 +20,13 @@ import type { HealthspanDb } from '../client.js';
 import {
   reviewDecisionOrder,
   reviewTaskOrder,
+  candidateFindingWhere,
+  creatorClaimFindings,
+  creatorClaims,
+  creatorFindingSelection,
+  creatorIdentityTasks,
+  identityTaskOrder,
+  identityTaskWhere,
   toReviewDecisionDto,
   toReviewTaskDto,
 } from './review-query.js';
@@ -104,6 +113,48 @@ export function createLocalReviewRepository(db: HealthspanDb): ReviewRepository 
         .where(eq(contentIntelligenceState.contentItemId, contentItemId))
         .run();
       return Promise.resolve();
+    },
+
+    listCandidateCreatorFindings(limit: number): Promise<CreatorFindingRow[]> {
+      const rows = db
+        .select(creatorFindingSelection)
+        .from(creatorClaimFindings)
+        .leftJoin(creatorClaims, eq(creatorClaims.id, creatorClaimFindings.claimId))
+        .where(candidateFindingWhere)
+        .limit(limit)
+        .all();
+      return Promise.resolve(rows as CreatorFindingRow[]);
+    },
+
+    listClaimFindings(claimId: string): Promise<CreatorFindingRow[]> {
+      const rows = db
+        .select(creatorFindingSelection)
+        .from(creatorClaimFindings)
+        .leftJoin(creatorClaims, eq(creatorClaims.id, creatorClaimFindings.claimId))
+        .where(eq(creatorClaimFindings.claimId, claimId))
+        .all();
+      return Promise.resolve(rows as CreatorFindingRow[]);
+    },
+
+    listIdentityTasks(limit: number): Promise<IdentityTaskRow[]> {
+      const rows = db
+        .select()
+        .from(creatorIdentityTasks)
+        .where(identityTaskWhere)
+        .orderBy(identityTaskOrder)
+        .limit(limit)
+        .all();
+      return Promise.resolve(
+        rows.map((t) => ({
+          id: t.id,
+          accountId: t.accountId,
+          reason: t.reason,
+          proposedCreatorId: t.proposedCreatorId,
+          priority: t.priority,
+          reviewStatus: t.reviewStatus,
+          createdAt: t.createdAt,
+        })),
+      );
     },
   };
 }

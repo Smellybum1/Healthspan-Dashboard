@@ -129,25 +129,6 @@ export function addCommercialStatement(
   };
 }
 
-export function listIdentityTasks(db: HealthspanDb, limit = 50) {
-  return db
-    .select()
-    .from(creatorIdentityTasks)
-    .all()
-    .filter((t) => t.reviewStatus === 'pending' || t.currentState === 'open')
-    .sort((a, b) => b.priority - a.priority)
-    .slice(0, limit)
-    .map((t) => ({
-      id: t.id,
-      accountId: t.accountId,
-      reason: t.reason,
-      proposedCreatorId: t.proposedCreatorId,
-      priority: t.priority,
-      reviewStatus: t.reviewStatus,
-      createdAt: new Date(t.createdAt).toISOString(),
-    }));
-}
-
 /** Queue ambiguous identity when multiple creators share a handle/external id. */
 export function queueAmbiguousIdentityIfNeeded(
   db: HealthspanDb,

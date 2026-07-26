@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { ReviewRepository } from '@healthspan/core';
-import { listReviewTasks, resolveReviewTask } from '@healthspan/runtime';
+import {
+  listCreatorReviewTasks,
+  listIdentityTasks,
+  listPublishedCreatorFindings,
+  listReviewTasks,
+  resolveReviewTask,
+} from '@healthspan/runtime';
 
 /**
  * Adapter-agnostic contract for {@link ReviewRepository}.
@@ -299,6 +305,78 @@ export function runReviewContract(harness: ReviewContractHarness) {
       // The stale task cannot resolve, so only one decision exists to order.
       expect(decisions).toHaveLength(1);
       expect(decisions[0]?.taskId).toBe('task-open');
+    });
+  });
+}
+
+/**
+ * The creator-review surface: alignment findings, identity tasks.
+ *
+ * Split from `runReviewContract` only for readability — both adapters run both.
+ */
+export function runCreatorReviewContract(harness: ReviewContractHarness) {
+  const create = () => harness.create(reviewContractFixture());
+
+  describe(`ReviewRepository contract — creator review surface — ${harness.name}`, () => {
+    it('lists only adverse candidate findings requiring review', async () => {
+      const repo = await create();
+      const tasks = await listCreatorReviewTasks(repo);
+      // The benign candidate, the accepted one, and the rejected one are all excluded.
+      expect(tasks.map((t) => t.id).sort()).toEqual([
+        'finding-adverse-noclaim',
+        'finding-adverse-open',
+      ]);
+      expect(tasks.every((t) => t.kind === 'creator_alignment_finding')).toBe(true);
+      expect(tasks.every((t) => t.status === 'open')).toBe(true);
+    });
+
+    it('joins the claim onto a finding, and survives a finding with no claim', async () => {
+      // The left join's reason for existing: an inner join would drop the no-claim
+      // finding, which the retired in-memory lookup still produced a task for.
+      const repo = await create();
+      const tasks = await listCreatorReviewTasks(repo);
+      const withClaim = tasks.find((t) => t.id === 'finding-adverse-open');
+      expect(withClaim).toMatchObject({
+        title: 'Creator claim under alignment review',
+        creatorId: 'creator-a',
+        confidence: 'high',
+      });
+      const withoutClaim = tasks.find((t) => t.id === 'finding-adverse-noclaim');
+      expect(withoutClaim).toMatchObject({
+        // Falls back to the finding type as its title, and to the default confidence.
+        title: 'safety_scope_overreach',
+        creatorId: null,
+        confidence: 'medium',
+      });
+    });
+
+    it('bounds the candidate query by the shared limit', async () => {
+      const repo = await create();
+      expect(await listCreatorReviewTasks(repo, { limit: 1 })).toHaveLength(1);
+      expect(await listCreatorReviewTasks(repo, { limit: 0 })).toHaveLength(1);
+    });
+
+    it('publishes an adverse finding only when accepted and published', async () => {
+      const repo = await create();
+      const published = await listPublishedCreatorFindings(repo, 'claim-1');
+      expect(published.map((f) => f.id).sort()).toEqual([
+        // Accepted and published.
+        'finding-adverse-published',
+        // Non-adverse and not rejected — a laxer rule, deliberately.
+        'finding-benign-open',
+      ]);
+    });
+
+    it('lists identity tasks by priority, excluding resolved ones', async () => {
+      const repo = await create();
+      const tasks = await listIdentityTasks(repo);
+      expect(tasks.map((t) => t.id)).toEqual(['identity-high', 'identity-low']);
+      expect(tasks[0]).toMatchObject({
+        accountId: 'account-a-yt',
+        proposedCreatorId: 'creator-a',
+        priority: 9,
+        reviewStatus: 'pending',
+      });
     });
   });
 }

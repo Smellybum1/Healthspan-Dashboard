@@ -2,7 +2,11 @@ import fs from 'node:fs';
 import { afterAll } from 'vitest';
 import { readSeededClaim, seedReviewFixture } from '../testing/review-fixture.js';
 import { createLocalReviewRepository } from './review.js';
-import { runReviewContract, type ReviewContractFixture } from './review.contract.js';
+import {
+  runCreatorReviewContract,
+  runReviewContract,
+  type ReviewContractFixture,
+} from './review.contract.js';
 
 const dirs: string[] = [];
 const handles: Array<{ close(): void }> = [];
@@ -30,6 +34,18 @@ afterAll(() => {
 let current: ReturnType<typeof seedReviewFixture> | null = null;
 
 runReviewContract({
+  name: 'local SQLite',
+  create: (fixture: ReviewContractFixture) => {
+    const seeded = seedReviewFixture(fixture);
+    dirs.push(seeded.dir);
+    handles.push(seeded.sqlite);
+    current = seeded;
+    return Promise.resolve(createLocalReviewRepository(seeded.db));
+  },
+  readClaim: (id: string) => Promise.resolve(current ? readSeededClaim(current.db, id) : null),
+});
+
+runCreatorReviewContract({
   name: 'local SQLite',
   create: (fixture: ReviewContractFixture) => {
     const seeded = seedReviewFixture(fixture);

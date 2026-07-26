@@ -4,6 +4,7 @@ import {
   PROHIBITED_CREATOR_SCORES,
   normaliseCreatorClaimLimit,
   normaliseCreatorPaging,
+  toClaimEvidenceLinkDto,
   toCreatorClaimDto,
   type CreatorClaimDto,
   type CreatorListResult,
@@ -182,4 +183,9 @@ export async function getCreatorDetail(repo: CreatorReadRepository, id: string) 
     // ADR-0010: stated explicitly so a client can see what this product refuses to compute.
     prohibitedScores: [...PROHIBITED_CREATOR_SCORES],
   };
+}
+
+export async function listClaimEvidenceLinks(repo: CreatorReadRepository, claimId: string) {
+  const rows = await repo.listClaimEvidenceLinks(claimId);
+  return rows.map(toClaimEvidenceLinkDto);
 }

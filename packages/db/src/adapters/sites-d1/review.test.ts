@@ -3,6 +3,7 @@ import { afterAll } from 'vitest';
 import { createD1Shim } from '../../testing/d1-shim.js';
 import { readSeededClaim, seedReviewFixture } from '../../testing/review-fixture.js';
 import {
+  runCreatorReviewContract,
   runReviewContract,
   type ReviewContractFixture,
 } from '../../repositories/review.contract.js';
@@ -43,6 +44,18 @@ afterAll(() => {
 let current: ReturnType<typeof seedReviewFixture> | null = null;
 
 runReviewContract({
+  name: 'Sites D1',
+  create: (fixture: ReviewContractFixture) => {
+    const seeded = seedReviewFixture(fixture);
+    dirs.push(seeded.dir);
+    handles.push(seeded.sqlite);
+    current = seeded;
+    return Promise.resolve(createSitesReviewRepository(createSitesD1(createD1Shim(seeded.sqlite))));
+  },
+  readClaim: (id: string) => Promise.resolve(current ? readSeededClaim(current.db, id) : null),
+});
+
+runCreatorReviewContract({
   name: 'Sites D1',
   create: (fixture: ReviewContractFixture) => {
     const seeded = seedReviewFixture(fixture);

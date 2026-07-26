@@ -10,6 +10,7 @@ import {
   creatorClaimOrder,
   creatorClaims,
   creatorClaimsWhere,
+  creatorClaimEvidenceLinks,
   creatorContentItems,
   creatorDisclosures,
   creatorDocuments,
@@ -213,6 +214,27 @@ export function createLocalCreatorReadRepository(db: HealthspanDb): CreatorReadR
           sourceUnavailableCount: s.sourceUnavailableCount,
           formulaVersion: s.formulaVersion,
           createdAt: s.createdAt,
+        })),
+      );
+    },
+
+    listClaimEvidenceLinks(claimId) {
+      const rows = db
+        .select()
+        .from(creatorClaimEvidenceLinks)
+        .where(eq(creatorClaimEvidenceLinks.creatorClaimId, claimId))
+        .all();
+      return Promise.resolve(
+        rows.map((l) => ({
+          id: l.id,
+          targetType: l.targetType,
+          targetId: l.targetId,
+          linkRole: l.linkRole,
+          detectionMethod: l.detectionMethod,
+          linkState: l.linkState,
+          rationale: l.rationale,
+          compatibilityDimensionsJson: l.compatibilityDimensionsJson,
+          createdAt: l.createdAt,
         })),
       );
     },

@@ -30,9 +30,12 @@ import {
   getAssessment,
   getCreatorDetail,
   listAssessments,
+  listClaimEvidenceLinks,
   listContentItems,
   listCreatorClaims,
+  listCreatorReviewTasks,
   listCreators,
+  listIdentityTasks,
   listRecurrenceSnapshots,
   listReviewDecisions,
   listReviewTasks,
@@ -314,6 +317,30 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
         editedClaimText: d.editedClaimText,
         createdAt: new Date(d.createdAt).toISOString(),
       })),
+    });
+  });
+
+  app.get('/api/creator-review/tasks', async (c) => {
+    const repo = c.get('runtime').repositories.review;
+    if (!repo) return unbound(c, 'review');
+    const tasks = await listCreatorReviewTasks(repo, {
+      limit: Number(c.req.query('limit') ?? 100),
+    });
+    return c.json({ dataMode: 'live', tasks });
+  });
+
+  app.get('/api/creator-identity/tasks', async (c) => {
+    const repo = c.get('runtime').repositories.review;
+    if (!repo) return unbound(c, 'review');
+    return c.json({ dataMode: 'live', tasks: await listIdentityTasks(repo) });
+  });
+
+  app.get('/api/creator-claims/:id/evidence', async (c) => {
+    const repo = c.get('runtime').repositories.creator;
+    if (!repo) return unbound(c, 'creator');
+    return c.json({
+      dataMode: 'live',
+      links: await listClaimEvidenceLinks(repo, c.req.param('id')),
     });
   });
 

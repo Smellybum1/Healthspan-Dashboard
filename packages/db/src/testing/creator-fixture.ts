@@ -4,6 +4,7 @@ import path from 'node:path';
 import { openDatabase } from '../client.js';
 import {
   claimRecurrenceSnapshots,
+  creatorClaimEvidenceLinks,
   creatorClaims,
   creatorContentItems,
   creatorDisclosures,
@@ -296,6 +297,21 @@ export function seedCreatorFixture(): SeededCreatorDatabase {
       windowStart: BASE,
       windowEnd: BASE + 8_000,
       createdAt: BASE + 8_000,
+    })
+    .run();
+
+  db.insert(creatorClaimEvidenceLinks)
+    .values({
+      id: 'evidence-a1',
+      creatorClaimId: 'claim-a1',
+      targetType: 'live_claim',
+      targetId: 'live-claim-1',
+      linkRole: 'supports',
+      detectionMethod: 'deterministic',
+      compatibilityDimensionsJson: JSON.stringify(['direction']),
+      linkState: 'candidate',
+      rationale: 'Directionally compatible.',
+      createdAt: BASE,
     })
     .run();
 

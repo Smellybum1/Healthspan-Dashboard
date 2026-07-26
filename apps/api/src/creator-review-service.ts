@@ -1,63 +1,13 @@
 import { eq } from 'drizzle-orm';
+import { isAdverseCreatorFinding } from '@healthspan/core';
 import { creatorClaimFindings, creatorClaims, type HealthspanDb } from '@healthspan/db';
 
 export const CREATOR_REVIEW_ACTIONS = ['accept', 'reject', 'dismiss'] as const;
 export type CreatorReviewAction = (typeof CREATOR_REVIEW_ACTIONS)[number];
 
-const ADVERSE_FINDING_PREFIXES = [
-  'overstates_',
-  'protocol_as_result',
-  'animal_to_human_overreach',
-  'biomarker_to_health_outcome_overreach',
-  'regulatory_scope_overreach',
-  'safety_scope_overreach',
-  'potentially_conflicts_with_current_evidence',
-  'unsupported_by_linked_local_evidence',
-];
-
-export function isAdverseCreatorFinding(findingType: string): boolean {
-  return ADVERSE_FINDING_PREFIXES.some((p) => findingType === p || findingType.startsWith(p));
-}
-
-/** Open creator-alignment findings that require human review before profile publish. */
-export function listCreatorReviewTasks(db: HealthspanDb, opts?: { limit?: number }) {
-  const limit = Math.min(200, Math.max(1, opts?.limit ?? 100));
-  const findings = db
-    .select()
-    .from(creatorClaimFindings)
-    .all()
-    .filter(
-      (f) =>
-        f.findingState === 'candidate' &&
-        f.reviewRequired &&
-        isAdverseCreatorFinding(f.findingType),
-    )
-    .slice(0, limit);
-
-  return findings.map((f) => {
-    const claim = f.claimId
-      ? db
-          .select()
-          .from(creatorClaims)
-          .all()
-          .find((c) => c.id === f.claimId)
-      : undefined;
-    return {
-      id: f.id,
-      kind: 'creator_alignment_finding' as const,
-      title: claim?.claimText?.slice(0, 160) ?? f.findingType,
-      reason: f.explanation,
-      findingType: f.findingType,
-      findingState: f.findingState,
-      claimId: f.claimId,
-      creatorId: claim?.creatorId ?? null,
-      status: 'open',
-      confidence: claim?.confidence ?? 'medium',
-      publishedToProfile: Boolean(f.publishedToProfile),
-      createdAt: new Date(f.createdAt).toISOString(),
-    };
-  });
-}
+// The adverse-finding rule now lives in @healthspan/core so both runtimes apply one
+// definition; this local-only write path consumes the same function the hosted reads do.
+export { isAdverseCreatorFinding };
 
 export function resolveCreatorReviewTask(
   db: HealthspanDb,
@@ -110,14 +60,3 @@ export function resolveCreatorReviewTask(
 }
 
 /** Profile display: adverse findings only when accepted+published. */
-export function listPublishedCreatorFindings(db: HealthspanDb, claimId: string) {
-  return db
-    .select()
-    .from(creatorClaimFindings)
-    .all()
-    .filter((f) => {
-      if (f.claimId !== claimId) return false;
-      if (!isAdverseCreatorFinding(f.findingType)) return f.findingState !== 'rejected';
-      return f.findingState === 'accepted' && f.publishedToProfile;
-    });
-}

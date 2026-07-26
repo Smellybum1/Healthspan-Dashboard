@@ -59,6 +59,92 @@ export type ClaimReviewUpdate = {
   claimText?: string;
 };
 
+/**
+ * Finding types that assert something adverse about a creator's claim.
+ *
+ * Only these require human review before a profile publishes, and only these are gated
+ * on acceptance when deciding what a profile may show. ADR-0010: the subject is the
+ * claim, never the person.
+ */
+const ADVERSE_FINDING_PREFIXES = [
+  'overstates_',
+  'protocol_as_result',
+  'animal_to_human_overreach',
+  'biomarker_to_health_outcome_overreach',
+  'regulatory_scope_overreach',
+  'safety_scope_overreach',
+  'potentially_conflicts_with_current_evidence',
+  'unsupported_by_linked_local_evidence',
+];
+
+export function isAdverseCreatorFinding(findingType: string): boolean {
+  return ADVERSE_FINDING_PREFIXES.some((p) => findingType === p || findingType.startsWith(p));
+}
+
+/**
+ * A candidate finding joined to its claim.
+ *
+ * Joined, because the retired implementation looked the claim up by re-selecting the
+ * whole `creator_claims` table once per finding.
+ */
+export type CreatorFindingRow = {
+  id: string;
+  claimId: string | null;
+  findingType: string;
+  findingState: string;
+  explanation: string;
+  reviewRequired: boolean | null;
+  publishedToProfile: boolean | null;
+  createdAt: number;
+  claimText: string | null;
+  claimCreatorId: string | null;
+  claimConfidence: string | null;
+};
+
+export type CreatorReviewTaskDto = {
+  id: string;
+  kind: 'creator_alignment_finding';
+  title: string;
+  reason: string;
+  findingType: string;
+  findingState: string;
+  claimId: string | null;
+  creatorId: string | null;
+  status: 'open';
+  confidence: string;
+  publishedToProfile: boolean;
+  createdAt: string;
+};
+
+export function toCreatorReviewTaskDto(row: CreatorFindingRow): CreatorReviewTaskDto {
+  return {
+    id: row.id,
+    kind: 'creator_alignment_finding',
+    title: row.claimText?.slice(0, 160) ?? row.findingType,
+    reason: row.explanation,
+    findingType: row.findingType,
+    findingState: row.findingState,
+    claimId: row.claimId,
+    creatorId: row.claimCreatorId ?? null,
+    status: 'open',
+    confidence: row.claimConfidence ?? 'medium',
+    publishedToProfile: Boolean(row.publishedToProfile),
+    createdAt: new Date(row.createdAt).toISOString(),
+  };
+}
+
+export type IdentityTaskDto = {
+  id: string;
+  accountId: string;
+  reason: string;
+  proposedCreatorId: string | null;
+  priority: number;
+  reviewStatus: string;
+  createdAt: string;
+};
+
+export type IdentityTaskRow = Omit<IdentityTaskDto, 'createdAt'> & { createdAt: number };
+
 export interface ReviewRepository {
   /**
    * The newest `limit` tasks, unfiltered.
@@ -85,6 +171,19 @@ export interface ReviewRepository {
     resolution: { resolvedAt: number; resolutionJson: string },
   ): Promise<void>;
   recordReviewTouch(contentItemId: string, at: number): Promise<void>;
+
+  /**
+   * Candidate creator-alignment findings awaiting review, each joined to its claim.
+   *
+   * The adverse-type filter is *not* a query predicate — it is a prefix match over a
+   * list of type names, which SQL cannot express without encoding the list into the
+   * query. It is applied by the shared service, on rows the query has already narrowed
+   * to candidates requiring review.
+   */
+  listCandidateCreatorFindings(limit: number): Promise<CreatorFindingRow[]>;
+  /** Every finding for one claim, unfiltered. Publication rules live in the service. */
+  listClaimFindings(claimId: string): Promise<CreatorFindingRow[]>;
+  listIdentityTasks(limit: number): Promise<IdentityTaskRow[]>;
 }
 
 /** Shared bounds, applied identically by every adapter. */

@@ -114,6 +114,35 @@ function memoryReviewRepository(): ReviewRepository {
     listDecisions: () => Promise.resolve([]),
     getTask: (id) => Promise.resolve(REVIEW_TASKS.find((t) => t.id === id) ?? null),
     getIntelligenceState: () => Promise.resolve(null),
+    listCandidateCreatorFindings: () =>
+      Promise.resolve([
+        {
+          id: 'finding-1',
+          claimId: 'claim-1',
+          findingType: 'overstates_causality',
+          findingState: 'candidate',
+          explanation: 'Overstates a causal link.',
+          reviewRequired: true,
+          publishedToProfile: false,
+          createdAt: Date.UTC(2026, 0, 1),
+          claimText: 'Creator claim under review',
+          claimCreatorId: 'creator-a',
+          claimConfidence: 'high',
+        },
+      ]),
+    listClaimFindings: () => Promise.resolve([]),
+    listIdentityTasks: () =>
+      Promise.resolve([
+        {
+          id: 'identity-1',
+          accountId: 'account-a',
+          reason: 'ambiguous handle',
+          proposedCreatorId: 'creator-a',
+          priority: 9,
+          reviewStatus: 'pending',
+          createdAt: Date.UTC(2026, 0, 1),
+        },
+      ]),
     appendDecision: reject,
     updateClaimReviewState: reject,
     markTaskResolved: reject,
@@ -260,6 +289,20 @@ function memoryCreatorRepository(): CreatorReadRepository {
     listRoles: () => Promise.resolve([]),
     listRecurrenceInputs: () => Promise.resolve([]),
     listRecurrenceSnapshots: () => Promise.resolve([]),
+    listClaimEvidenceLinks: () =>
+      Promise.resolve([
+        {
+          id: 'link-1',
+          targetType: 'live_claim',
+          targetId: 'live-claim-1',
+          linkRole: 'supports',
+          detectionMethod: 'deterministic',
+          linkState: 'candidate',
+          rationale: null,
+          compatibilityDimensionsJson: '["direction"]',
+          createdAt: Date.UTC(2026, 0, 1),
+        },
+      ]),
   };
 }
 
@@ -632,6 +675,34 @@ describe('sites entrypoint — creators through the shared port', () => {
     });
     expect(res.status).toBe(503);
     expect((await res.json()).capability).toBe('creator');
+  });
+});
+
+describe('sites entrypoint — creator review surface', () => {
+  it('serves creator alignment review tasks', async () => {
+    const res = await bound().fetch(get('/api/creator-review/tasks'), CONFIGURED);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tasks[0]).toMatchObject({
+      id: 'finding-1',
+      kind: 'creator_alignment_finding',
+      title: 'Creator claim under review',
+      creatorId: 'creator-a',
+      status: 'open',
+    });
+  });
+
+  it('serves identity tasks', async () => {
+    const res = await bound().fetch(get('/api/creator-identity/tasks'), CONFIGURED);
+    expect((await res.json()).tasks[0]).toMatchObject({ id: 'identity-1', priority: 9 });
+  });
+
+  it('serves claim evidence links with parsed dimensions', async () => {
+    const res = await bound().fetch(get('/api/creator-claims/claim-1/evidence'), CONFIGURED);
+    expect((await res.json()).links[0]).toMatchObject({
+      id: 'link-1',
+      compatibilityDimensions: ['direction'],
+    });
   });
 });
 
