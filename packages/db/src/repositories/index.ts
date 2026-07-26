@@ -8,7 +8,7 @@
  */
 
 import type {
-  ClaimAssessmentRepository,
+  IntelligenceReadRepository,
   ContentReadRepository,
   CreatorReadRepository,
   ReviewRepository,
@@ -30,7 +30,7 @@ export * from './review.js';
  * `docs/sites/HOSTED_REACHABILITY_AND_ASYNC_PORTING_LEDGER.md`.
  */
 export type HealthspanRepositories = {
-  assessment: ClaimAssessmentRepository;
+  assessment: IntelligenceReadRepository;
   content: ContentReadRepository;
   creator: CreatorReadRepository;
   review: ReviewRepository;

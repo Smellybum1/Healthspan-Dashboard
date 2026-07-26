@@ -1,7 +1,14 @@
-import { and, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
-import type { AssessmentFilters, AssessmentRow } from '@healthspan/core';
-import { contentItems } from '../schema.js';
-import { contentIntelligenceState, intelligenceAnalyses } from '../intelligence-schema.js';
+import { and, desc, eq, isNull, or, sql, type SQL } from 'drizzle-orm';
+import type { AssessmentFilters, AssessmentRow, LiveClaimFilters } from '@healthspan/core';
+import { contentItems, papers } from '../schema.js';
+import {
+  claimRelationships,
+  claimSourceSpans,
+  contentIntelligenceState,
+  intelligenceAnalyses,
+  intelligenceRuns,
+  liveClaims,
+} from '../intelligence-schema.js';
 
 /**
  * The single joined query behind {@link ClaimAssessmentRepository.listCurrent}, shared by
@@ -106,3 +113,57 @@ export function toAssessmentRow(row: Record<string, unknown>): AssessmentRow {
 }
 
 export { contentIntelligenceState, contentItems, intelligenceAnalyses };
+
+/* ------------------------------------------------------------------------- *
+ * Intelligence read models — shared query semantics
+ * ------------------------------------------------------------------------- */
+
+export function liveClaimWhere(filters: LiveClaimFilters): SQL | undefined {
+  const predicates: SQL[] = [];
+  if (filters.claimKind) predicates.push(eq(liveClaims.claimKind, filters.claimKind));
+  if (filters.assertionRole) predicates.push(eq(liveClaims.assertionRole, filters.assertionRole));
+  if (filters.reviewStatus) predicates.push(eq(liveClaims.reviewStatus, filters.reviewStatus));
+  if (filters.q) {
+    predicates.push(sql`lower(${liveClaims.claimText}) like ${`%${filters.q.toLowerCase()}%`}`);
+  }
+  return predicates.length ? and(...predicates) : undefined;
+}
+
+export const liveClaimOrder = desc(liveClaims.createdAt);
+export const runOrder = desc(intelligenceRuns.startedAt);
+
+/** A claim's relationships, from either side, as one predicate. */
+export function claimRelationshipWhere(claimId: string): SQL {
+  return or(
+    eq(claimRelationships.leftClaimId, claimId),
+    eq(claimRelationships.rightClaimId, claimId),
+  )!;
+}
+
+/**
+ * Radar rows: current analyses joined to their content item and, for papers, the paper.
+ *
+ * A left join to `papers` because only papers have one; the retired loop looked it up
+ * conditionally and tolerated its absence.
+ */
+export const radarSelection = {
+  contentItemId: contentItems.id,
+  title: contentItems.title,
+  itemType: contentItems.type,
+  evidenceMaturity: intelligenceAnalyses.evidenceMaturity,
+  researchActivity: intelligenceAnalyses.researchActivity,
+  resultsPresent: intelligenceAnalyses.resultsPresent,
+  stale: contentIntelligenceState.stale,
+  isCorrectionOrRetraction: papers.isCorrectionOrRetraction,
+};
+
+/**
+ * Deterministic radar order.
+ *
+ * The retired loop consumed intelligence states in whatever order the driver returned
+ * them and stopped at the limit, so which points survived a truncation was unspecified.
+ * Newest analysis first is a real ordering and matches how the rest of the product reads.
+ */
+export const radarOrder = desc(intelligenceAnalyses.createdAt);
+
+export { claimRelationships, claimSourceSpans, intelligenceRuns, liveClaims, papers };

@@ -51,18 +51,16 @@ import {
 import { createLocalScheduler } from './local-scheduler.js';
 import { createPlatformScheduler } from './platform-scheduler.js';
 import { buildSafeCreatorExportBundle, stripForbiddenExportFields } from './safe-response.js';
-import {
-  liveRadarPoints,
-  runIntelligenceAnalysis,
-  intelligenceStatus,
-  listIntelligenceRuns,
-  getIntelligenceRun,
-  listLiveClaims,
-  getLiveClaim,
-} from './intelligence-service.js';
+import { runIntelligenceAnalysis } from './intelligence-service.js';
 import {
   creatorWatchItems,
   getAssessment,
+  getIntelligenceRun,
+  getLiveClaim,
+  intelligenceStatus,
+  listIntelligenceRuns,
+  listLiveClaims,
+  liveRadarPoints,
   listClaimEvidenceLinks,
   listCreatorReviewTasks,
   listIdentityTasks,
@@ -590,7 +588,7 @@ export function createApp() {
     // behaviour by doing it here, before the shared service runs.
     bootstrapCreatorCatalog(live.db);
     const contentCount = live.db.select().from(contentItems).all().length;
-    const radar = liveRadarPoints(live.db, 40);
+    const radar = await liveRadarPoints(repositories.assessment, 40);
     const recentChanges = live.db
       .select()
       .from(changeEvents)
@@ -1114,7 +1112,7 @@ export function createApp() {
     );
   });
 
-  app.get('/api/intelligence/status', (c) => {
+  app.get('/api/intelligence/status', async (c) => {
     if (currentMode() === 'demo') {
       return c.json({
         dataMode: 'demo',
@@ -1126,12 +1124,12 @@ export function createApp() {
         note: 'Demo mode uses seed assessments, not Live intelligence runs.',
       });
     }
-    return c.json(intelligenceStatus(live.db));
+    return c.json(await intelligenceStatus(repositories.assessment));
   });
 
-  app.get('/api/intelligence/runs', (c) => {
+  app.get('/api/intelligence/runs', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', runs: [] });
-    const runs = listIntelligenceRuns(live.db).map((r) => ({
+    const runs = (await listIntelligenceRuns(repositories.assessment)).map((r) => ({
       id: r.id,
       status: r.status,
       trigger: r.trigger,
@@ -1146,9 +1144,9 @@ export function createApp() {
     return c.json({ dataMode: 'live', runs });
   });
 
-  app.get('/api/intelligence/runs/:id', (c) => {
+  app.get('/api/intelligence/runs/:id', async (c) => {
     if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
-    const run = getIntelligenceRun(live.db, c.req.param('id'));
+    const run = await getIntelligenceRun(repositories.assessment, c.req.param('id'));
     if (!run) return c.json({ error: 'Not found' }, 404);
     return c.json({
       dataMode: 'live',
@@ -1160,7 +1158,7 @@ export function createApp() {
     });
   });
 
-  app.get('/api/claims', (c) => {
+  app.get('/api/claims', async (c) => {
     if (currentMode() === 'demo') {
       return c.json({
         dataMode: 'demo',
@@ -1174,20 +1172,20 @@ export function createApp() {
     }
     return c.json({
       dataMode: 'live',
-      ...listLiveClaims(live.db, {
+      ...(await listLiveClaims(repositories.assessment, {
         page: Number(c.req.query('page') ?? 1),
         pageSize: Number(c.req.query('pageSize') ?? 25),
         claimKind: c.req.query('claimKind') ?? undefined,
         assertionRole: c.req.query('assertionRole') ?? undefined,
         reviewStatus: c.req.query('reviewStatus') ?? undefined,
         q: c.req.query('q') ?? undefined,
-      }),
+      })),
     });
   });
 
-  app.get('/api/claims/:id', (c) => {
+  app.get('/api/claims/:id', async (c) => {
     if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
-    const detail = getLiveClaim(live.db, c.req.param('id'));
+    const detail = await getLiveClaim(repositories.assessment, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...detail });
   });

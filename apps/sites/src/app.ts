@@ -29,6 +29,9 @@ import {
 import {
   getAssessment,
   getCreatorDetail,
+  getIntelligenceRun,
+  getLiveClaim,
+  intelligenceStatus,
   listAssessments,
   listClaimEvidenceLinks,
   listContentItems,
@@ -36,6 +39,8 @@ import {
   listCreatorReviewTasks,
   listCreators,
   listIdentityTasks,
+  listIntelligenceRuns,
+  listLiveClaims,
   listRecurrenceSnapshots,
   listReviewDecisions,
   listReviewTasks,
@@ -276,6 +281,50 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
     const repo = c.get('runtime').repositories.creator;
     if (!repo) return unbound(c, 'creator');
     return c.json({ dataMode: 'live', snapshots: await listRecurrenceSnapshots(repo) });
+  });
+
+  app.get('/api/intelligence/status', async (c) => {
+    const repo = c.get('runtime').repositories.assessment;
+    if (!repo) return unbound(c, 'assessment');
+    return c.json(await intelligenceStatus(repo));
+  });
+
+  app.get('/api/intelligence/runs', async (c) => {
+    const repo = c.get('runtime').repositories.assessment;
+    if (!repo) return unbound(c, 'assessment');
+    return c.json({ dataMode: 'live', runs: await listIntelligenceRuns(repo) });
+  });
+
+  app.get('/api/intelligence/runs/:id', async (c) => {
+    const repo = c.get('runtime').repositories.assessment;
+    if (!repo) return unbound(c, 'assessment');
+    const run = await getIntelligenceRun(repo, c.req.param('id'));
+    if (!run) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', run });
+  });
+
+  app.get('/api/claims', async (c) => {
+    const repo = c.get('runtime').repositories.assessment;
+    if (!repo) return unbound(c, 'assessment');
+    return c.json({
+      dataMode: 'live',
+      ...(await listLiveClaims(repo, {
+        page: Number(c.req.query('page') ?? 1),
+        pageSize: Number(c.req.query('pageSize') ?? 25),
+        claimKind: c.req.query('claimKind') ?? undefined,
+        assertionRole: c.req.query('assertionRole') ?? undefined,
+        reviewStatus: c.req.query('reviewStatus') ?? undefined,
+        q: c.req.query('q') ?? undefined,
+      })),
+    });
+  });
+
+  app.get('/api/claims/:id', async (c) => {
+    const repo = c.get('runtime').repositories.assessment;
+    if (!repo) return unbound(c, 'assessment');
+    const detail = await getLiveClaim(repo, c.req.param('id'));
+    if (!detail) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', ...detail });
   });
 
   app.get('/api/review/tasks', async (c) => {

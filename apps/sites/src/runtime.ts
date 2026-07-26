@@ -7,7 +7,7 @@
  */
 import {
   SITES_RUNTIME_CAPABILITIES,
-  type ClaimAssessmentRepository,
+  type IntelligenceReadRepository,
   type ContentReadRepository,
   type CreatorReadRepository,
   type D1Database,
@@ -27,7 +27,7 @@ import { readSitesEnv, type ConfigProblem, type SitesBindings, type SitesConfig 
  * no D1 adapter. Both cases are reported; neither is served as an empty success.
  */
 export type SitesRepositories = {
-  assessment: ClaimAssessmentRepository | null;
+  assessment: IntelligenceReadRepository | null;
   content: ContentReadRepository | null;
   creator: CreatorReadRepository | null;
   review: ReviewRepository | null;

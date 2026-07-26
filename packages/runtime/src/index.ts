@@ -12,4 +12,5 @@
 export * from './assessment.js';
 export * from './content.js';
 export * from './creator.js';
+export * from './intelligence.js';
 export * from './review.js';

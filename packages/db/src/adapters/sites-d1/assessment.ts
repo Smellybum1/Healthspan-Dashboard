@@ -1,17 +1,31 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray, sql } from 'drizzle-orm';
 import type {
   AssessmentDetailRow,
   AssessmentFilters,
   AssessmentHistoryEntry,
   AssessmentRow,
-  ClaimAssessmentRepository,
+  IntelligenceReadRepository,
 } from '@healthspan/core';
-import { contentItems } from '../../schema.js';
-import { contentIntelligenceState, intelligenceAnalyses } from '../../intelligence-schema.js';
+import { contentItems, papers } from '../../schema.js';
+import {
+  claimRelationships,
+  claimSourceSpans,
+  contentIntelligenceState,
+  intelligenceAnalyses,
+  intelligenceRuns,
+  liveClaims,
+  liveReviewTasks,
+} from '../../intelligence-schema.js';
 import {
   assessmentOrder,
   assessmentSelection,
   assessmentWhere,
+  claimRelationshipWhere,
+  liveClaimOrder,
+  liveClaimWhere,
+  radarOrder,
+  radarSelection,
+  runOrder,
   toAssessmentRow,
 } from '../../repositories/assessment-query.js';
 import type { SitesD1Database } from './client.js';
@@ -35,7 +49,7 @@ import type { SitesD1Database } from './client.js';
  */
 export function createSitesClaimAssessmentRepository(
   db: SitesD1Database,
-): ClaimAssessmentRepository {
+): IntelligenceReadRepository {
   return {
     async listCurrent(filters: AssessmentFilters): Promise<AssessmentRow[]> {
       const rows = await db
@@ -97,6 +111,93 @@ export function createSitesClaimAssessmentRepository(
         createdAt: new Date(row.createdAt).toISOString(),
         evidenceMaturity: row.evidenceMaturity,
       }));
+    },
+
+    async intelligenceCounts() {
+      const [assessed, stale, openReviews] = await Promise.all([
+        db
+          .select({ n: sql<number>`count(*)` })
+          .from(contentIntelligenceState)
+          .where(sql`${contentIntelligenceState.currentAnalysisId} is not null`),
+        db
+          .select({ n: sql<number>`count(*)` })
+          .from(contentIntelligenceState)
+          .where(eq(contentIntelligenceState.stale, true)),
+        db
+          .select({ n: sql<number>`count(*)` })
+          .from(liveReviewTasks)
+          .where(eq(liveReviewTasks.status, 'open')),
+      ]);
+      return {
+        assessedCount: Number(assessed[0]?.n ?? 0),
+        staleCount: Number(stale[0]?.n ?? 0),
+        openReviewTaskCount: Number(openReviews[0]?.n ?? 0),
+      };
+    },
+
+    async listRuns(limit: number) {
+      return (await db.select().from(intelligenceRuns).orderBy(runOrder).limit(limit)) as never;
+    },
+
+    async getRun(id: string) {
+      const rows = await db.select().from(intelligenceRuns).where(eq(intelligenceRuns.id, id));
+      return (rows[0] ?? null) as never;
+    },
+
+    async listLiveClaims(filters, { limit, offset }) {
+      const where = liveClaimWhere(filters);
+      const base = db.select().from(liveClaims);
+      const countBase = db.select({ n: sql<number>`count(*)` }).from(liveClaims);
+      const [rows, countRows] = await Promise.all([
+        (where ? base.where(where).orderBy(liveClaimOrder) : base.orderBy(liveClaimOrder))
+          .limit(limit)
+          .offset(offset),
+        where ? countBase.where(where) : countBase,
+      ]);
+      return { rows: rows as never, total: Number(countRows[0]?.n ?? 0) };
+    },
+
+    async listSpansForClaims(claimIds: string[]) {
+      if (claimIds.length === 0) return [];
+      const rows = await db
+        .select()
+        .from(claimSourceSpans)
+        .where(inArray(claimSourceSpans.claimId, claimIds));
+      return rows.map((s) => ({
+        id: s.id,
+        claimId: s.claimId,
+        fieldPath: s.fieldPath,
+        excerpt: s.excerpt,
+        spanHash: s.spanHash,
+        primarySupport: s.primarySupport,
+        createdAt: s.createdAt,
+      }));
+    },
+
+    async getLiveClaim(id: string) {
+      const rows = await db.select().from(liveClaims).where(eq(liveClaims.id, id));
+      return (rows[0] ?? null) as never;
+    },
+
+    async listClaimRelationships(claimId: string) {
+      return (await db
+        .select()
+        .from(claimRelationships)
+        .where(claimRelationshipWhere(claimId))) as never;
+    },
+
+    async listRadarRows(limit: number) {
+      return (await db
+        .select(radarSelection)
+        .from(contentIntelligenceState)
+        .innerJoin(
+          intelligenceAnalyses,
+          eq(intelligenceAnalyses.id, contentIntelligenceState.currentAnalysisId),
+        )
+        .innerJoin(contentItems, eq(contentItems.id, contentIntelligenceState.contentItemId))
+        .leftJoin(papers, eq(papers.contentItemId, contentItems.id))
+        .orderBy(radarOrder)
+        .limit(limit)) as never;
     },
   };
 }

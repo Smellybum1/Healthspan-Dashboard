@@ -12,7 +12,7 @@
  * empty success.
  */
 import type {
-  ClaimAssessmentRepository,
+  IntelligenceReadRepository,
   ContentReadRepository,
   CreatorReadRepository,
   D1Database,
@@ -38,7 +38,7 @@ export * from './review.js';
  * runtime they are in.
  */
 export type SitesRepositories = {
-  assessment: ClaimAssessmentRepository;
+  assessment: IntelligenceReadRepository;
   content: ContentReadRepository;
   creator: CreatorReadRepository;
   review: ReviewRepository;

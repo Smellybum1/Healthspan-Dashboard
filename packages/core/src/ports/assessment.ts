@@ -226,3 +226,154 @@ export function toAssessmentDto(row: AssessmentRow): AssessmentDto {
     createdAt: new Date(row.createdAt).toISOString(),
   };
 }
+
+/* ------------------------------------------------------------------------- *
+ * Intelligence read models
+ *
+ * Same port, because these read the same analyses the assessment views do. Three of the
+ * four retired implementations were per-item loops:
+ *
+ * - `listLiveClaims` loaded every claim, filtered in memory, paged, then issued one
+ *   query per claim on the page to fetch its spans.
+ * - `getLiveClaim` loaded the whole `claim_relationships` table to find one claim's.
+ * - `liveRadarPoints` issued two or three queries per intelligence state, up to the
+ *   point limit — around 120 statements for a 40-point radar.
+ *
+ * `intelligenceStatus` loaded two whole tables to count rows in them.
+ * ------------------------------------------------------------------------- */
+
+export type IntelligenceCounts = {
+  assessedCount: number;
+  staleCount: number;
+  openReviewTaskCount: number;
+};
+
+export type IntelligenceRunRow = {
+  id: string;
+  trigger: string;
+  scope: string;
+  status: string;
+  rulesetVersion: string;
+  requestedCount: number;
+  completedCount: number;
+  deterministicCount: number;
+  aiCount: number;
+  reviewTaskCount: number;
+  reusedCount: number;
+  startedAt: number;
+  completedAt: number | null;
+  summary: string | null;
+};
+
+export type LiveClaimFilters = {
+  claimKind?: string;
+  assertionRole?: string;
+  reviewStatus?: string;
+  q?: string;
+};
+
+export type LiveClaimRow = {
+  id: string;
+  analysisId: string;
+  contentItemId: string;
+  claimKind: string;
+  assertionRole: string;
+  claimText: string;
+  direction: string | null;
+  outcomeFamily: string | null;
+  extractionMethod: string;
+  classificationConfidence: string;
+  reviewStatus: string | null;
+  active: boolean | null;
+  createdAt: number;
+};
+
+/**
+ * A span row, whole.
+ *
+ * The two retired readers disagreed about this shape: the claims list projected four
+ * fields while the claim detail returned the row as stored. The port returns the full row
+ * and `listLiveClaims` narrows it, so one query serves both and neither caller loses a
+ * field it used to have.
+ */
+export type ClaimSpanRow = {
+  id: string;
+  claimId: string;
+  fieldPath: string;
+  excerpt: string;
+  spanHash: string;
+  primarySupport: boolean | null;
+  createdAt: number;
+};
+
+export type ClaimRelationshipRow = {
+  id: string;
+  leftClaimId: string;
+  rightClaimId: string;
+  relationship: string;
+  comparabilityJson: string;
+  rationale: string;
+  rulesetVersion: string;
+  createdAt: number;
+};
+
+/** One radar row: a current analysis joined to its content item and optional paper. */
+export type RadarRow = {
+  contentItemId: string;
+  title: string;
+  itemType: string;
+  evidenceMaturity: string;
+  researchActivity: number;
+  resultsPresent: boolean | null;
+  stale: boolean | null;
+  isCorrectionOrRetraction: boolean | null;
+};
+
+/** Evidence-maturity positions on the radar's x axis. */
+export const RADAR_MATURITY_X: Record<string, number> = {
+  social_anecdotal: 0.05,
+  mechanistic_hypothesis: 0.15,
+  in_vitro_ex_vivo: 0.25,
+  animal_model: 0.35,
+  human_observational: 0.5,
+  early_human_interventional: 0.65,
+  controlled_clinical_trial: 0.8,
+  replicated_controlled_or_synthesis: 0.9,
+  regulatory_or_guideline_supported: 0.95,
+};
+
+export const INTELLIGENCE_RUN_LIMIT_MAX = 100;
+export const INTELLIGENCE_RUN_LIMIT_DEFAULT = 50;
+
+export function normaliseRunLimit(limit: number | undefined): number {
+  return Math.min(INTELLIGENCE_RUN_LIMIT_MAX, Math.max(1, limit ?? INTELLIGENCE_RUN_LIMIT_DEFAULT));
+}
+
+/**
+ * Extends {@link ClaimAssessmentRepository} rather than standing alone: both modules read
+ * the same analyses, the porting ledger maps both to one port, and one adapter implements
+ * the whole surface. `getItem` is reused here for a claim's content item.
+ */
+export interface IntelligenceReadRepository extends ClaimAssessmentRepository {
+  /** Aggregate counts, as counts — not two whole tables loaded to be measured. */
+  intelligenceCounts(): Promise<IntelligenceCounts>;
+  listRuns(limit: number): Promise<IntelligenceRunRow[]>;
+  getRun(id: string): Promise<IntelligenceRunRow | null>;
+  /** Filters pushed into the query; `total` counts the filtered set. */
+  listLiveClaims(
+    filters: LiveClaimFilters,
+    paging: { limit: number; offset: number },
+  ): Promise<{ rows: LiveClaimRow[]; total: number }>;
+  /** Spans for a whole page of claims in one statement, not one per claim. */
+  listSpansForClaims(claimIds: string[]): Promise<ClaimSpanRow[]>;
+  getLiveClaim(id: string): Promise<LiveClaimRow | null>;
+  listClaimRelationships(claimId: string): Promise<ClaimRelationshipRow[]>;
+  /**
+   * Radar rows, newest analysis first.
+   *
+   * The retired loop took whichever rows the driver happened to return first and stopped
+   * at the limit, so which points appeared past that limit was unspecified. This imposes
+   * a deterministic order instead — see the porting ledger.
+   */
+  listRadarRows(limit: number): Promise<RadarRow[]>;
+}

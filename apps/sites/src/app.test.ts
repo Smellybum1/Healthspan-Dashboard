@@ -4,7 +4,7 @@ import {
   normaliseReviewLimit,
   toContentItemDto,
   type AssessmentRow,
-  type ClaimAssessmentRepository,
+  type IntelligenceReadRepository,
   type ContentItemRow,
   type ContentListQuery,
   type ContentReadRepository,
@@ -173,8 +173,41 @@ const ASSESSMENT_ROW: AssessmentRow = {
   createdAt: Date.UTC(2026, 0, 5),
 };
 
+const RUN = {
+  id: 'run-new',
+  trigger: 'manual',
+  scope: 'recent',
+  status: 'succeeded',
+  rulesetVersion: 'm3.deterministic.1',
+  requestedCount: 4,
+  completedCount: 4,
+  deterministicCount: 4,
+  aiCount: 0,
+  reviewTaskCount: 0,
+  reusedCount: 0,
+  startedAt: Date.UTC(2026, 0, 5),
+  completedAt: Date.UTC(2026, 0, 5) + 500,
+  summary: 'ok',
+};
+
+const CLAIM = {
+  id: 'claim-1',
+  analysisId: 'analysis-1',
+  contentItemId: 'item-paper',
+  claimKind: 'efficacy',
+  assertionRole: 'reported_finding',
+  claimText: 'Metformin reduced the primary endpoint',
+  direction: 'positive',
+  outcomeFamily: null,
+  extractionMethod: 'deterministic',
+  classificationConfidence: 'low',
+  reviewStatus: 'needs_review',
+  active: true,
+  createdAt: Date.UTC(2026, 0, 3),
+};
+
 /** In-memory assessment port. Filtering stays in the shared service, as in a real adapter. */
-function memoryAssessmentRepository(): ClaimAssessmentRepository {
+function memoryAssessmentRepository(): IntelligenceReadRepository {
   return {
     listCurrent: (filters) =>
       Promise.resolve(
@@ -208,6 +241,45 @@ function memoryAssessmentRepository(): ClaimAssessmentRepository {
     getItem: () =>
       Promise.resolve({ id: 'item-1', title: 'Metformin randomised trial', type: 'paper' }),
     listAnalysisHistory: () => Promise.resolve([]),
+    intelligenceCounts: () =>
+      Promise.resolve({ assessedCount: 4, staleCount: 1, openReviewTaskCount: 1 }),
+    listRuns: () =>
+      Promise.resolve([
+        {
+          id: 'run-new',
+          trigger: 'manual',
+          scope: 'recent',
+          status: 'succeeded',
+          rulesetVersion: 'm3.deterministic.1',
+          requestedCount: 4,
+          completedCount: 4,
+          deterministicCount: 4,
+          aiCount: 0,
+          reviewTaskCount: 0,
+          reusedCount: 0,
+          startedAt: Date.UTC(2026, 0, 5),
+          completedAt: Date.UTC(2026, 0, 5) + 500,
+          summary: 'ok',
+        },
+      ]),
+    getRun: (id) => Promise.resolve(id === 'run-new' ? RUN : null),
+    listLiveClaims: () => Promise.resolve({ rows: [CLAIM], total: 1 }),
+    listSpansForClaims: () => Promise.resolve([]),
+    getLiveClaim: (id) => Promise.resolve(id === 'claim-1' ? CLAIM : null),
+    listClaimRelationships: () => Promise.resolve([]),
+    listRadarRows: () =>
+      Promise.resolve([
+        {
+          contentItemId: 'item-paper',
+          title: 'Metformin randomised trial',
+          itemType: 'paper',
+          evidenceMaturity: 'controlled_clinical_trial',
+          researchActivity: 7,
+          resultsPresent: true,
+          stale: false,
+          isCorrectionOrRetraction: false,
+        },
+      ]),
   };
 }
 

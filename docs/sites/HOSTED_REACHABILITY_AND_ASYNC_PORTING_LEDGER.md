@@ -4,16 +4,17 @@ Milestone 7, Amendment I §3. Every module that touches data or the request path
 classified here. **No row may read `UNKNOWN`.**
 
 **Baseline commit:** `a59d202a481f8ef4982ad314f88350024b2373cf`
-**Status:** classification complete. Conversion in progress — **8 of 20 convertible rows
+**Status:** classification complete. Conversion in progress — **9 of 20 convertible rows
 `done`**: content, review, assessment, creator reads, creator-review reads, identity-task
-reads, evidence-link reads, and entity resolution (classified `local` — it has no reads).
-Every hosted-reachable read in the creator and review surfaces is now served end to end by
-a D1 adapter. A row may only be marked `done` once its module is a declared root in
+reads, evidence-link reads, entity resolution (classified `local` — it has no reads), and
+intelligence reads. Every hosted-reachable read in the content, creator, review, claims,
+and intelligence surfaces is now served end to end by a D1 adapter. A row may only be marked `done` once its module is a declared root in
 `scripts/sites-bundle-doctor.ts` and that gate is green.
 
-**Remaining convertible rows:** `intelligence-service.ts`, the interventions trio
-(`dossier`, `comparison`, `regulatory-safety`), `trial-portfolio.ts`, `jobs.ts`,
-`operations-panels.ts`, the two route layers, and personalisation.
+**Remaining convertible rows:** the interventions trio (`dossier`, `comparison`,
+`regulatory-safety` — `dossier-service.ts` also owns `listEntityResolutionTasks`),
+`trial-portfolio.ts`, `jobs.ts`, `operations-panels.ts`, the two route layers, and
+personalisation.
 
 **A row may split rather than move.** `creator-service.ts` held hosted-reachable reads and
 local-only writes in one file, so the reads moved to `@healthspan/runtime` and the writes
@@ -49,38 +50,39 @@ Legend:
 These move behind async, domain-oriented ports. Local adapters may satisfy the port by
 wrapping synchronous `better-sqlite3`; the D1 adapter uses the async driver.
 
-| Module                                                                                                | Reach | Repository port                                       | Sync/async | Node-only dep                            | Conversion | Test / parity suite                                   | Capability                                                        |
-| ----------------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------- | ---------- | ---------------------------------------- | ---------- | ----------------------------------------------------- | ----------------------------------------------------------------- |
-| `packages/runtime/src/content.ts` (was `content-service.ts`)                                          | both  | `ContentReadRepository`                               | **async**  | none                                     | **done**   | `content.contract.ts`                                 | operational                                                       |
-| `apps/sites/src/index.ts`, `app.ts`, `runtime.ts`, `env.ts`                                           | sites | hosted route layer over the ports below               | **async**  | none                                     | **done**   | `apps/sites/src/*.test.ts`, `sites:bundle:doctor`     | operational                                                       |
-| `packages/db/src/adapters/sites-d1/*`                                                                 | sites | D1 adapters behind the ports (`@healthspan/db/sites`) | **async**  | none                                     | **done**   | `sites-d1/*.test.ts` (shared contracts)               | operational                                                       |
-| `trial-portfolio.ts`                                                                                  | both  | `TrialReadRepository`                                 | sync       | none                                     | pending    | `sites:parity` trials                                 | operational                                                       |
-| `dossier-service.ts`                                                                                  | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` interventions                          | operational                                                       |
-| `comparison-service.ts`                                                                               | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` interventions                          | operational                                                       |
-| `regulatory-safety-service.ts`                                                                        | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` regulatory                             | operational                                                       |
-| `packages/runtime/src/assessment.ts` (was `assessment-service.ts`)                                    | both  | `ClaimAssessmentRepository`                           | **async**  | none                                     | **done**   | `assessment.contract.ts`, `assessment-parity.test.ts` | operational                                                       |
-| `intelligence-service.ts`                                                                             | both  | `ClaimAssessmentRepository`                           | sync       | none                                     | pending    | `sites:parity` claims                                 | operational (read models only; analysis run is local-only)        |
-| `packages/runtime/src/creator.ts` (evidence-link reads, was `creator-evidence-service.ts`)            | both  | `CreatorReadRepository`                               | **async**  | none                                     | **done**   | `creator.contract.ts`                                 | operational                                                       |
-| `creator-evidence-service.ts` (link creation, staleness marking)                                      | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | existing                                              | `disabled` (no hosted mutation — §6)                              |
-| `packages/runtime/src/creator.ts` (reads, was `creator-service.ts` + `creator-recurrence-service.ts`) | both  | `CreatorReadRepository`                               | **async**  | none                                     | **done**   | `creator.contract.ts`, `creator-parity.test.ts`       | operational                                                       |
-| `creator-service.ts` (writes: documents, accounts, manual claims, bootstrap)                          | local | none — direct `HealthspanDb`                          | sync       | `node:fs` (document write/delete)        | n/a        | existing                                              | `disabled`                                                        |
-| `creator-recurrence-service.ts` (`rebuildClaimRecurrence` only)                                       | local | none — direct `HealthspanDb`                          | sync       | `node:crypto` (source-scope hash)        | n/a        | existing                                              | `disabled`                                                        |
-| `packages/runtime/src/review.ts` (was `review-service.ts`)                                            | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts`                                  | reads operational; hosted resolve withheld — see §6               |
-| `packages/runtime/src/review.ts` (creator-review reads, was `creator-review-service.ts`)              | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts` creator-review suite             | operational                                                       |
-| `creator-review-service.ts` (`resolveCreatorReviewTask` only)                                         | local | none — direct `HealthspanDb`                          | sync       | none                                     | n/a        | existing                                              | `disabled` (no hosted mutation — §6)                              |
-| `entity-resolution-service.ts` (`resolveEntityResolutionTask` only — it has no reads)                 | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | `entity-resolution-service.test.ts`                   | `disabled` (no hosted mutation — §6)                              |
-| `packages/runtime/src/review.ts` (identity-task reads, was `creator-identity-service.ts`)             | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts` creator-review suite             | operational                                                       |
-| `creator-identity-service.ts` (roles, snapshots, task resolution)                                     | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | existing                                              | `disabled` (no hosted mutation — §6)                              |
-| `personalization-service.ts`                                                                          | both  | `PersonalisationRepository`                           | sync       | none                                     | pending    | `sites:parity` personalisation                        | operational                                                       |
-| `personalization-iv.ts`                                                                               | both  | `PersonalisationRepository`, `AlertBriefRepository`   | sync       | none                                     | pending    | `sites:parity` alerts/briefs                          | operational                                                       |
-| `jobs.ts`                                                                                             | both  | `JobRepository`                                       | sync       | none                                     | pending    | `sites:parity` jobs                                   | operational (bounded, request-triggered)                          |
-| `operations-panels.ts`                                                                                | both  | `ObjectMetadataRepository`, readiness status          | sync       | `node:fs` (storage walk), PRAGMA, VACUUM | pending    | `sites:doctor`                                        | readiness `operational`; VACUUM / storage walk / prune `disabled` |
-| `app.ts`                                                                                              | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                                 | operational                                                       |
-| `m6-routes.ts`                                                                                        | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                                 | operational                                                       |
-| `safe-response.ts`                                                                                    | both  | none (pure)                                           | n/a        | none                                     | n/a        | unit                                                  | operational                                                       |
-| `admin-guard.ts`                                                                                      | both  | none (pure)                                           | n/a        | none                                     | n/a        | unit                                                  | operational                                                       |
-| `job-priorities.ts`                                                                                   | both  | none (constants)                                      | n/a        | none                                     | n/a        | unit                                                  | operational                                                       |
-| `packages/db` schema modules                                                                          | both  | schema shared by both adapters                        | n/a        | none                                     | n/a        | `sites:db:lint`                                       | operational                                                       |
+| Module                                                                                                | Reach | Repository port                                       | Sync/async | Node-only dep                            | Conversion | Test / parity suite                                       | Capability                                                        |
+| ----------------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------- | ---------- | ---------------------------------------- | ---------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| `packages/runtime/src/content.ts` (was `content-service.ts`)                                          | both  | `ContentReadRepository`                               | **async**  | none                                     | **done**   | `content.contract.ts`                                     | operational                                                       |
+| `apps/sites/src/index.ts`, `app.ts`, `runtime.ts`, `env.ts`                                           | sites | hosted route layer over the ports below               | **async**  | none                                     | **done**   | `apps/sites/src/*.test.ts`, `sites:bundle:doctor`         | operational                                                       |
+| `packages/db/src/adapters/sites-d1/*`                                                                 | sites | D1 adapters behind the ports (`@healthspan/db/sites`) | **async**  | none                                     | **done**   | `sites-d1/*.test.ts` (shared contracts)                   | operational                                                       |
+| `trial-portfolio.ts`                                                                                  | both  | `TrialReadRepository`                                 | sync       | none                                     | pending    | `sites:parity` trials                                     | operational                                                       |
+| `dossier-service.ts`                                                                                  | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` interventions                              | operational                                                       |
+| `comparison-service.ts`                                                                               | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` interventions                              | operational                                                       |
+| `regulatory-safety-service.ts`                                                                        | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` regulatory                                 | operational                                                       |
+| `packages/runtime/src/assessment.ts` (was `assessment-service.ts`)                                    | both  | `ClaimAssessmentRepository`                           | **async**  | none                                     | **done**   | `assessment.contract.ts`, `assessment-parity.test.ts`     | operational                                                       |
+| `packages/runtime/src/intelligence.ts` (reads, was `intelligence-service.ts`)                         | both  | `IntelligenceReadRepository`                          | **async**  | none                                     | **done**   | `intelligence.contract.ts`, `intelligence-parity.test.ts` | operational                                                       |
+| `intelligence-service.ts` (`runIntelligenceAnalysis`, staleness marking)                              | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | existing                                                  | `disabled` (analysis run is local-only)                           |
+| `packages/runtime/src/creator.ts` (evidence-link reads, was `creator-evidence-service.ts`)            | both  | `CreatorReadRepository`                               | **async**  | none                                     | **done**   | `creator.contract.ts`                                     | operational                                                       |
+| `creator-evidence-service.ts` (link creation, staleness marking)                                      | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | existing                                                  | `disabled` (no hosted mutation — §6)                              |
+| `packages/runtime/src/creator.ts` (reads, was `creator-service.ts` + `creator-recurrence-service.ts`) | both  | `CreatorReadRepository`                               | **async**  | none                                     | **done**   | `creator.contract.ts`, `creator-parity.test.ts`           | operational                                                       |
+| `creator-service.ts` (writes: documents, accounts, manual claims, bootstrap)                          | local | none — direct `HealthspanDb`                          | sync       | `node:fs` (document write/delete)        | n/a        | existing                                                  | `disabled`                                                        |
+| `creator-recurrence-service.ts` (`rebuildClaimRecurrence` only)                                       | local | none — direct `HealthspanDb`                          | sync       | `node:crypto` (source-scope hash)        | n/a        | existing                                                  | `disabled`                                                        |
+| `packages/runtime/src/review.ts` (was `review-service.ts`)                                            | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts`                                      | reads operational; hosted resolve withheld — see §6               |
+| `packages/runtime/src/review.ts` (creator-review reads, was `creator-review-service.ts`)              | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts` creator-review suite                 | operational                                                       |
+| `creator-review-service.ts` (`resolveCreatorReviewTask` only)                                         | local | none — direct `HealthspanDb`                          | sync       | none                                     | n/a        | existing                                                  | `disabled` (no hosted mutation — §6)                              |
+| `entity-resolution-service.ts` (`resolveEntityResolutionTask` only — it has no reads)                 | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | `entity-resolution-service.test.ts`                       | `disabled` (no hosted mutation — §6)                              |
+| `packages/runtime/src/review.ts` (identity-task reads, was `creator-identity-service.ts`)             | both  | `ReviewRepository`                                    | **async**  | none                                     | **done**   | `review.contract.ts` creator-review suite                 | operational                                                       |
+| `creator-identity-service.ts` (roles, snapshots, task resolution)                                     | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | existing                                                  | `disabled` (no hosted mutation — §6)                              |
+| `personalization-service.ts`                                                                          | both  | `PersonalisationRepository`                           | sync       | none                                     | pending    | `sites:parity` personalisation                            | operational                                                       |
+| `personalization-iv.ts`                                                                               | both  | `PersonalisationRepository`, `AlertBriefRepository`   | sync       | none                                     | pending    | `sites:parity` alerts/briefs                              | operational                                                       |
+| `jobs.ts`                                                                                             | both  | `JobRepository`                                       | sync       | none                                     | pending    | `sites:parity` jobs                                       | operational (bounded, request-triggered)                          |
+| `operations-panels.ts`                                                                                | both  | `ObjectMetadataRepository`, readiness status          | sync       | `node:fs` (storage walk), PRAGMA, VACUUM | pending    | `sites:doctor`                                            | readiness `operational`; VACUUM / storage walk / prune `disabled` |
+| `app.ts`                                                                                              | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                                     | operational                                                       |
+| `m6-routes.ts`                                                                                        | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                                     | operational                                                       |
+| `safe-response.ts`                                                                                    | both  | none (pure)                                           | n/a        | none                                     | n/a        | unit                                                      | operational                                                       |
+| `admin-guard.ts`                                                                                      | both  | none (pure)                                           | n/a        | none                                     | n/a        | unit                                                      | operational                                                       |
+| `job-priorities.ts`                                                                                   | both  | none (constants)                                      | n/a        | none                                     | n/a        | unit                                                      | operational                                                       |
+| `packages/db` schema modules                                                                          | both  | schema shared by both adapters                        | n/a        | none                                     | n/a        | `sites:db:lint`                                           | operational                                                       |
 
 ---
 
@@ -383,3 +385,52 @@ not expressible as one predicate, and also in the service.
 encodes the rule governing what a creator profile may display, so it was ported rather
 than deleted, and the contract pins both branches — but the absence of a caller is worth a
 decision. Either the profile-publish path should be using it, or it is dead.
+
+---
+
+## 11. Intelligence reads — four shapes changed, one order was never defined
+
+The reads split from `runIntelligenceAnalysis` cleanly: the analysis run writes, calls
+into `@healthspan/intelligence`, and stays a local-only row. Everything the hosted runtime
+_reads_ moved. Four query shapes changed, all for cost:
+
+| Retired shape                                                                                      | Ported shape                                      |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `intelligenceStatus` loaded two whole tables to count rows in them                                 | three bounded `count(*)` queries                  |
+| `listLiveClaims` loaded every claim, filtered in memory, then one span query per claim on the page | filters in SQL; one `inArray` span query per page |
+| `getLiveClaim` loaded the whole `claim_relationships` table                                        | one `or(left, right)` predicate                   |
+| `liveRadarPoints` issued two or three queries per intelligence state                               | one three-way join                                |
+
+`intelligence-parity.test.ts` freezes all four retired implementations and compares them
+against the ported ones over one fixture — 14 claim queries, four claim ids, plus the
+status and radar outputs. It also asserts the statement counts directly: three for a page
+of claims, four for status, four for a claim detail. **Delete it once the M7 completion
+report is accepted.**
+
+### The radar order was never specified
+
+`liveRadarPoints` consumed intelligence states in whatever order the driver happened to
+return them and stopped once it had `limit` points. Which points survived a truncation was
+therefore undefined — not a behaviour to be faithful to, because there was no defined
+behaviour. The port imposes **newest analysis first**.
+
+Below the limit the set is identical, and the parity test compares order-insensitively to
+say exactly that. Above it, the visible effect is that a radar now shows the most recently
+assessed items rather than an arbitrary subset. That is an improvement, but it is a
+_visible change_, so it is recorded here rather than buried.
+
+### One shape disagreement the port had to resolve
+
+The two retired readers disagreed about span rows: `listLiveClaims` projected four fields,
+`getLiveClaim` returned the row as stored, including `spanHash` and `createdAt`. One port
+method now returns the full row and the list service narrows it, so neither caller loses a
+field it had. The parity test caught this — the first version of the port returned the
+narrow shape from both and failed on the detail comparison.
+
+### A contract hole the mutation check found
+
+Breaking the D1 span fetch to load only the _first_ claim's spans initially passed the
+whole contract: the suite asserted spans for the first claim on the page and for a claim
+that had none, but never for a claim in between. The assertion is now explicit that every
+claim on the page gets its own spans. A batched query is only correct if it covers the
+whole batch, and only an assertion about a middle element can show that.
