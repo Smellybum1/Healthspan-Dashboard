@@ -4,17 +4,16 @@ Milestone 7, Amendment I §3. Every module that touches data or the request path
 classified here. **No row may read `UNKNOWN`.**
 
 **Baseline commit:** `a59d202a481f8ef4982ad314f88350024b2373cf`
-**Status:** classification complete. Conversion in progress — **11 of 20 convertible rows
+**Status:** classification complete. Conversion in progress — **12 of 20 convertible rows
 `done`**, plus **one blocked**. Done: content, review, assessment, creator reads,
 creator-review reads, identity-task reads, evidence-link reads, entity resolution,
-intelligence reads, intervention reads, and regulatory/safety reads. **Blocked: `dossier-service.ts` — `getDossier`
+intelligence reads, intervention and comparison reads, and regulatory/safety reads. **Blocked: `dossier-service.ts` — `getDossier`
 writes to the database on a GET (§12), which needs a product decision before it can be a
 hosted read.** A row may only be marked `done` once its module is a declared root in
 `scripts/sites-bundle-doctor.ts` and that gate is green.
 
-**Remaining convertible rows:** `comparison-service.ts`, `jobs.ts`,
-`operations-panels.ts`, the two route layers, and personalisation. The dossier row is
-blocked rather than pending.
+**Remaining convertible rows:** `jobs.ts`, `operations-panels.ts`, the two route layers,
+and personalisation. The dossier row is blocked rather than pending.
 
 **A row may split rather than move.** `creator-service.ts` held hosted-reachable reads and
 local-only writes in one file, so the reads moved to `@healthspan/runtime` and the writes
@@ -53,7 +52,7 @@ wrapping synchronous `better-sqlite3`; the D1 adapter uses the async driver.
 | Module                                                                                                | Reach | Repository port                                       | Sync/async | Node-only dep                            | Conversion  | Test / parity suite                                       | Capability                                                        |
 | ----------------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------- | ---------- | ---------------------------------------- | ----------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
 | `packages/runtime/src/content.ts` (was `content-service.ts`)                                          | both  | `ContentReadRepository`                               | **async**  | none                                     | **done**    | `content.contract.ts`                                     | operational                                                       |
-| `packages/runtime/src/intervention.ts` (entity + resolution-task + trial reads)                       | both  | `InterventionReadRepository`                          | **async**  | none                                     | **done**    | `intervention.contract.ts`                                | operational                                                       |
+| `packages/runtime/src/intervention.ts` (entity, resolution-task, trial, comparison reads)             | both  | `InterventionReadRepository`                          | **async**  | none                                     | **done**    | `intervention.contract.ts`                                | operational                                                       |
 | `packages/runtime/src/regulatory.ts` (7 reads, was `regulatory-safety-service.ts`)                    | both  | `RegulatoryReadRepository`                            | **async**  | none                                     | **done**    | `regulatory.contract.ts`                                  | operational                                                       |
 | `regulatory-safety-service.ts` (AEMS persistence, refresh runs)                                       | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`, connectors                | n/a         | existing                                                  | `disabled` (connector-backed refresh is local-only)               |
 | `dossier-service.ts` (`buildDossierSnapshot`, `getDossier`, bootstrap, mention resolution)            | both  | `InterventionReadRepository`                          | sync       | `node:crypto`                            | **blocked** | —                                                         | **see §12 — `getDossier` writes on a GET**                        |
@@ -547,3 +546,28 @@ Breaking the D1 ingredient batch to fetch only the first product's ingredients f
 contract immediately — because the assertion checks a product in the middle of the page
 and a product with no ingredients, not just the first. That is the lesson from the
 intelligence port applied before it could bite again.
+
+---
+
+## 14. Comparison — not blocked by the dossier row
+
+`compareInterventions` reads the **stored** dossier snapshot through
+`intervention_entities.current_dossier_snapshot_id`. It never calls
+`buildDossierSnapshot` and writes nothing, so it is unaffected by §12 and was ported
+normally. The contract asserts that explicitly: an entity with a stored snapshot reports
+its maturity distribution and linked counts, and an entity without one reports
+`No linked analyses yet` rather than triggering a build.
+
+The retired implementation issued four queries per entity plus one per snapshot — up to
+twenty statements for a four-entity comparison. Every read is now batched by id, so the
+count is fixed at five however many entities are compared.
+
+The comparison rules are asserted in the response rather than merely observed in the
+code. `COMPARISON_RULES` and the incomparability notes live in `@healthspan/core`, and
+the contract checks all five flags, the spontaneous-report dimension's refusal to compare,
+the differing-entity-type note, and the peptide-versus-non-peptide note. ADR-0009: this
+product compares side by side and never ranks.
+
+`apps/api/src/entity-resolution-service.test.ts` lost its one comparison case. It asserted
+two of the five rules against the local path only; the contract asserts all five against
+both adapters, so the case was superseded rather than migrated.

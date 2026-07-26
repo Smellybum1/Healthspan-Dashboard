@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type {
   EntityResolutionTaskRow,
   InterventionReadRepository,
@@ -6,11 +6,19 @@ import type {
 } from '@healthspan/core';
 import type { HealthspanDb } from '../client.js';
 import {
+  assertionCurrent,
+  comparisonEntitySelection,
+  dossierSnapshotSelection,
+  dossierSnapshots,
   entityResolutionTaskOrder,
   entityResolutionTasks,
   interventionEntities,
+  interventionIdentifiers,
   interventionSummarySelection,
   interventionWhere,
+  peptideProfiles,
+  peptideSelection,
+  regulatoryAssertions,
   trialInterventionEntityLinks,
   trialPortfolioSelection,
   trialPortfolioWhere,
@@ -75,6 +83,61 @@ export function createLocalInterventionReadRepository(
         .where(trialPortfolioWhere(entityId))
         .all();
       return Promise.resolve(rows as TrialPortfolioRow[]);
+    },
+
+    listEntitiesByIds(ids) {
+      if (ids.length === 0) return Promise.resolve([]);
+      return Promise.resolve(
+        db
+          .select(comparisonEntitySelection)
+          .from(interventionEntities)
+          .where(inArray(interventionEntities.id, ids))
+          .all(),
+      );
+    },
+
+    listPeptideProfiles(entityIds) {
+      if (entityIds.length === 0) return Promise.resolve([]);
+      return Promise.resolve(
+        db
+          .select(peptideSelection)
+          .from(peptideProfiles)
+          .where(inArray(peptideProfiles.entityId, entityIds))
+          .all(),
+      );
+    },
+
+    listIdentifiersForEntities(entityIds) {
+      if (entityIds.length === 0) return Promise.resolve([]);
+      return Promise.resolve(
+        db
+          .select({ entityId: interventionIdentifiers.entityId })
+          .from(interventionIdentifiers)
+          .where(inArray(interventionIdentifiers.entityId, entityIds))
+          .all(),
+      );
+    },
+
+    listCurrentAssertionsForEntities(entityIds) {
+      if (entityIds.length === 0) return Promise.resolve([]);
+      return Promise.resolve(
+        db
+          .select({ entityId: regulatoryAssertions.entityId })
+          .from(regulatoryAssertions)
+          .where(and(inArray(regulatoryAssertions.entityId, entityIds), assertionCurrent))
+          .all(),
+      );
+    },
+
+    listDossierSnapshots(snapshotIds) {
+      if (snapshotIds.length === 0) return Promise.resolve([]);
+      return Promise.resolve(
+        db
+          .select(dossierSnapshotSelection)
+          .from(dossierSnapshots)
+          .where(inArray(dossierSnapshots.id, snapshotIds))
+          .all(),
+      );
     },
   };
 }

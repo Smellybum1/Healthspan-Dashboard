@@ -3,9 +3,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { openDatabase } from '../client.js';
 import { contentItems, trials } from '../schema.js';
+import { eq } from 'drizzle-orm';
 import {
+  dossierSnapshots,
   entityResolutionTasks,
   interventionEntities,
+  interventionIdentifiers,
+  peptideProfiles,
+  regulatoryAssertions,
   trialInterventionEntityLinks,
 } from '../intervention-schema.js';
 
@@ -126,6 +131,76 @@ export function seedInterventionFixture(): SeededInterventionDatabase {
       })
       .run();
   }
+
+  // Comparison inputs: a peptide profile on one entity only, identifiers and assertions
+  // in different quantities, and a stored dossier snapshot on one entity.
+  db.insert(peptideProfiles)
+    .values({
+      id: 'peptide-bpc157',
+      entityId: 'ent-bpc157',
+      classification: 'research_peptide',
+      sequenceState: 'no_sequence',
+      warningState: 'sequence_unverified',
+      updatedAt: BASE,
+    })
+    .run();
+
+  for (const i of [
+    { id: 'ident-1', entity: 'ent-metformin', scheme: 'rxnorm', value: '6809' },
+    { id: 'ident-2', entity: 'ent-metformin', scheme: 'unii', value: '9100L32L2N' },
+    { id: 'ident-3', entity: 'ent-rapamycin', scheme: 'rxnorm', value: '35302' },
+  ]) {
+    db.insert(interventionIdentifiers)
+      .values({
+        id: i.id,
+        entityId: i.entity,
+        scheme: i.scheme,
+        value: i.value,
+        normalizedValue: i.value.toLowerCase(),
+        createdAt: BASE,
+      })
+      .run();
+  }
+
+  for (const a of [
+    { id: 'cmp-assert-1', entity: 'ent-metformin', state: 'current' },
+    // Superseded: excluded by the current-only predicate.
+    { id: 'cmp-assert-2', entity: 'ent-metformin', state: 'superseded' },
+  ]) {
+    db.insert(regulatoryAssertions)
+      .values({
+        id: a.id,
+        entityId: a.entity,
+        jurisdiction: 'AU',
+        authority: 'TGA',
+        assertionKind: 'registration',
+        normalizedStanding: 'registered',
+        currentState: a.state,
+        createdAt: BASE,
+      })
+      .run();
+  }
+
+  db.insert(dossierSnapshots)
+    .values({
+      id: 'snap-metformin',
+      entityId: 'ent-metformin',
+      rulesetVersion: 'm4.1',
+      inputHash: 'hash-1',
+      summaryJson: JSON.stringify({ linkedAnalysisCount: 2, linkedClaimCount: 5 }),
+      evidenceMapJson: JSON.stringify({
+        analyses: [
+          { evidenceMaturity: 'controlled_clinical_trial' },
+          { evidenceMaturity: 'human_observational' },
+        ],
+      }),
+      createdAt: BASE,
+    })
+    .run();
+  db.update(interventionEntities)
+    .set({ currentDossierSnapshotId: 'snap-metformin' })
+    .where(eq(interventionEntities.id, 'ent-metformin'))
+    .run();
 
   return { db, sqlite: live.sqlite, dir };
 }

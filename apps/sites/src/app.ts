@@ -27,6 +27,7 @@ import {
   type OriginPolicy,
 } from '@healthspan/core';
 import {
+  compareInterventions,
   getAssessment,
   getCreatorDetail,
   getIntelligenceRun,
@@ -253,6 +254,18 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
     const detail = await getAssessment(repo, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...detail });
+  });
+
+  app.get('/api/interventions/compare', async (c) => {
+    const repo = c.get('runtime').repositories.intervention;
+    if (!repo) return unbound(c, 'intervention');
+    const ids = (c.req.query('ids') ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const result = await compareInterventions(repo, ids);
+    if (!result.ok) return c.json({ error: result.error }, result.status);
+    return c.json({ dataMode: 'live', ...result });
   });
 
   app.get('/api/interventions', async (c) => {

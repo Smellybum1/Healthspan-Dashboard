@@ -143,4 +143,82 @@ export interface InterventionReadRepository {
   listEntityResolutionTasks(limit: number): Promise<EntityResolutionTaskRow[]>;
   /** One query, not one per link — see {@link TrialPortfolioRow}. */
   listTrialPortfolio(entityId: string): Promise<TrialPortfolioRow[]>;
+
+  /* Comparison reads — all batched by id, never one query per entity. */
+  listEntitiesByIds(ids: string[]): Promise<ComparisonEntityRow[]>;
+  listPeptideProfiles(entityIds: string[]): Promise<PeptideProfileRow[]>;
+  listIdentifiersForEntities(entityIds: string[]): Promise<EntityIdRow[]>;
+  /** Current assertions only, as the retired in-memory filter did. */
+  listCurrentAssertionsForEntities(entityIds: string[]): Promise<EntityIdRow[]>;
+  listDossierSnapshots(snapshotIds: string[]): Promise<DossierSnapshotRow[]>;
 }
+
+/* ------------------------------------------------------------------------- *
+ * Comparison
+ *
+ * The retired `compareInterventions` issued four queries per entity — entity, peptide
+ * profile, identifiers, assertions — plus one per stored dossier snapshot. Bounded at
+ * four entities that is up to twenty statements for one comparison. The reads below are
+ * batched by id instead, so the count is fixed at five regardless of how many entities
+ * are compared.
+ *
+ * Only the data fetch is here. Which dimensions exist, what makes a dimension comparable,
+ * and every rule this product refuses to break live in `@healthspan/runtime`.
+ * ------------------------------------------------------------------------- */
+
+export type ComparisonEntityRow = {
+  id: string;
+  preferredName: string;
+  entityType: string;
+  identityConfidence: string;
+  lifecycleState: string;
+  currentDossierSnapshotId: string | null;
+};
+
+export type PeptideProfileRow = {
+  entityId: string;
+  classification: string;
+  sequenceState: string;
+  warningState: string;
+};
+
+export type EntityIdRow = { entityId: string | null };
+
+export type DossierSnapshotRow = {
+  id: string;
+  summaryJson: string;
+  evidenceMapJson: string;
+};
+
+export type ComparisonDimension = {
+  id: string;
+  label: string;
+  cells: Array<{
+    entityId: string;
+    value: string;
+    comparable: boolean;
+    note?: string;
+    detailHref?: string;
+  }>;
+};
+
+/** 2–4 entities. Fewer is not a comparison; more stops being side-by-side. */
+export const COMPARISON_MIN_ENTITIES = 2;
+export const COMPARISON_MAX_ENTITIES = 4;
+
+/**
+ * The rules a comparison always declares.
+ *
+ * ADR-0009 and the M4 invariants: side-by-side only, never a ranking. They are part of
+ * the response so a client cannot render the table without them.
+ */
+export const COMPARISON_RULES = {
+  noWinner: true,
+  noRecommendation: true,
+  noRank: true,
+  noStacking: true,
+  noSpontaneousReportSafetyRanking: true,
+} as const;
+
+export const COMPARISON_CAVEAT =
+  'Comparison is informational and side-by-side only. Cells link to source-backed dossiers; incomparable dimensions are flagged explicitly.';

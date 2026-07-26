@@ -69,6 +69,7 @@ import {
   listContentItems,
   listCreatorClaims,
   listEntityResolutionTasks,
+  compareInterventions,
   listInterventionEntities,
   listRegulatoryAssertions,
   listRegulatoryHistory,
@@ -140,7 +141,6 @@ import {
   resolveEntityResolutionTask,
   type EntityResolutionAction,
 } from './entity-resolution-service.js';
-import { compareInterventions } from './comparison-service.js';
 import { linkTrialInterventionsToEntities } from './trial-portfolio.js';
 import { runRegulatoryRefresh, runSafetyRefresh } from './regulatory-safety-service.js';
 import {
@@ -1362,7 +1362,7 @@ export function createApp() {
     });
   });
 
-  app.get('/api/interventions/compare', (c) => {
+  app.get('/api/interventions/compare', async (c) => {
     if (currentMode() === 'demo') {
       return c.json(
         {
@@ -1375,7 +1375,8 @@ export function createApp() {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
-    const result = compareInterventions(live.db, ids);
+    bootstrapInterventionCatalog(live.db);
+    const result = await compareInterventions(repositories.intervention, ids);
     if (!result.ok) return c.json({ error: result.error }, result.status);
     return c.json({ dataMode: 'live', ...result });
   });

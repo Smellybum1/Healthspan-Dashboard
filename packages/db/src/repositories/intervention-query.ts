@@ -2,8 +2,12 @@ import { and, desc, eq, isNull, ne, sql, type SQL } from 'drizzle-orm';
 import type { InterventionTypeFilter } from '@healthspan/core';
 import { trials } from '../schema.js';
 import {
+  dossierSnapshots,
   entityResolutionTasks,
   interventionEntities,
+  interventionIdentifiers,
+  peptideProfiles,
+  regulatoryAssertions,
   trialInterventionEntityLinks,
 } from '../intervention-schema.js';
 
@@ -70,3 +74,32 @@ export const trialPortfolioSelection = {
 };
 
 export { entityResolutionTasks, interventionEntities, trialInterventionEntityLinks, trials };
+
+/* Comparison selections — batched by id, never one query per entity. */
+
+export const comparisonEntitySelection = {
+  id: interventionEntities.id,
+  preferredName: interventionEntities.preferredName,
+  entityType: interventionEntities.entityType,
+  identityConfidence: interventionEntities.identityConfidence,
+  lifecycleState: interventionEntities.lifecycleState,
+  currentDossierSnapshotId: interventionEntities.currentDossierSnapshotId,
+};
+
+export const peptideSelection = {
+  entityId: peptideProfiles.entityId,
+  classification: peptideProfiles.classification,
+  sequenceState: peptideProfiles.sequenceState,
+  warningState: peptideProfiles.warningState,
+};
+
+export const dossierSnapshotSelection = {
+  id: dossierSnapshots.id,
+  summaryJson: dossierSnapshots.summaryJson,
+  evidenceMapJson: dossierSnapshots.evidenceMapJson,
+};
+
+/** Current assertions only — the retired in-memory filter, as a predicate. */
+export const assertionCurrent = eq(regulatoryAssertions.currentState, 'current');
+
+export { dossierSnapshots, interventionIdentifiers, peptideProfiles, regulatoryAssertions };

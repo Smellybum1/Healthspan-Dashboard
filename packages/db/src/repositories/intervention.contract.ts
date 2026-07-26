@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InterventionReadRepository } from '@healthspan/core';
 import {
+  compareInterventions,
   listEntityResolutionTasks,
   listInterventionEntities,
   trialPortfolioForEntity,
@@ -125,6 +126,111 @@ export function runInterventionContract(harness: InterventionContractHarness) {
       expect(portfolio.items.every((i) => i.note.includes('not regulatory authorisation'))).toBe(
         true,
       );
+    });
+
+    it('refuses a comparison outside two to four entities', async () => {
+      const repo = await harness.create();
+      expect(await compareInterventions(repo, ['ent-metformin'])).toMatchObject({
+        ok: false,
+        status: 400,
+      });
+      // Duplicates collapse before the count, so this is one entity, not two.
+      expect(await compareInterventions(repo, ['ent-metformin', 'ent-metformin'])).toMatchObject({
+        ok: false,
+        status: 400,
+      });
+      const five = ['a', 'b', 'c', 'd', 'e'];
+      expect(await compareInterventions(repo, five)).toMatchObject({ ok: false, status: 400 });
+    });
+
+    it('404s when an entity is unknown or not active', async () => {
+      const repo = await harness.create();
+      expect(await compareInterventions(repo, ['ent-metformin', 'nope'])).toMatchObject({
+        ok: false,
+        status: 404,
+      });
+      // A merged entity is not comparable either.
+      expect(await compareInterventions(repo, ['ent-metformin', 'ent-merged'])).toMatchObject({
+        ok: false,
+        status: 404,
+      });
+    });
+
+    it('compares in the order the caller asked for', async () => {
+      const repo = await harness.create();
+      const result = await compareInterventions(repo, ['ent-rapamycin', 'ent-metformin']);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.entities.map((e) => e.id)).toEqual(['ent-rapamycin', 'ent-metformin']);
+    });
+
+    it('counts identifiers and current assertions per entity', async () => {
+      // Batched by id, so each entity must get its own counts — not the first one's.
+      const repo = await harness.create();
+      const result = await compareInterventions(repo, ['ent-metformin', 'ent-rapamycin']);
+      if (!result.ok) throw new Error('expected a comparison');
+      const cells = result.dimensions.find((d) => d.id === 'regulatory_matrix')!.cells;
+      // Metformin has two identifiers and one *current* assertion; the superseded one is excluded.
+      expect(cells[0]?.value).toBe('1 current scoped assertion(s) · 2 identifier(s)');
+      expect(cells[1]?.value).toBe('0 current scoped assertion(s) · 1 identifier(s)');
+    });
+
+    it('reads the stored dossier snapshot rather than rebuilding one', async () => {
+      // This is why comparison is not blocked behind the dossier row: it reads the
+      // snapshot that exists and writes nothing.
+      const repo = await harness.create();
+      const result = await compareInterventions(repo, ['ent-metformin', 'ent-rapamycin']);
+      if (!result.ok) throw new Error('expected a comparison');
+      const evidence = result.dimensions.find((d) => d.id === 'evidence_maturity')!.cells;
+      expect(evidence[0]?.value).toBe('controlled_clinical_trial:1, human_observational:1');
+      expect(evidence[1]?.value).toBe('No linked analyses yet');
+      const linked = result.dimensions.find((d) => d.id === 'linked_evidence')!.cells;
+      expect(linked[0]?.value).toBe('2 analyses · 5 claims');
+    });
+
+    it('flags differing entity types as not directly comparable', async () => {
+      const repo = await harness.create();
+      const same = await compareInterventions(repo, ['ent-metformin', 'ent-rapamycin']);
+      if (!same.ok) throw new Error('expected a comparison');
+      expect(same.dimensions[0]?.cells.every((c) => c.comparable)).toBe(true);
+
+      const mixed = await compareInterventions(repo, ['ent-metformin', 'ent-bpc157']);
+      if (!mixed.ok) throw new Error('expected a comparison');
+      expect(mixed.dimensions[0]?.cells.every((c) => c.comparable)).toBe(false);
+      expect(mixed.dimensions[0]?.cells[0]?.note).toContain('Entity types differ');
+    });
+
+    it('marks peptide identity incomparable when only some are peptides', async () => {
+      const repo = await harness.create();
+      const mixed = await compareInterventions(repo, ['ent-metformin', 'ent-bpc157']);
+      if (!mixed.ok) throw new Error('expected a comparison');
+      const peptide = mixed.dimensions.find((d) => d.id === 'peptide_identity')!;
+      expect(peptide.cells.every((c) => c.comparable === false)).toBe(true);
+      expect(peptide.cells[0]?.note).toContain('not comparable on sequence identity');
+      expect(peptide.cells[1]?.value).toContain('research_peptide');
+
+      const neither = await compareInterventions(repo, ['ent-metformin', 'ent-rapamycin']);
+      if (!neither.ok) throw new Error('expected a comparison');
+      const none = neither.dimensions.find((d) => d.id === 'peptide_identity')!;
+      expect(none.cells.every((c) => c.comparable)).toBe(true);
+    });
+
+    it('never ranks, and says so', async () => {
+      // ADR-0009 and the M4 invariants, asserted in the response rather than assumed.
+      const repo = await harness.create();
+      const result = await compareInterventions(repo, ['ent-metformin', 'ent-rapamycin']);
+      if (!result.ok) throw new Error('expected a comparison');
+      expect(result.rules).toEqual({
+        noWinner: true,
+        noRecommendation: true,
+        noRank: true,
+        noStacking: true,
+        noSpontaneousReportSafetyRanking: true,
+      });
+      const reports = result.dimensions.find((d) => d.id === 'spontaneous_reports')!;
+      expect(reports.cells.every((c) => c.comparable === false)).toBe(true);
+      expect(reports.cells[0]?.note).toContain('never used as a safety ranking');
+      expect(result.caveat).toContain('side-by-side only');
     });
 
     it('returns an empty portfolio for an entity with no links', async () => {

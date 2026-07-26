@@ -1,15 +1,23 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type {
   EntityResolutionTaskRow,
   InterventionReadRepository,
   TrialPortfolioRow,
 } from '@healthspan/core';
 import {
+  assertionCurrent,
+  comparisonEntitySelection,
+  dossierSnapshotSelection,
+  dossierSnapshots,
   entityResolutionTaskOrder,
   entityResolutionTasks,
   interventionEntities,
+  interventionIdentifiers,
   interventionSummarySelection,
   interventionWhere,
+  peptideProfiles,
+  peptideSelection,
+  regulatoryAssertions,
   trialInterventionEntityLinks,
   trialPortfolioSelection,
   trialPortfolioWhere,
@@ -75,6 +83,46 @@ export function createSitesInterventionReadRepository(
         .leftJoin(trials, eq(trials.contentItemId, trialInterventionEntityLinks.trialId))
         .where(trialPortfolioWhere(entityId));
       return rows as TrialPortfolioRow[];
+    },
+
+    async listEntitiesByIds(ids) {
+      if (ids.length === 0) return [];
+      return await db
+        .select(comparisonEntitySelection)
+        .from(interventionEntities)
+        .where(inArray(interventionEntities.id, ids));
+    },
+
+    async listPeptideProfiles(entityIds) {
+      if (entityIds.length === 0) return [];
+      return await db
+        .select(peptideSelection)
+        .from(peptideProfiles)
+        .where(inArray(peptideProfiles.entityId, entityIds));
+    },
+
+    async listIdentifiersForEntities(entityIds) {
+      if (entityIds.length === 0) return [];
+      return await db
+        .select({ entityId: interventionIdentifiers.entityId })
+        .from(interventionIdentifiers)
+        .where(inArray(interventionIdentifiers.entityId, entityIds));
+    },
+
+    async listCurrentAssertionsForEntities(entityIds) {
+      if (entityIds.length === 0) return [];
+      return await db
+        .select({ entityId: regulatoryAssertions.entityId })
+        .from(regulatoryAssertions)
+        .where(and(inArray(regulatoryAssertions.entityId, entityIds), assertionCurrent));
+    },
+
+    async listDossierSnapshots(snapshotIds) {
+      if (snapshotIds.length === 0) return [];
+      return await db
+        .select(dossierSnapshotSelection)
+        .from(dossierSnapshots)
+        .where(inArray(dossierSnapshots.id, snapshotIds));
     },
   };
 }

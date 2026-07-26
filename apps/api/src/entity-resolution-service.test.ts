@@ -6,7 +6,6 @@ import { openDatabase, closeDatabase, seedOperationalSources } from '@healthspan
 import { entityResolutionTasks, interventionMentions } from '@healthspan/db';
 import { bootstrapInterventionCatalog } from './dossier-service.js';
 import { resolveEntityResolutionTask } from './entity-resolution-service.js';
-import { compareInterventions } from './comparison-service.js';
 
 describe('M4 entity resolution and comparison', () => {
   let dir: string;
@@ -72,16 +71,5 @@ describe('M4 entity resolution and comparison', () => {
 
     const second = resolveEntityResolutionTask(db, { taskId, action: 'reject' });
     expect(second.ok).toBe(false);
-  });
-
-  it('compares two entities without ranking or spontaneous-report safety scores', () => {
-    const result = compareInterventions(db, ['ent-metformin', 'ent-rapamycin']);
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.rules.noWinner).toBe(true);
-      expect(result.rules.noSpontaneousReportSafetyRanking).toBe(true);
-      const spont = result.dimensions.find((d) => d.id === 'spontaneous_reports');
-      expect(spont?.cells.every((c) => c.comparable === false)).toBe(true);
-    }
   });
 });
