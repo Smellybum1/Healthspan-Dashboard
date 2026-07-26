@@ -4,16 +4,16 @@ Milestone 7, Amendment I §3. Every module that touches data or the request path
 classified here. **No row may read `UNKNOWN`.**
 
 **Baseline commit:** `a59d202a481f8ef4982ad314f88350024b2373cf`
-**Status:** classification complete. Conversion in progress — **13 of 20 convertible rows
+**Status:** classification complete. Conversion in progress — **14 of 20 convertible rows
 `done`**. Done: content, review, assessment, creator reads, creator-review reads,
 identity-task reads, evidence-link reads, entity resolution, intelligence reads,
-intervention, comparison and dossier reads, and regulatory/safety reads. **Nothing is
+intervention, comparison and dossier reads, regulatory/safety reads, and the job queue. **Nothing is
 blocked** — the dossier row is resolved in §12.
 A row may only be marked `done` once its module is a declared root in
 `scripts/sites-bundle-doctor.ts` and that gate is green.
 
-**Remaining convertible rows:** `jobs.ts`, `operations-panels.ts`, the two route layers,
-and personalisation.
+**Remaining convertible rows:** `operations-panels.ts`, the two route layers, and
+personalisation.
 
 **A row may split rather than move.** `creator-service.ts` held hosted-reachable reads and
 local-only writes in one file, so the reads moved to `@healthspan/runtime` and the writes
@@ -80,7 +80,8 @@ wrapping synchronous `better-sqlite3`; the D1 adapter uses the async driver.
 | `creator-identity-service.ts` (roles, snapshots, task resolution)                                     | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`                            | n/a        | existing                                                  | `disabled` (no hosted mutation — §6)                                   |
 | `personalization-service.ts`                                                                          | both  | `PersonalisationRepository`                           | sync       | none                                     | pending    | `sites:parity` personalisation                            | operational                                                            |
 | `personalization-iv.ts`                                                                               | both  | `PersonalisationRepository`, `AlertBriefRepository`   | sync       | none                                     | pending    | `sites:parity` alerts/briefs                              | operational                                                            |
-| `jobs.ts`                                                                                             | both  | `JobRepository`                                       | sync       | none                                     | pending    | `sites:parity` jobs                                       | operational (bounded, request-triggered)                               |
+| `packages/runtime/src/job.ts` (claim, lease, complete, requeue, reads)                                | both  | `JobRepository`                                       | **async**  | none                                     | **done**   | `job.contract.ts`                                         | operational (bounded, request-triggered)                               |
+| `jobs.ts` (`enqueueJob`, `stableDedupeKey`, `startJobWorker`)                                         | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`, `setInterval`             | n/a        | existing                                                  | `disabled` (persistent worker is local-only)                           |
 | `operations-panels.ts`                                                                                | both  | `ObjectMetadataRepository`, readiness status          | sync       | `node:fs` (storage walk), PRAGMA, VACUUM | pending    | `sites:doctor`                                            | readiness `operational`; VACUUM / storage walk / prune `disabled`      |
 | `app.ts`                                                                                              | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                                     | operational                                                            |
 | `m6-routes.ts`                                                                                        | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                                     | operational                                                            |
@@ -571,3 +572,55 @@ product compares side by side and never ranks.
 `apps/api/src/entity-resolution-service.test.ts` lost its one comparison case. It asserted
 two of the five rules against the local path only; the contract asserts all five against
 both adapters, so the case was superseded rather than migrated.
+
+---
+
+## 15. The job queue — two defects fixed in both runtimes
+
+This row is the first where porting **corrected** behaviour rather than preserving it. The
+owner ruled that both defects recorded in `SITES_COMPATIBILITY_AUDIT.md` §5 be fixed for
+local as well as hosted: a queue that can run the same job twice is not something to carry
+forward deliberately.
+
+### The claim was not atomic
+
+`claimNextJob` selected the next queued row and then updated it by id. Two workers
+selecting concurrently both saw the same row and both ran the job. The code was safe only
+because exactly one in-process worker existed — an assumption a request-triggered hosted
+tick cannot make, since two requests can arrive at once.
+
+The claim is now a **conditional update**: `SET status='running', … WHERE id = ? AND
+status = 'queued'`, and the number of rows it changed decides the winner. A caller that
+changed zero rows lost the race and tries the next candidate, bounded at
+`JOB_CLAIM_CANDIDATES`. That is why `tryClaim` returns a count rather than a row — a claim
+that reads and then writes cannot be made safe by reordering the read.
+
+Verified: relaxing the predicate back to `WHERE id = ?` makes a second `tryClaim` on the
+same job return 1 instead of 0, and the contract fails.
+
+### The lease was renewed once
+
+`renewLease` ran once, before the handler, against a sixty-second lease. Any job taking
+longer than a minute could have its lease expire and be reclaimed while it was still
+running. The local worker now renews on a heartbeat at `JOB_LEASE_MS / 3` for as long as
+the handler runs, cleared in a `finally` so a throwing handler stops extending its own
+lease.
+
+The heartbeat lives in `apps/api/src/jobs.ts` because it owns a persistent timer, which is
+local-only. The queue _semantics_ are shared.
+
+### What stayed local, and why
+
+`enqueueJob` is **not** on the port. It is a write with no hosted caller — hosted mutations
+are all refused — and its call sites sit inside a synchronous ingestion path
+(`upsertContentFromNormalized`), so an async version would have cascaded through three
+local-only modules for no reachable benefit. `stableDedupeKey` stays with it: it hashes
+with `node:crypto`, and a Web Crypto equivalent would be asynchronous _and_ would change
+every existing dedupe key. When a hosted tick needs to enqueue, both move.
+
+### A shim fidelity fix this forced
+
+`tryClaim` reads the driver's changed-row count. The D1 shim previously returned an empty
+`meta`, which would have made every hosted claim look like a loss. It now reports
+`better-sqlite3`'s real `changes`. The shim's caveats are otherwise unchanged — see
+`testing/d1-shim.ts`.

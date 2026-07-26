@@ -10,6 +10,7 @@ import {
   type ContentReadRepository,
   type CreatorReadRepository,
   type InterventionReadRepository,
+  type JobRepository,
   type ReviewRepository,
   type ReviewTaskDto,
 } from '@healthspan/core';
@@ -441,6 +442,43 @@ function memoryInterventionRepository(): InterventionReadRepository {
   };
 }
 
+/**
+ * In-memory job port. Read-only: the hosted app exposes no job mutation, so the claim and
+ * completion methods reject rather than pretending to work.
+ */
+function memoryJobRepository(): JobRepository {
+  const reject = () => Promise.reject(new Error('hosted job mutations are not exposed'));
+  const JOB = {
+    id: 'job-1',
+    kind: 'intelligence',
+    status: 'queued',
+    priority: 100,
+    payloadJson: '{}',
+    dedupeKey: 'dedupe-1',
+    availableAt: Date.UTC(2026, 0, 1),
+    claimedAt: null,
+    leaseExpiresAt: null,
+    attemptCount: 0,
+    maxAttempts: 3,
+    lastError: null,
+    parentJobId: null,
+    relatedRunId: null,
+    createdAt: Date.UTC(2026, 0, 1),
+    startedAt: null,
+    completedAt: null,
+  };
+  return {
+    getJob: (id) => Promise.resolve(id === 'job-1' ? JOB : null),
+    listJobs: () => Promise.resolve([JOB]),
+    recoverExpiredLeases: reject,
+    listClaimCandidates: () => Promise.resolve([]),
+    tryClaim: reject,
+    renewLease: reject,
+    completeJob: reject,
+    requeue: reject,
+  };
+}
+
 function bound() {
   return createSitesApp({
     createRepositories: () => ({
@@ -448,6 +486,7 @@ function bound() {
       content: memoryContentRepository(),
       creator: memoryCreatorRepository(),
       intervention: memoryInterventionRepository(),
+      job: memoryJobRepository(),
       review: memoryReviewRepository(),
     }),
   });
@@ -848,6 +887,23 @@ describe('sites entrypoint — interventions through the shared port', () => {
     });
     expect(res.status).toBe(503);
     expect((await res.json()).capability).toBe('intervention');
+  });
+});
+
+describe('sites entrypoint — jobs', () => {
+  it('serves the job list and a single job', async () => {
+    const list = await bound().fetch(get('/api/jobs'), CONFIGURED);
+    expect((await list.json()).jobs[0]).toMatchObject({ id: 'job-1', status: 'queued' });
+    const one = await bound().fetch(get('/api/jobs/job-1'), CONFIGURED);
+    expect((await one.json()).job.id).toBe('job-1');
+    const missing = await bound().fetch(get('/api/jobs/nope'), CONFIGURED);
+    expect(missing.status).toBe(404);
+  });
+
+  it('refuses rather than returning an empty list when unbound', async () => {
+    const res = await createSitesApp().fetch(get('/api/jobs'), { ...CONFIGURED, DB: undefined });
+    expect(res.status).toBe(503);
+    expect((await res.json()).capability).toBe('job');
   });
 });
 

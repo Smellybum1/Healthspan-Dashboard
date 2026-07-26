@@ -5,7 +5,9 @@ import {
   stripForbiddenExportFields,
 } from './safe-response.js';
 import { JOB_PRIORITY } from './job-priorities.js';
-import { claimNextJob, enqueueJob, completeJob } from './jobs.js';
+import { enqueueJob } from './jobs.js';
+import { claimNextJob, completeJob } from '@healthspan/runtime';
+import { createLocalJobRepository } from '@healthspan/db';
 import { openDatabase, closeDatabase } from '@healthspan/db';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -49,7 +51,7 @@ describe('safe-response export guards', () => {
 });
 
 describe('job leases and compliance priority', () => {
-  it('claims compliance jobs before ordinary platform sync', () => {
+  it('claims compliance jobs before ordinary platform sync', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'hs-jobs-'));
     process.env.HEALTHSPAN_DATA_DIR = dir;
     process.env.HEALTHSPAN_ALLOW_RELATIVE_DATA_DIR = '1';
@@ -67,12 +69,15 @@ describe('job leases and compliance priority', () => {
         dedupeKey: 'comp-1',
         priority: JOB_PRIORITY.COMPLIANCE,
       });
-      const first = claimNextJob(db);
+      // Enqueue stays synchronous and local; claiming goes through the shared port so
+      // this exercises the same atomic claim both runtimes use.
+      const repo = createLocalJobRepository(db);
+      const first = await claimNextJob(repo);
       expect(first?.kind).toBe('run_x_batch_compliance');
-      completeJob(db, first!.id, 'succeeded');
-      const second = claimNextJob(db);
+      await completeJob(repo, first!.id, 'succeeded');
+      const second = await claimNextJob(repo);
       expect(second?.kind).toBe('sync_youtube_channel');
-      completeJob(db, second!.id, 'succeeded');
+      await completeJob(repo, second!.id, 'succeeded');
     } finally {
       closeDatabase(sqlite);
       rmSync(dir, { recursive: true, force: true });

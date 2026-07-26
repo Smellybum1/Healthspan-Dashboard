@@ -30,6 +30,7 @@ import {
   compareInterventions,
   getAssessment,
   getCreatorDetail,
+  getJob,
   getStoredDossier,
   getIntelligenceRun,
   getLiveClaim,
@@ -42,6 +43,7 @@ import {
   listCreators,
   listEntityResolutionTasks,
   listIdentityTasks,
+  listJobs,
   listInterventionEntities,
   listRegulatoryAssertions,
   listRegulatoryHistory,
@@ -266,6 +268,34 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
     const dossier = await getStoredDossier(repo, c.req.param('id'));
     if (!dossier) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...dossier });
+  });
+
+  app.get('/api/jobs', async (c) => {
+    const repo = c.get('runtime').repositories.job;
+    if (!repo) return unbound(c, 'job');
+    const jobs = await listJobs(repo);
+    return c.json({
+      dataMode: 'live',
+      jobs: jobs.map((j) => ({
+        id: j.id,
+        kind: j.kind,
+        status: j.status,
+        priority: j.priority,
+        attemptCount: j.attemptCount,
+        maxAttempts: j.maxAttempts,
+        lastError: j.lastError,
+        createdAt: new Date(j.createdAt).toISOString(),
+        completedAt: j.completedAt ? new Date(j.completedAt).toISOString() : null,
+      })),
+    });
+  });
+
+  app.get('/api/jobs/:id', async (c) => {
+    const repo = c.get('runtime').repositories.job;
+    if (!repo) return unbound(c, 'job');
+    const job = await getJob(repo, c.req.param('id'));
+    if (!job) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', job });
   });
 
   app.get('/api/interventions/compare', async (c) => {

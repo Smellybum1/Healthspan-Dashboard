@@ -62,7 +62,8 @@ import {
   retentionPreview,
 } from './operations-panels.js';
 import { storageUsage } from './backup-service.js';
-import { listJobs } from './jobs.js';
+import { listJobs } from '@healthspan/runtime';
+import type { JobRepository } from '@healthspan/core';
 import { APP_VERSION, SCHEMA_VERSION, getIntegritySession } from '@healthspan/operations';
 
 type LiveCtx = {
@@ -80,6 +81,7 @@ export function registerM6RemediationRoutes(
     live: LiveCtx;
     currentMode: () => 'live' | 'demo';
     scheduler: { getStatus: () => unknown };
+    jobRepo: JobRepository;
   },
 ) {
   const { live, currentMode, scheduler } = opts;
@@ -608,7 +610,7 @@ export function registerM6RemediationRoutes(
   });
 
   // —— Operations ——
-  app.get('/api/operations', (c) => {
+  app.get('/api/operations', async (c) => {
     return c.json({
       dataMode: currentMode(),
       panels: operationsPanels({
@@ -617,7 +619,7 @@ export function registerM6RemediationRoutes(
         dataDir: live.paths.dataDir,
         dataMode: currentMode(),
         schedulerStatus: scheduler.getStatus(),
-        jobs: listJobs(live.db).slice(0, 20),
+        jobs: (await listJobs(opts.jobRepo)).slice(0, 20),
       }),
     });
   });

@@ -40,14 +40,7 @@ import {
 } from '@healthspan/db';
 import { runIngestion } from './ingest.js';
 import { assertAdminMutationAllowed, warnIfRemoteAdminEnabled } from './admin-guard.js';
-import {
-  enqueueJob,
-  getJob,
-  listJobs,
-  startJobWorker,
-  stableDedupeKey,
-  JOB_PRIORITY,
-} from './jobs.js';
+import { enqueueJob, startJobWorker, stableDedupeKey, JOB_PRIORITY } from './jobs.js';
 import { createLocalScheduler } from './local-scheduler.js';
 import { createPlatformScheduler } from './platform-scheduler.js';
 import { buildSafeCreatorExportBundle, stripForbiddenExportFields } from './safe-response.js';
@@ -71,8 +64,10 @@ import {
   listEntityResolutionTasks,
   assembleDossier,
   compareInterventions,
+  getJob,
   getDossierContext,
   listInterventionEntities,
+  listJobs,
   listRegulatoryAssertions,
   listRegulatoryHistory,
   listRegulatoryProducts,
@@ -261,7 +256,7 @@ export function createApp() {
   void platformScheduler.onStartupCatchup();
 
   const worker = startJobWorker({
-    db: live.db,
+    repo: repositories.job,
     enabled: process.env.HEALTHSPAN_JOB_WORKER_ENABLED !== 'false',
     handler: async (job) => {
       if (job.kind === 'ingestion') {
@@ -1044,9 +1039,9 @@ export function createApp() {
     );
   });
 
-  app.get('/api/jobs', (c) => {
+  app.get('/api/jobs', async (c) => {
     return c.json({
-      jobs: listJobs(live.db).map((j) => ({
+      jobs: (await listJobs(repositories.job)).map((j) => ({
         id: j.id,
         kind: j.kind,
         status: j.status,
@@ -1060,8 +1055,8 @@ export function createApp() {
     });
   });
 
-  app.get('/api/jobs/:id', (c) => {
-    const job = getJob(live.db, c.req.param('id'));
+  app.get('/api/jobs/:id', async (c) => {
+    const job = await getJob(repositories.job, c.req.param('id'));
     if (!job) return c.json({ error: 'Not found' }, 404);
     return c.json({
       id: job.id,
@@ -2336,7 +2331,12 @@ export function createApp() {
   });
 
   // —— M6 personalisation / ops (Live SQLite only) ——
-  registerM6RemediationRoutes(app, { live, currentMode, scheduler });
+  registerM6RemediationRoutes(app, {
+    live,
+    currentMode,
+    scheduler,
+    jobRepo: repositories.job,
+  });
 
   app.get('/api/profile', (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', profile: null });

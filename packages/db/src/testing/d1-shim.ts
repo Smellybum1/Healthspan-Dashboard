@@ -63,10 +63,11 @@ class ShimPreparedStatement implements D1PreparedStatement {
 
   async all<T = unknown>(): Promise<D1Result<T>> {
     const stmt = this.prepared();
-    const results = (
-      stmt.reader ? stmt.all(...this.params) : (stmt.run(...this.params), [])
-    ) as T[];
-    return { results, success: true, meta: EMPTY_META };
+    if (!stmt.reader) {
+      const info = stmt.run(...this.params);
+      return { results: [], success: true, meta: { changes: info.changes } };
+    }
+    return { results: stmt.all(...this.params) as T[], success: true, meta: EMPTY_META };
   }
 
   async raw<T = unknown[]>(): Promise<T[]> {
@@ -94,8 +95,10 @@ class ShimPreparedStatement implements D1PreparedStatement {
     if (stmt.reader) {
       return { results: stmt.all(...this.params) as T[], success: true, meta: EMPTY_META };
     }
-    stmt.run(...this.params);
-    return { results: [], success: true, meta: EMPTY_META };
+    // `changes` is not decoration: the conditional job claim reads it to decide whether
+    // this caller won the race, so the shim has to report the real count.
+    const info = stmt.run(...this.params);
+    return { results: [], success: true, meta: { changes: info.changes } };
   }
 }
 
