@@ -5,6 +5,23 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const shotDir = path.resolve(__dirname, '../../../docs/milestones/screenshots');
 
+/**
+ * Capture desktop-named evidence from the desktop project only.
+ *
+ * Both Playwright projects execute these specs, and every desktop-named screenshot
+ * was previously written by both. The mobile project runs last, so it silently
+ * replaced each desktop capture with a 375px one — which is why no desktop-width
+ * evidence existed and every mobile/desktop pair was byte-identical.
+ */
+async function captureDesktop(
+  page: import('@playwright/test').Page,
+  isMobile: boolean | undefined,
+  file: string,
+) {
+  if (isMobile) return;
+  await page.screenshot({ path: path.join(shotDir, file), fullPage: true });
+}
+
 async function switchLive(page: import('@playwright/test').Page) {
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
@@ -20,7 +37,7 @@ async function switchDemo(page: import('@playwright/test').Page) {
 }
 
 test.describe('M6 surfaces (demo-safe routes)', () => {
-  test('routes are reachable and capture screenshots', async ({ page }) => {
+  test('routes are reachable and capture screenshots', async ({ page, isMobile }) => {
     for (const [route, file] of [
       ['/', 'm6-today.png'],
       ['/watchlists', 'm6-watchlists.png'],
@@ -33,8 +50,10 @@ test.describe('M6 surfaces (demo-safe routes)', () => {
       ['/settings/personalisation', 'm6-personalisation-migration.png'],
     ] as const) {
       await page.goto(route);
+      // Reachability is asserted on both projects; only the desktop project owns
+      // the desktop-named evidence.
       await expect(page.getByRole('heading').first()).toBeVisible();
-      await page.screenshot({ path: path.join(shotDir, file), fullPage: true });
+      await captureDesktop(page, isMobile, file);
     }
   });
 
@@ -87,7 +106,7 @@ test.describe('M6 Live mutations', () => {
     }
   });
 
-  test('saved search builder run and history', async ({ page }) => {
+  test('saved search builder run and history', async ({ page, isMobile }) => {
     await switchLive(page);
     await page.goto('/saved-searches');
     await expect(page.getByRole('heading', { name: /Saved Searches/i })).toBeVisible();
@@ -105,10 +124,7 @@ test.describe('M6 Live mutations', () => {
     }
     await page.getByRole('button', { name: /^Save search$/i }).click();
     await expect(page.getByText(name)).toBeVisible({ timeout: 15_000 });
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-saved-search-builder.png'),
-      fullPage: true,
-    });
+    await captureDesktop(page, isMobile, 'm6-saved-search-builder.png');
     const runBtn = page.getByRole('button', { name: /^Run$/i }).first();
     if (await runBtn.isVisible().catch(() => false)) {
       await runBtn.click();
@@ -116,14 +132,11 @@ test.describe('M6 Live mutations', () => {
     const histBtn = page.getByRole('button', { name: /History/i }).first();
     if (await histBtn.isVisible().catch(() => false)) {
       await histBtn.click();
-      await page.screenshot({
-        path: path.join(shotDir, 'm6-saved-search-history.png'),
-        fullPage: true,
-      });
+      await captureDesktop(page, isMobile, 'm6-saved-search-history.png');
     }
   });
 
-  test('alert rules and alert centre actions', async ({ page }) => {
+  test('alert rules and alert centre actions', async ({ page, isMobile }) => {
     await switchLive(page);
     await page.goto('/settings/alerts');
     await expect(page.getByRole('heading', { name: /Alert/i })).toBeVisible();
@@ -141,89 +154,62 @@ test.describe('M6 Live mutations', () => {
         .first()
         .click();
     }
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-alert-rule-settings.png'),
-      fullPage: true,
-    });
+    await captureDesktop(page, isMobile, 'm6-alert-rule-settings.png');
     await page.goto('/alerts');
     await expect(page.getByRole('heading', { name: /Alert Centre/i })).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm6-alert-centre.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm6-alert-centre.png');
   });
 
-  test('briefs generate export settings', async ({ page }) => {
+  test('briefs generate export settings', async ({ page, isMobile }) => {
     await switchLive(page);
     await page.goto('/briefs');
     await expect(page.getByRole('heading', { name: /Brief/i })).toBeVisible();
     const gen = page.getByRole('button', { name: /Generate|Daily|Run/i }).first();
     if (await gen.isVisible().catch(() => false)) await gen.click();
-    await page.screenshot({ path: path.join(shotDir, 'm6-daily-brief.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm6-daily-brief.png');
     await page.goto('/settings/briefings');
     await expect(page.getByRole('heading', { name: /Brief/i })).toBeVisible();
   });
 
-  test('backup prune retention and operations panels', async ({ page }) => {
+  test('backup prune retention and operations panels', async ({ page, isMobile }) => {
     await switchLive(page);
     await page.goto('/settings/backup');
     await expect(page.getByRole('heading', { name: /Backup/i })).toBeVisible();
     const prune = page.getByRole('button', { name: /Prune preview/i }).first();
     if (await prune.isVisible().catch(() => false)) {
       await prune.click();
-      await page.screenshot({ path: path.join(shotDir, 'm6-prune-preview.png'), fullPage: true });
+      await captureDesktop(page, isMobile, 'm6-prune-preview.png');
     }
     const retention = page.getByRole('button', { name: /Retention preview/i }).first();
     if (await retention.isVisible().catch(() => false)) {
       await retention.click();
-      await page.screenshot({
-        path: path.join(shotDir, 'm6-retention-preview.png'),
-        fullPage: true,
-      });
+      await captureDesktop(page, isMobile, 'm6-retention-preview.png');
     }
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-backup-verification.png'),
-      fullPage: true,
-    });
+    await captureDesktop(page, isMobile, 'm6-backup-verification.png');
     await page.goto('/operations');
     await expect(page.getByRole('heading', { name: /Operations/i })).toBeVisible();
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-operations-health.png'),
-      fullPage: true,
-    });
+    await captureDesktop(page, isMobile, 'm6-operations-health.png');
     const check = page.getByRole('button', { name: /Database check|DB check|Check/i }).first();
     if (await check.isVisible().catch(() => false)) await check.click();
   });
 
-  test('privacy notification preference and migration page', async ({ page }) => {
+  test('privacy notification preference and migration page', async ({ page, isMobile }) => {
     await switchLive(page);
     await page.goto('/settings/privacy-security');
     await expect(page.getByRole('heading', { name: /Privacy/i })).toBeVisible();
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-privacy-security-status.png'),
-      fullPage: true,
-    });
+    await captureDesktop(page, isMobile, 'm6-privacy-security-status.png');
     await page.goto('/settings/personalisation');
     await expect(page.getByRole('heading', { name: /Personalisation/i })).toBeVisible();
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-legacy-migration-preview.png'),
-      fullPage: true,
-    });
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-personalisation-export-import.png'),
-      fullPage: true,
-    });
+    await captureDesktop(page, isMobile, 'm6-legacy-migration-preview.png');
+    await captureDesktop(page, isMobile, 'm6-personalisation-export-import.png');
   });
 
-  test('today personalised sections reachable', async ({ page }) => {
+  test('today personalised sections reachable', async ({ page, isMobile }) => {
     await switchLive(page);
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /Today/i })).toBeVisible();
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-since-last-visit.png'),
-      fullPage: true,
-    });
-    await page.screenshot({
-      path: path.join(shotDir, 'm6-reading-mute-actions.png'),
-      fullPage: true,
-    });
+    await captureDesktop(page, isMobile, 'm6-since-last-visit.png');
+    await captureDesktop(page, isMobile, 'm6-reading-mute-actions.png');
   });
 });
 

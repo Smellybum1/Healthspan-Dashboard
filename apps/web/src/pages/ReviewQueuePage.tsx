@@ -94,12 +94,12 @@ export function ReviewQueuePage() {
         title="Review Queue"
         description="Intelligence extractions and creator-alignment candidate findings. Adverse creator findings require human accept before Live profile prominence. No person trust scores."
       />
-      {intel.error ? <p className="text-rose-300">{intel.error}</p> : null}
-      {creator.error ? <p className="text-rose-300">{creator.error}</p> : null}
-      {message ? <p className="text-sm text-teal-300">{message}</p> : null}
+      {intel.error ? <p className="text-[var(--tone-flag-fg)]">{intel.error}</p> : null}
+      {creator.error ? <p className="text-[var(--tone-flag-fg)]">{creator.error}</p> : null}
+      {message ? <p className="text-sm text-[var(--tone-ok-fg)]">{message}</p> : null}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Creator alignment findings</h2>
+        <h2 className="t-section">Creator alignment findings</h2>
         {(creator.data?.tasks ?? []).length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No open creator alignment review tasks.</p>
         ) : (
@@ -146,7 +146,7 @@ export function ReviewQueuePage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Intelligence review tasks</h2>
+        <h2 className="t-section">Intelligence review tasks</h2>
         {(intel.data?.tasks ?? []).length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No open Live intelligence review tasks.</p>
         ) : (

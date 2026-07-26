@@ -27,7 +27,7 @@ export function CreatorClaimsPage() {
         title="Creator Claims"
         description="Atomic creator claims from user-supplied or authorised documents. Alignment is multi-dimensional; no creator worth scores."
       />
-      {error ? <p className="text-rose-300">{error}</p> : null}
+      {error ? <p className="text-[var(--tone-flag-fg)]">{error}</p> : null}
       {(data?.claims ?? []).length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No Live creator claims yet.</p>
       ) : (

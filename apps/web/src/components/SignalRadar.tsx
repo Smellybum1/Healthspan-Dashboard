@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CartesianGrid,
-  Cell,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -25,6 +24,29 @@ const SHAPE_FILTERS = [
 ] as const;
 
 type ShapeFilter = (typeof SHAPE_FILTERS)[number];
+
+/**
+ * Scatter mark. Safety state is encoded as shape (diamond) as well as colour, so a
+ * flagged point is still distinguishable in greyscale, in print, and for readers with
+ * a colour-vision deficiency — colour alone is never the signal.
+ */
+function RadarMark(props: { cx?: number; cy?: number; payload?: { safetyConcern?: boolean } }) {
+  const { cx = 0, cy = 0, payload } = props;
+  const concern = Boolean(payload?.safetyConcern);
+  const tone = concern ? 'var(--tone-flag)' : 'var(--tone-ok)';
+  if (concern) {
+    const r = 6;
+    return (
+      <path
+        d={`M ${cx} ${cy - r} L ${cx + r} ${cy} L ${cx} ${cy + r} L ${cx - r} ${cy} Z`}
+        fill={tone}
+        fillOpacity={0.75}
+        stroke={tone}
+      />
+    );
+  }
+  return <circle cx={cx} cy={cy} r={5} fill={tone} fillOpacity={0.7} stroke={tone} />;
+}
 
 export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
   const [shape, setShape] = useState<ShapeFilter>('all');
@@ -49,11 +71,12 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
           <button
             key={value}
             type="button"
+            aria-pressed={shape === value}
             onClick={() => setShape(value)}
             className={[
               'rounded-md border px-2.5 py-1 text-xs',
               shape === value
-                ? 'border-teal-500/50 bg-teal-500/15 text-[var(--fg)]'
+                ? 'border-[var(--tone-ok-ring)] bg-[var(--tone-ok-bg)] font-medium text-[var(--fg)]'
                 : 'border-[var(--border)] text-[var(--muted)]',
             ].join(' ')}
           >
@@ -125,10 +148,12 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
                       truth, or efficacy
                     </p>
                     {p.stale ? (
-                      <p className="text-amber-300">Intelligence stale — awaiting reassessment</p>
+                      <p className="text-[var(--tone-watch-fg)]">
+                        Intelligence stale — awaiting reassessment
+                      </p>
                     ) : null}
                     {p.safetyConcern ? (
-                      <p className="text-rose-300">Safety/regulatory concern</p>
+                      <p className="text-[var(--tone-flag-fg)]">Safety/regulatory concern</p>
                     ) : null}
                   </div>
                 );
@@ -136,18 +161,11 @@ export function SignalRadar({ points }: { points: SignalRadarPoint[] }) {
             />
             <Scatter
               data={data}
+              shape={RadarMark}
               onClick={(entry) => setSelected(entry as unknown as SignalRadarPoint)}
-            >
-              {data.map((entry) => (
-                <Cell
-                  key={entry.id}
-                  fill={
-                    entry.safetyConcern ? 'rgba(251, 113, 133, 0.75)' : 'rgba(45, 212, 191, 0.7)'
-                  }
-                  stroke={entry.safetyConcern ? '#fb7185' : '#2dd4bf'}
-                />
-              ))}
-            </Scatter>
+            />
+            {/* Marks carry safety state as shape as well as colour, so the distinction
+                survives greyscale and colour-vision deficiency. */}
           </ScatterChart>
         </ResponsiveContainer>
       </div>

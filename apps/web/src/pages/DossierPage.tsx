@@ -36,7 +36,7 @@ export function DossierPage() {
   }
 
   if (error || !data) {
-    return <p className="text-rose-300">{error ?? 'Dossier not found'}</p>;
+    return <p className="text-[var(--tone-flag-fg)]">{error ?? 'Dossier not found'}</p>;
   }
 
   const entity = data.entity;
@@ -50,9 +50,7 @@ export function DossierPage() {
       <p className="text-xs text-[var(--muted)]">{String(data.summary.provenanceNote ?? '')}</p>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Aliases
-        </h2>
+        <h2 className="mb-2 t-label">Aliases</h2>
         <ul className="flex flex-wrap gap-2 text-sm">
           {data.aliases.map((a) => (
             <li
@@ -66,7 +64,7 @@ export function DossierPage() {
       </section>
 
       {data.summary.peptide ? (
-        <section className="rounded border border-amber-500/40 px-3 py-2 text-sm">
+        <section className="rounded border border-[var(--tone-watch-ring)] px-3 py-2 text-sm">
           <p className="font-medium">Peptide identity</p>
           <p>
             {String((data.summary.peptide as Record<string, unknown>).classification)} · sequence{' '}
@@ -83,9 +81,7 @@ export function DossierPage() {
       ) : null}
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Evidence map (M3-linked)
-        </h2>
+        <h2 className="mb-2 t-label">Evidence map (M3-linked)</h2>
         <p className="mb-2 text-sm text-[var(--muted)]">
           {String(data.summary.linkedAnalysisCount)} analyses ·{' '}
           {String(data.summary.linkedClaimCount)} claims · {String(data.summary.linkedContentCount)}{' '}
@@ -110,9 +106,7 @@ export function DossierPage() {
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Regulatory matrix
-        </h2>
+        <h2 className="mb-2 t-label">Regulatory matrix</h2>
         <p className="text-sm text-[var(--muted)]">{String(data.regulatoryMatrix.caveat)}</p>
         <ul className="mt-2 space-y-1 text-sm">
           {(
@@ -141,9 +135,7 @@ export function DossierPage() {
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Trial portfolio
-        </h2>
+        <h2 className="mb-2 t-label">Trial portfolio</h2>
         <p className="mb-2 text-sm text-[var(--muted)]">
           {String(
             (data as { trialPortfolio?: { caveat?: string; count?: number } }).trialPortfolio
@@ -170,9 +162,7 @@ export function DossierPage() {
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Safety
-        </h2>
+        <h2 className="mb-2 t-label">Safety</h2>
         <p className="text-sm text-[var(--muted)]">
           {String((data.safety.spontaneousReports as Record<string, unknown>).caveat)}
         </p>
@@ -188,7 +178,7 @@ export function DossierPage() {
               ).map((s, i) => (
                 <li key={i} className="rounded border border-[var(--border)] px-2 py-1">
                   {String(s.quarter)} · {String(s.productOrClass)} · {String(s.signalText)}
-                  <span className="block text-xs text-amber-300">
+                  <span className="block text-xs text-[var(--tone-watch-fg)]">
                     Not proven causality · not incidence
                   </span>
                 </li>
@@ -199,7 +189,7 @@ export function DossierPage() {
       </section>
 
       {data.openResolutionTasks > 0 ? (
-        <p className="text-sm text-amber-300">
+        <p className="text-sm text-[var(--tone-watch-fg)]">
           {data.openResolutionTasks} open entity-resolution tasks.{' '}
           <Link className="underline" to="/entity-resolution">
             Open queue

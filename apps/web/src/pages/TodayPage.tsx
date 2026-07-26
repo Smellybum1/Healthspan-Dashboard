@@ -196,7 +196,7 @@ export function TodayPage() {
   }
 
   if (error || !data) {
-    return <p className="text-rose-300">Failed to load dashboard: {error}</p>;
+    return <p className="text-[var(--tone-flag-fg)]">Failed to load dashboard: {error}</p>;
   }
 
   const isLive = data.dataMode === 'live' || data.dataOrigin === 'live';
@@ -261,7 +261,11 @@ export function TodayPage() {
 
       {isLive ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          <SectionCard title="Urgent alerts" description="High-priority items from Alert Centre.">
+          <SectionCard
+            title="Urgent alerts"
+            description="High-priority items from Alert Centre."
+            emphasis="primary"
+          >
             {(sections.urgentAlerts ?? []).length === 0 ? (
               <p className="text-sm text-[var(--muted)]">No urgent alerts.</p>
             ) : (
@@ -450,6 +454,7 @@ export function TodayPage() {
       ) : null}
 
       <SectionCard
+        emphasis="primary"
         title="What changed since last visit"
         description={
           isLive
@@ -556,7 +561,9 @@ export function TodayPage() {
                     ) : null}
                   </div>
                   {'unapprovedWarning' in item && item.unapprovedWarning ? (
-                    <span className="shrink-0 text-[10px] uppercase text-rose-300">Unapproved</span>
+                    <span className="shrink-0 text-[10px] uppercase text-[var(--tone-flag-fg)]">
+                      Unapproved
+                    </span>
                   ) : null}
                 </li>
               ))}
@@ -669,7 +676,7 @@ export function TodayPage() {
           )}
         </SectionCard>
 
-        <SectionCard title="Needs Review">
+        <SectionCard title="Needs Review" emphasis="utility">
           {isLive ? (
             <p className="text-sm text-[var(--muted)]">
               Review-queue automation arrives with later intelligence milestones.
@@ -690,7 +697,7 @@ export function TodayPage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="Source Health summary">
+      <SectionCard title="Source Health summary" emphasis="utility">
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {data.sources.map((source) => (
             <li

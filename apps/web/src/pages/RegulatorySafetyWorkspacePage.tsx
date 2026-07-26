@@ -174,7 +174,7 @@ export function RegulatorySafetyWorkspacePage() {
         ))}
       </div>
 
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

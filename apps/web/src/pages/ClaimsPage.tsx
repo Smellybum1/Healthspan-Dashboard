@@ -32,7 +32,7 @@ export function ClaimsPage() {
         title="Claims workspace"
         description="Live atomic claims with provenance spans. Demo mode does not invent Live claims."
       />
-      {error ? <p className="text-rose-300">{error}</p> : null}
+      {error ? <p className="text-[var(--tone-flag-fg)]">{error}</p> : null}
       {data?.note ? <p className="text-sm text-[var(--muted)]">{data.note}</p> : null}
       {(data?.items ?? []).length === 0 ? (
         <p className="text-sm text-[var(--muted)]">

@@ -111,7 +111,7 @@ export function CatalogPage({
           <SkeletonBlock className="h-16 w-full" />
         </div>
       ) : error ? (
-        <p className="text-rose-300">{error}</p>
+        <p className="text-[var(--tone-flag-fg)]">{error}</p>
       ) : items.length === 0 && data?.dataOrigin === 'live' && liveEmptyHint ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-sm text-[var(--muted)]">
           {liveEmptyHint}

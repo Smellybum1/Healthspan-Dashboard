@@ -51,8 +51,8 @@ export function EntityResolutionPage() {
         title="Entity Resolution Queue"
         description="Ambiguous aliases, collisions, and non-exact identity matches. Auto-merge is prohibited for fuzzy/homonym/AI candidates. Decisions are append-only."
       />
-      {error ? <p className="text-rose-300">{error}</p> : null}
-      {message ? <p className="text-sm text-teal-300">{message}</p> : null}
+      {error ? <p className="text-[var(--tone-flag-fg)]">{error}</p> : null}
+      {message ? <p className="text-sm text-[var(--tone-ok-fg)]">{message}</p> : null}
       {(data?.tasks ?? []).length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No open entity-resolution tasks.</p>
       ) : (

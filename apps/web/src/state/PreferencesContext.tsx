@@ -36,6 +36,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     savePreferences(prefs);
     document.documentElement.dataset.theme = prefs.theme;
+    document.documentElement.dataset.density = prefs.denserLayout ? 'dense' : 'comfortable';
   }, [prefs]);
 
   const updatePrefs = useCallback((patch: Partial<Preferences>) => {

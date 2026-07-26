@@ -90,8 +90,8 @@ export function SettingsPage() {
         </Link>
       </nav>
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Data mode</h2>
+      <section className="card space-y-3">
+        <h2 className="t-section">Data mode</h2>
         <p className="text-sm text-[var(--muted)]">
           Live uses SQLite-ingested primary sources. Demo preserves the Milestone 1 showcase. Modes
           never mix in the same response.
@@ -153,8 +153,8 @@ export function SettingsPage() {
         </p>
       </section>
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Appearance</h2>
+      <section className="card space-y-3">
+        <h2 className="t-section">Appearance</h2>
         <div className="flex gap-2">
           <button
             type="button"
@@ -183,8 +183,8 @@ export function SettingsPage() {
         </label>
       </section>
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Export / import preferences</h2>
+      <section className="card space-y-3">
+        <h2 className="t-section">Export / import preferences</h2>
         <button
           type="button"
           onClick={onExport}
@@ -196,6 +196,7 @@ export function SettingsPage() {
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
           placeholder="Paste preferences JSON…"
+          aria-label="Preferences JSON to import"
           className="min-h-28 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-sm"
         />
         <button
