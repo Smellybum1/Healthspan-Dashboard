@@ -69,8 +69,8 @@ export function DetailPage() {
         <p className="text-sm text-[var(--muted)]">{data.assessmentStatus}</p>
       ) : null}
       {'liveAnalysis' in data && data.liveAnalysis ? (
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-          <h2 className="text-sm font-semibold">Live evidence profile</h2>
+        <section className="card space-y-2">
+          <h2 className="t-section">Live evidence profile</h2>
           <p className="text-xs text-[var(--muted)]">
             Deterministic dimensions only — no composite longevity score.
           </p>
@@ -118,8 +118,8 @@ export function DetailPage() {
         </section>
       ) : null}
       {'liveClaims' in data && Array.isArray(data.liveClaims) && data.liveClaims.length > 0 ? (
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-          <h2 className="text-sm font-semibold">Live claims</h2>
+        <section className="card space-y-2">
+          <h2 className="t-section">Live claims</h2>
           <ul className="space-y-2">
             {(data.liveClaims as Array<Record<string, unknown>>).map((claim) => (
               <li
@@ -148,8 +148,8 @@ export function DetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-4">
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <h2 className="text-sm font-semibold">Overview</h2>
+          <section className="card">
+            <h2 className="t-section">Overview</h2>
             <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-xs text-[var(--muted)]">Type</dt>
@@ -289,8 +289,8 @@ export function DetailPage() {
           </section>
 
           {item.relatedPaperIds?.length ? (
-            <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm">
-              <h2 className="text-sm font-semibold">Related papers</h2>
+            <section className="card text-sm">
+              <h2 className="t-section">Related papers</h2>
               <ul className="mt-2 list-disc pl-5">
                 {item.relatedPaperIds.map((paperId) => (
                   <li key={paperId}>
@@ -304,8 +304,8 @@ export function DetailPage() {
           ) : null}
 
           {item.relatedTrialIds?.length ? (
-            <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm">
-              <h2 className="text-sm font-semibold">Related trials</h2>
+            <section className="card text-sm">
+              <h2 className="t-section">Related trials</h2>
               <ul className="mt-2 list-disc pl-5">
                 {item.relatedTrialIds.map((trialId) => (
                   <li key={trialId}>

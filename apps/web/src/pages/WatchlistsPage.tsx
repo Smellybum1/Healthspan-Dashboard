@@ -57,8 +57,8 @@ export function WatchlistsPage() {
       {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
 
       {mode === 'live' ? (
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          <h2 className="text-sm font-semibold">Named watchlists</h2>
+        <section className="card">
+          <h2 className="t-section">Named watchlists</h2>
           {liveLists.length === 0 ? (
             <p className="mt-2 text-sm text-[var(--muted)]">
               Default “Following” watchlist is created on first Live use.
@@ -77,8 +77,8 @@ export function WatchlistsPage() {
       ) : null}
 
       {mode === 'live' && sinceItems.length > 0 ? (
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          <h2 className="text-sm font-semibold">Since your last visit</h2>
+        <section className="card">
+          <h2 className="t-section">Since your last visit</h2>
           <ul className="mt-2 space-y-1 text-sm">
             {sinceItems.map((item) => (
               <li key={item.id}>{item.title}</li>
@@ -87,8 +87,8 @@ export function WatchlistsPage() {
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <h2 className="text-sm font-semibold">Followed topics</h2>
+      <section className="card">
+        <h2 className="t-section">Followed topics</h2>
         <div className="mt-2 flex flex-wrap gap-2">
           {prefs.topics.map((topic) => (
             <span key={topic} className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs">
@@ -98,9 +98,9 @@ export function WatchlistsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <section className="card">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">
+          <h2 className="t-section">
             {mode === 'demo' ? 'Demo followed items' : 'Browser follow shortcuts'} (
             {prefs.followedIds.length})
           </h2>

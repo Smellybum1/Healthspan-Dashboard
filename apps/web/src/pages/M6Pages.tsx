@@ -223,9 +223,9 @@ function Panel({
   actions?: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+    <section className="card">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="t-section">{title}</h2>
         {actions}
       </div>
       {children}
@@ -981,9 +981,9 @@ function DemoFollowedSection() {
   const { data, loading } = useAsync(() => fetchItems(), []);
   const followed = (data?.items ?? []).filter((item) => prefs.followedIds.includes(item.id));
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+    <section className="card">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Demo followed items ({prefs.followedIds.length})</h2>
+        <h2 className="t-section">Demo followed items ({prefs.followedIds.length})</h2>
       </div>
       {loading ? (
         <SkeletonBlock className="h-24 w-full" />
@@ -1307,12 +1307,9 @@ export function SavedSearchesPage() {
       {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       {mode === 'live' ? (
         <>
-          <form
-            className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
-            onSubmit={(e) => void saveSearch(e)}
-          >
+          <form className="space-y-3 card" onSubmit={(e) => void saveSearch(e)}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold">
+              <h2 className="t-section">
                 {editingId ? 'Edit search (schema v2)' : 'Builder (schema v2)'}
               </h2>
               {editingId ? (
@@ -2697,7 +2694,7 @@ export function OperationsPage() {
         </button>
       </div>
 
-      <details className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <details className="card">
         <summary className="cursor-pointer text-sm font-semibold">Raw diagnostics</summary>
         <pre className="mt-3 overflow-auto text-xs" tabIndex={0}>
           {JSON.stringify(diagRaw ?? overview.data ?? {}, null, 2)}
@@ -3818,11 +3815,8 @@ export function MuteRulesPage() {
       {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       {mode === 'live' ? (
         <>
-          <form
-            className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
-            onSubmit={(e) => void onCreate(e)}
-          >
-            <h2 className="text-sm font-semibold">Create mute</h2>
+          <form className="space-y-3 card" onSubmit={(e) => void onCreate(e)}>
+            <h2 className="t-section">Create mute</h2>
             <div className="grid gap-2 sm:grid-cols-2">
               <select
                 className={inputClass}

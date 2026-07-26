@@ -99,7 +99,7 @@ export function ReviewQueuePage() {
       {message ? <p className="text-sm text-[var(--tone-ok-fg)]">{message}</p> : null}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Creator alignment findings</h2>
+        <h2 className="t-section">Creator alignment findings</h2>
         {(creator.data?.tasks ?? []).length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No open creator alignment review tasks.</p>
         ) : (
@@ -146,7 +146,7 @@ export function ReviewQueuePage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Intelligence review tasks</h2>
+        <h2 className="t-section">Intelligence review tasks</h2>
         {(intel.data?.tasks ?? []).length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No open Live intelligence review tasks.</p>
         ) : (

@@ -64,9 +64,7 @@ export function ComparisonPage() {
       {catalog.error ? <p className="text-[var(--tone-flag-fg)]">{catalog.error}</p> : null}
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Select entities ({selected.length}/4)
-        </h2>
+        <h2 className="mb-2 t-label">Select entities ({selected.length}/4)</h2>
         <ul className="flex flex-wrap gap-2">
           {selectable.map((item) => {
             const on = selected.includes(item.id);
@@ -105,7 +103,7 @@ export function ComparisonPage() {
           </p>
           {compare.data.dimensions.map((dim) => (
             <section key={dim.id} className="rounded-lg border border-[var(--border)] p-3">
-              <h3 className="mb-2 text-sm font-semibold">{dim.label}</h3>
+              <h3 className="mb-2 t-card">{dim.label}</h3>
               <ul className="grid gap-2 md:grid-cols-2">
                 {dim.cells.map((cell) => (
                   <li

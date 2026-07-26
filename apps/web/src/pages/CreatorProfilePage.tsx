@@ -189,8 +189,8 @@ export function CreatorProfilePage() {
             {String(data.identityConfidence)}
           </p>
 
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-            <h2 className="text-sm font-semibold">Monitored accounts</h2>
+          <section className="card space-y-2">
+            <h2 className="t-section">Monitored accounts</h2>
             {accounts.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">
                 No platform accounts yet. Add a YouTube channel ID/URL/@handle or optional X
@@ -240,8 +240,8 @@ export function CreatorProfilePage() {
             </p>
           </section>
 
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-            <h2 className="text-sm font-semibold">YouTube videos (metadata only)</h2>
+          <section className="card space-y-2">
+            <h2 className="t-section">YouTube videos (metadata only)</h2>
             {youtubeVideos.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">
                 No synced video metadata yet. Run Sync YouTube metadata after adding a UC… channel
@@ -277,8 +277,8 @@ export function CreatorProfilePage() {
             )}
           </section>
 
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Documents</h2>
+          <section className="card space-y-3">
+            <h2 className="t-section">Documents</h2>
             <p className="text-xs text-[var(--muted)]">
               Import user-supplied or authorised VTT/SRT/TXT/JSON only. Unofficial caption scrape,
               media download, and speech-to-text are prohibited. YouTube API metadata cannot become
@@ -361,8 +361,8 @@ export function CreatorProfilePage() {
             )}
           </section>
 
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Claims</h2>
+          <section className="card space-y-3">
+            <h2 className="t-section">Claims</h2>
             <form className="space-y-2" onSubmit={(e) => void onCreateManualClaim(e)}>
               <p className="text-xs text-[var(--muted)]">
                 Manual source-linked claim capture. Assess the claim text — never invent trust or
@@ -425,8 +425,8 @@ export function CreatorProfilePage() {
             </Link>
           </section>
 
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-            <h2 className="text-sm font-semibold">Disclosures & monitored-claim recurrence</h2>
+          <section className="card space-y-2">
+            <h2 className="t-section">Disclosures & monitored-claim recurrence</h2>
             {disclosures.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">No explicit disclosures recorded.</p>
             ) : (

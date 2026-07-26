@@ -58,9 +58,9 @@ export function SourceHealthPage() {
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+      <section className="card space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Sources</h2>
+          <h2 className="t-section">Sources</h2>
           <button
             type="button"
             disabled={busy}
@@ -118,8 +118,8 @@ export function SourceHealthPage() {
       </section>
 
       {(sources.data?.feeds?.length ?? 0) > 0 ? (
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-          <h2 className="text-sm font-semibold">TGA feeds</h2>
+        <section className="card space-y-2">
+          <h2 className="t-section">TGA feeds</h2>
           <ul className="space-y-1 text-sm">
             {sources.data?.feeds.map((feed) => (
               <li key={String(feed.id)} className="text-[var(--muted)]">
@@ -131,8 +131,8 @@ export function SourceHealthPage() {
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-        <h2 className="text-sm font-semibold">Recent ingestion runs</h2>
+      <section className="card space-y-2">
+        <h2 className="t-section">Recent ingestion runs</h2>
         {(runs.data?.runs ?? []).length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No runs yet.</p>
         ) : (
@@ -178,9 +178,9 @@ function PlatformPolicyHealth() {
   const audits = (policy.data.audits as Array<Record<string, unknown>> | undefined) ?? [];
 
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+    <section className="card space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Creator platform health</h2>
+        <h2 className="t-section">Creator platform health</h2>
         <button
           type="button"
           className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"

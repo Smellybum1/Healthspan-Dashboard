@@ -125,3 +125,79 @@ a {
 .display {
   font-family: var(--font-display);
 }
+
+/*
+ * Density. `denserLayout` has existed as a stored, toggleable preference since M1
+ * but was never read by any component. It now drives the shared spacing scale.
+ */
+:root {
+  --card-pad: 1rem;
+  --card-gap: 0.75rem;
+}
+
+:root[data-density='dense'] {
+  --card-pad: 0.75rem;
+  --card-gap: 0.5rem;
+}
+
+/*
+ * Type scale.
+ *
+ * Before this, 95.7% of all type was text-sm or text-xs and text-3xl appeared once
+ * in the whole app, so section headings rendered at body size and nothing
+ * established rank. These four steps are the ladder; components reference them by
+ * role rather than picking a size ad hoc.
+ */
+.t-page {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+@media (min-width: 640px) {
+  .t-page {
+    font-size: 2.125rem;
+  }
+}
+
+/* Between page title and section: the rank a primary section heading carries. */
+.t-page-sub {
+  font-size: 1.375rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.t-section {
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.t-card {
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.t-label {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+/* One card definition, so a section does not silently render two ways. */
+.card {
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--card-pad);
+}

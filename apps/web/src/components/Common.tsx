@@ -16,8 +16,8 @@ import { useAsync } from '../hooks/useAsync';
 
 export function AssessmentPanel({ assessment }: { assessment: EvidenceAssessment }) {
   return (
-    <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <h3 className="text-sm font-semibold">Evidence assessment</h3>
+    <div className="space-y-3 card">
+      <h3 className="t-card">Evidence assessment</h3>
       <div className="flex flex-wrap gap-2">
         <EvidenceMaturityBadge maturity={assessment.maturity} />
         <ConfidenceBadge score={assessment.confidenceScore} />
@@ -196,7 +196,7 @@ export function PageHeader({
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="display text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+        <h1 className="t-page">{title}</h1>
         {description ? (
           <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">{description}</p>
         ) : null}

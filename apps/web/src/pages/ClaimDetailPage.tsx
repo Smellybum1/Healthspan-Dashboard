@@ -53,9 +53,7 @@ export function ClaimDetailPage() {
         </p>
       ) : null}
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Provenance spans
-        </h2>
+        <h2 className="mb-2 t-label">Provenance spans</h2>
         <ul className="space-y-2">
           {data.spans.map((span) => (
             <li
@@ -70,9 +68,7 @@ export function ClaimDetailPage() {
       </section>
       {data.relationships.length > 0 ? (
         <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Potential relationships
-          </h2>
+          <h2 className="mb-2 t-label">Potential relationships</h2>
           <ul className="space-y-2 text-sm">
             {data.relationships.map((rel) => (
               <li key={String(rel.id)} className="rounded border border-[var(--border)] px-3 py-2">

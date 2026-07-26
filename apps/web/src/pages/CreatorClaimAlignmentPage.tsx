@@ -61,8 +61,8 @@ export function CreatorClaimAlignmentPage() {
         </Link>
       </p>
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-          <h2 className="text-sm font-semibold">Creator claim</h2>
+        <section className="card space-y-2">
+          <h2 className="t-section">Creator claim</h2>
           <p className="text-sm">{String(claim.data.claimText)}</p>
           <p className="text-xs text-[var(--muted)]">
             {String(claim.data.assertionRole)} · {String(claim.data.claimKind ?? '—')} ·{' '}
@@ -70,9 +70,9 @@ export function CreatorClaimAlignmentPage() {
           </p>
           <p className="text-xs text-[var(--muted)]">{String(alignment.overallLabel ?? '')}</p>
         </section>
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
+        <section className="card space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Linked local evidence</h2>
+            <h2 className="t-section">Linked local evidence</h2>
             <button
               type="button"
               className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs"
@@ -105,8 +105,8 @@ export function CreatorClaimAlignmentPage() {
           )}
         </section>
       </div>
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-        <h2 className="text-sm font-semibold">Alignment dimensions</h2>
+      <section className="card space-y-2">
+        <h2 className="t-section">Alignment dimensions</h2>
         <ul className="grid gap-1 text-xs text-[var(--muted)] sm:grid-cols-2">
           {(alignment.dimensions ?? []).map((d) => (
             <li key={String(d.id)}>

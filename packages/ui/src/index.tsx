@@ -143,22 +143,47 @@ export function DemoBanner({ notice }: { notice: string }) {
   );
 }
 
+/**
+ * Rank a section carries on the page.
+ *
+ * `primary` answers the page's question, `utility` is diagnostics you scan rather
+ * than read. Without this axis every section rendered at identical weight, so a
+ * page of thirteen cards gave the reader no order to work in.
+ */
+export type SectionEmphasis = 'primary' | 'default' | 'utility';
+
 export function SectionCard({
   title,
   description,
   action,
+  emphasis = 'default',
   children,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  emphasis?: SectionEmphasis;
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+    <section
+      className={cn(
+        'card',
+        emphasis === 'primary' && 'border-l-2 border-l-[var(--tone-ok)]',
+        emphasis === 'utility' && 'bg-transparent',
+      )}
+    >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight text-[var(--fg)]">{title}</h2>
+          <h2
+            className={cn(
+              emphasis === 'primary' && 'display t-page-sub text-[var(--fg)]',
+              emphasis === 'default' && 't-section text-[var(--fg)]',
+              emphasis === 'utility' && 't-label',
+            )}
+          >
+            {title}
+          </h2>
           {description ? <p className="mt-1 text-sm text-[var(--muted)]">{description}</p> : null}
         </div>
         {action}
