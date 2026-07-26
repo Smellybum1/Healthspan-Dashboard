@@ -70,6 +70,13 @@ import {
   listCreatorClaims,
   listEntityResolutionTasks,
   listInterventionEntities,
+  listRegulatoryAssertions,
+  listRegulatoryHistory,
+  listRegulatoryProducts,
+  listReportingPatterns,
+  listSafetyItems,
+  listSafetySignals,
+  regulatoryWorkspaceSummary,
   listCreators,
   listRecurrenceSnapshots,
   listReviewDecisions,
@@ -135,17 +142,7 @@ import {
 } from './entity-resolution-service.js';
 import { compareInterventions } from './comparison-service.js';
 import { linkTrialInterventionsToEntities } from './trial-portfolio.js';
-import {
-  listRegulatoryAssertions,
-  listRegulatoryHistory,
-  listRegulatoryProducts,
-  listReportingPatterns,
-  listSafetyItems,
-  listSafetySignals,
-  runRegulatoryRefresh,
-  runSafetyRefresh,
-  workspaceSummary,
-} from './regulatory-safety-service.js';
+import { runRegulatoryRefresh, runSafetyRefresh } from './regulatory-safety-service.js';
 import {
   bootstrapCreatorCatalog,
   importCreatorDocument,
@@ -2040,86 +2037,89 @@ export function createApp() {
     return c.json({ ok: true, ...built });
   });
 
-  app.get('/api/regulatory/products', (c) => {
+  app.get('/api/regulatory/products', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
     return c.json({
       dataMode: 'live',
-      ...listRegulatoryProducts(live.db, {
+      ...(await listRegulatoryProducts(repositories.regulatory, {
         jurisdiction: c.req.query('jurisdiction') ?? undefined,
         authority: c.req.query('authority') ?? undefined,
         limit: c.req.query('limit') ?? undefined,
         offset: c.req.query('offset') ?? undefined,
-      }),
+      })),
     });
   });
 
-  app.get('/api/regulatory/assertions', (c) => {
+  app.get('/api/regulatory/assertions', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
     return c.json({
       dataMode: 'live',
-      ...listRegulatoryAssertions(live.db, {
+      ...(await listRegulatoryAssertions(repositories.regulatory, {
         jurisdiction: c.req.query('jurisdiction') ?? undefined,
         entityId: c.req.query('entityId') ?? undefined,
         limit: c.req.query('limit') ?? undefined,
         offset: c.req.query('offset') ?? undefined,
-      }),
+      })),
     });
   });
 
-  app.get('/api/regulatory/history', (c) => {
+  app.get('/api/regulatory/history', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
     return c.json({
       dataMode: 'live',
-      ...listRegulatoryHistory(live.db, {
+      ...(await listRegulatoryHistory(repositories.regulatory, {
         productId: c.req.query('productId') ?? undefined,
         entityId: c.req.query('entityId') ?? undefined,
         limit: c.req.query('limit') ?? undefined,
         offset: c.req.query('offset') ?? undefined,
-      }),
+      })),
     });
   });
 
-  app.get('/api/safety/items', (c) => {
+  app.get('/api/safety/items', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
     return c.json({
       dataMode: 'live',
-      ...listSafetyItems(live.db, {
+      ...(await listSafetyItems(repositories.regulatory, {
         jurisdiction: c.req.query('jurisdiction') ?? undefined,
         limit: c.req.query('limit') ?? undefined,
         offset: c.req.query('offset') ?? undefined,
-      }),
+      })),
     });
   });
 
-  app.get('/api/safety/signals', (c) => {
+  app.get('/api/safety/signals', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
     return c.json({
       dataMode: 'live',
-      ...listSafetySignals(live.db, {
+      ...(await listSafetySignals(repositories.regulatory, {
         entityId: c.req.query('entityId') ?? undefined,
         limit: c.req.query('limit') ?? undefined,
         offset: c.req.query('offset') ?? undefined,
-      }),
+      })),
     });
   });
 
-  app.get('/api/safety/reporting-patterns', (c) => {
+  app.get('/api/safety/reporting-patterns', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', items: [], total: 0 });
     return c.json({
       dataMode: 'live',
-      ...listReportingPatterns(live.db, {
+      ...(await listReportingPatterns(repositories.regulatory, {
         entityId: c.req.query('entityId') ?? undefined,
         limit: c.req.query('limit') ?? undefined,
         offset: c.req.query('offset') ?? undefined,
-      }),
+      })),
     });
   });
 
-  app.get('/api/regulatory-safety/summary', (c) => {
+  app.get('/api/regulatory-safety/summary', async (c) => {
     if (currentMode() === 'demo') {
       return c.json({ dataMode: 'demo', productCount: 0, assertionCount: 0, signalCount: 0 });
     }
-    return c.json({ dataMode: 'live', ...workspaceSummary(live.db) });
+    return c.json({
+      dataMode: 'live',
+      ...(await regulatoryWorkspaceSummary(repositories.regulatory)),
+    });
   });
 
   app.post('/api/regulatory/runs', async (c) => {

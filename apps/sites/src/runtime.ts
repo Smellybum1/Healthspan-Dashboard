@@ -11,6 +11,7 @@ import {
   type ContentReadRepository,
   type CreatorReadRepository,
   type InterventionReadRepository,
+  type RegulatoryReadRepository,
   type D1Database,
   type ReviewRepository,
   type RuntimeCapabilities,
@@ -32,6 +33,7 @@ export type SitesRepositories = {
   content: ContentReadRepository | null;
   creator: CreatorReadRepository | null;
   intervention: InterventionReadRepository | null;
+  regulatory: RegulatoryReadRepository | null;
   review: ReviewRepository | null;
 };
 
@@ -65,6 +67,7 @@ export function createSitesRepositories(db: D1Database): SitesRepositories {
     content: bound.content,
     creator: bound.creator,
     intervention: bound.intervention,
+    regulatory: bound.regulatory,
     review: bound.review,
   };
 }
@@ -99,7 +102,14 @@ export function createSitesRuntime(
   const factory = options.createRepositories ?? createSitesRepositories;
   const repositories = bindings.DB
     ? factory(bindings.DB)
-    : { assessment: null, content: null, creator: null, intervention: null, review: null };
+    : {
+        assessment: null,
+        content: null,
+        creator: null,
+        intervention: null,
+        regulatory: null,
+        review: null,
+      };
 
   const describe = (domain: string, port: string, bound: unknown): DomainStatus => ({
     domain,
@@ -114,6 +124,7 @@ export function createSitesRuntime(
     describe('content', 'ContentReadRepository', repositories.content),
     describe('creator', 'CreatorReadRepository', repositories.creator),
     describe('intervention', 'InterventionReadRepository', repositories.intervention),
+    describe('regulatory', 'RegulatoryReadRepository', repositories.regulatory),
     describe('review', 'ReviewRepository', repositories.review),
   ];
 

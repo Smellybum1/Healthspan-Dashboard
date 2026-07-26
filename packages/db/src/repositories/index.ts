@@ -12,6 +12,7 @@ import type {
   ContentReadRepository,
   CreatorReadRepository,
   InterventionReadRepository,
+  RegulatoryReadRepository,
   ReviewRepository,
 } from '@healthspan/core';
 import type { HealthspanDb } from '../client.js';
@@ -19,12 +20,14 @@ import { createLocalClaimAssessmentRepository } from './assessment.js';
 import { createLocalContentReadRepository } from './content.js';
 import { createLocalCreatorReadRepository } from './creator.js';
 import { createLocalInterventionReadRepository } from './intervention.js';
+import { createLocalRegulatoryReadRepository } from './regulatory.js';
 import { createLocalReviewRepository } from './review.js';
 
 export * from './assessment.js';
 export * from './content.js';
 export * from './creator.js';
 export * from './intervention.js';
+export * from './regulatory.js';
 export * from './review.js';
 
 /**
@@ -37,6 +40,7 @@ export type HealthspanRepositories = {
   content: ContentReadRepository;
   creator: CreatorReadRepository;
   intervention: InterventionReadRepository;
+  regulatory: RegulatoryReadRepository;
   review: ReviewRepository;
 };
 
@@ -46,6 +50,7 @@ export function createLocalRepositories(db: HealthspanDb): HealthspanRepositorie
     content: createLocalContentReadRepository(db),
     creator: createLocalCreatorReadRepository(db),
     intervention: createLocalInterventionReadRepository(db),
+    regulatory: createLocalRegulatoryReadRepository(db),
     review: createLocalReviewRepository(db),
   };
 }

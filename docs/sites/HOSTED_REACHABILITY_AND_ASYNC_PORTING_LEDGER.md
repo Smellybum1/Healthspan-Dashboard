@@ -4,18 +4,17 @@ Milestone 7, Amendment I §3. Every module that touches data or the request path
 classified here. **No row may read `UNKNOWN`.**
 
 **Baseline commit:** `a59d202a481f8ef4982ad314f88350024b2373cf`
-**Status:** classification complete. Conversion in progress — **10 of 20 convertible rows
+**Status:** classification complete. Conversion in progress — **11 of 20 convertible rows
 `done`**, plus **one blocked**. Done: content, review, assessment, creator reads,
-creator-review reads, identity-task reads, evidence-link reads, entity resolution, and
-intelligence and intervention reads. **Blocked: `dossier-service.ts` — `getDossier`
+creator-review reads, identity-task reads, evidence-link reads, entity resolution,
+intelligence reads, intervention reads, and regulatory/safety reads. **Blocked: `dossier-service.ts` — `getDossier`
 writes to the database on a GET (§12), which needs a product decision before it can be a
 hosted read.** A row may only be marked `done` once its module is a declared root in
 `scripts/sites-bundle-doctor.ts` and that gate is green.
 
-**Remaining convertible rows:** `comparison-service.ts`, `regulatory-safety-service.ts`
-(seven read functions, all whole-table-then-filter, one with a per-product N+1),
-`jobs.ts`, `operations-panels.ts`, the two route layers, and personalisation. The dossier
-row is blocked rather than pending.
+**Remaining convertible rows:** `comparison-service.ts`, `jobs.ts`,
+`operations-panels.ts`, the two route layers, and personalisation. The dossier row is
+blocked rather than pending.
 
 **A row may split rather than move.** `creator-service.ts` held hosted-reachable reads and
 local-only writes in one file, so the reads moved to `@healthspan/runtime` and the writes
@@ -55,6 +54,8 @@ wrapping synchronous `better-sqlite3`; the D1 adapter uses the async driver.
 | ----------------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------- | ---------- | ---------------------------------------- | ----------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
 | `packages/runtime/src/content.ts` (was `content-service.ts`)                                          | both  | `ContentReadRepository`                               | **async**  | none                                     | **done**    | `content.contract.ts`                                     | operational                                                       |
 | `packages/runtime/src/intervention.ts` (entity + resolution-task + trial reads)                       | both  | `InterventionReadRepository`                          | **async**  | none                                     | **done**    | `intervention.contract.ts`                                | operational                                                       |
+| `packages/runtime/src/regulatory.ts` (7 reads, was `regulatory-safety-service.ts`)                    | both  | `RegulatoryReadRepository`                            | **async**  | none                                     | **done**    | `regulatory.contract.ts`                                  | operational                                                       |
+| `regulatory-safety-service.ts` (AEMS persistence, refresh runs)                                       | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`, connectors                | n/a         | existing                                                  | `disabled` (connector-backed refresh is local-only)               |
 | `dossier-service.ts` (`buildDossierSnapshot`, `getDossier`, bootstrap, mention resolution)            | both  | `InterventionReadRepository`                          | sync       | `node:crypto`                            | **blocked** | —                                                         | **see §12 — `getDossier` writes on a GET**                        |
 | `comparison-service.ts`                                                                               | both  | `InterventionReadRepository`                          | sync       | none                                     | pending     | `sites:parity` interventions                              | operational                                                       |
 | `regulatory-safety-service.ts` (7 read functions)                                                     | both  | `InterventionReadRepository`                          | sync       | `node:crypto`                            | pending     | `sites:parity` regulatory                                 | operational                                                       |
@@ -499,3 +500,50 @@ cases.
 `trialPortfolioForEntity` has no hosted caller yet — its only consumer is the dossier
 build. It is ported because the port is its right home and the contract exercises it, and
 it is recorded here so that is a stated fact rather than an oversight.
+
+---
+
+## 13. Regulatory and safety reads — batching, and two merges that cannot move
+
+All seven reads loaded a whole table and filtered it in memory. Two then issued a query
+per row _on the page_: ingredients per product, adverse-event terms per snapshot. At the
+default page size of fifty that is fifty extra statements — fifty network round trips on
+D1 — for one list. Both are now single `inArray` reads, grouped in the shared service.
+
+`workspaceSummary` was already six bounded counts and needed no reshaping; the D1 adapter
+issues them concurrently rather than in sequence.
+
+### What stayed in the service, and why it had to
+
+Two of these lists combine rows from several tables:
+
+- `listSafetyItems` merges curated safety items with TGA regulatory notices drawn from
+  `content_items` joined to `regulatory_events`, capped at 100.
+- `listRegulatoryHistory` merges status history, assertions, and dossier change events
+  into one timeline.
+
+In both cases the merge happens **before** the sort and the page. An adapter that paged
+its own slice would produce different page boundaries, so the adapters return filtered
+rows and the shared service merges, orders, and paginates. That is also why
+`paginateRegulatory` lives in `@healthspan/core` rather than in either app — the retired
+`paginate` helper's exact clamping (default 50, max 200, non-numeric offset to 0) is part
+of the contract, and the contract asserts each bound.
+
+### The jurisdiction filter's one divergence
+
+The retired reads compared jurisdiction and authority by lower-casing both sides in
+JavaScript; the port uses SQLite's `lower()`. That is the same ASCII-folding divergence
+accepted for content and assessment search. Jurisdiction and authority are short codes
+(`AU`, `US`, `TGA`, `FDA`), so the practical risk is nil, but it is recorded rather than
+assumed away.
+
+`listSafetyItems` filters twice on purpose: the jurisdiction predicate reaches the safety
+items in SQL, but the notices carry a defaulted jurisdiction from a joined table, so the
+combined list is filtered again in the service exactly as the retired implementation did.
+
+### The mutation check fired correctly this time
+
+Breaking the D1 ingredient batch to fetch only the first product's ingredients failed the
+contract immediately — because the assertion checks a product in the middle of the page
+and a product with no ingredients, not just the first. That is the lesson from the
+intelligence port applied before it could bite again.

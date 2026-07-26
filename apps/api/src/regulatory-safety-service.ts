@@ -1,236 +1,22 @@
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { HealthspanDb } from '@healthspan/db';
 import {
   adverseEventQueryDefinitions,
   adverseEventReportingSnapshots,
   adverseEventTermCounts,
-  dossierChangeEvents,
   interventionSafetyLinks,
-  productLabelRecords,
   regulatedProductIngredients,
-  regulatedProducts,
   regulatorSignalRecords,
   regulatoryAssertions,
   regulatoryStatusHistory,
   safetyItems,
-  contentItems,
-  regulatoryEvents,
 } from '@healthspan/db';
 import { enrichEntityIdentity } from './identity-enrich-runner.js';
 import { interventionEntities } from '@healthspan/db';
 
 const SPONTANEOUS_CAVEAT =
   'Spontaneous-report counts are not incidence, causality, or ranking. Zero reports ≠ safe.';
-
-function paginate<T>(rows: T[], limitRaw: string | undefined, offsetRaw: string | undefined) {
-  const limit = Math.min(Math.max(Number(limitRaw ?? 50) || 50, 1), 200);
-  const offset = Math.max(Number(offsetRaw ?? 0) || 0, 0);
-  return { items: rows.slice(offset, offset + limit), limit, offset, total: rows.length };
-}
-
-export function listRegulatoryProducts(
-  db: HealthspanDb,
-  query: { jurisdiction?: string; authority?: string; limit?: string; offset?: string },
-) {
-  let rows = db.select().from(regulatedProducts).orderBy(desc(regulatedProducts.updatedAt)).all();
-  if (query.jurisdiction) {
-    rows = rows.filter((r) => r.jurisdiction.toLowerCase() === query.jurisdiction!.toLowerCase());
-  }
-  if (query.authority) {
-    rows = rows.filter((r) => r.authority.toLowerCase() === query.authority!.toLowerCase());
-  }
-  const page = paginate(rows, query.limit, query.offset);
-  return {
-    ...page,
-    items: page.items.map((p) => ({
-      ...p,
-      ingredients: db
-        .select()
-        .from(regulatedProductIngredients)
-        .where(eq(regulatedProductIngredients.productId, p.id))
-        .all(),
-      missDoesNotMeanUnapproved: true,
-    })),
-  };
-}
-
-export function listRegulatoryAssertions(
-  db: HealthspanDb,
-  query: { jurisdiction?: string; entityId?: string; limit?: string; offset?: string },
-) {
-  let rows = db
-    .select()
-    .from(regulatoryAssertions)
-    .orderBy(desc(regulatoryAssertions.createdAt))
-    .all();
-  if (query.jurisdiction) {
-    rows = rows.filter((r) => r.jurisdiction.toLowerCase() === query.jurisdiction!.toLowerCase());
-  }
-  if (query.entityId) rows = rows.filter((r) => r.entityId === query.entityId);
-  const page = paginate(rows, query.limit, query.offset);
-  return {
-    ...page,
-    items: page.items.map((a) => ({
-      ...a,
-      scope: safeJson(a.scopeJson),
-      trialPresenceDoesNotAuthorize: true,
-      labelPresenceDoesNotApprove: true,
-    })),
-  };
-}
-
-export function listRegulatoryHistory(
-  db: HealthspanDb,
-  query: { productId?: string; entityId?: string; limit?: string; offset?: string },
-) {
-  let history = db
-    .select()
-    .from(regulatoryStatusHistory)
-    .orderBy(desc(regulatoryStatusHistory.createdAt))
-    .all();
-  if (query.productId) history = history.filter((h) => h.productId === query.productId);
-
-  const dossierHistory = db
-    .select()
-    .from(dossierChangeEvents)
-    .orderBy(desc(dossierChangeEvents.createdAt))
-    .all()
-    .filter((e) => !query.entityId || e.entityId === query.entityId)
-    .map((e) => ({
-      kind: 'dossier_change' as const,
-      id: e.id,
-      entityId: e.entityId,
-      fromSnapshotId: e.fromSnapshotId,
-      toSnapshotId: e.toSnapshotId,
-      changeSummary: e.changeSummary,
-      createdAt: e.createdAt,
-    }));
-
-  const assertionRows = db
-    .select()
-    .from(regulatoryAssertions)
-    .orderBy(desc(regulatoryAssertions.createdAt))
-    .all()
-    .filter((a) => !query.entityId || a.entityId === query.entityId)
-    .map((a) => ({
-      kind: 'assertion' as const,
-      id: a.id,
-      productId: a.productId,
-      entityId: a.entityId,
-      jurisdiction: a.jurisdiction,
-      authority: a.authority,
-      normalizedStanding: a.normalizedStanding,
-      currentState: a.currentState,
-      createdAt: a.createdAt,
-    }));
-
-  const merged = [
-    ...history.map((h) => ({ kind: 'status_history' as const, ...h })),
-    ...assertionRows,
-    ...dossierHistory,
-  ].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-
-  return paginate(merged, query.limit, query.offset);
-}
-
-export function listSafetyItems(
-  db: HealthspanDb,
-  query: { jurisdiction?: string; limit?: string; offset?: string },
-) {
-  let items = db.select().from(safetyItems).orderBy(desc(safetyItems.updatedAt)).all();
-  if (query.jurisdiction) {
-    items = items.filter((i) => i.jurisdiction.toLowerCase() === query.jurisdiction!.toLowerCase());
-  }
-
-  // Also surface TGA RSS regulatory events as safety notices
-  const events = db
-    .select({
-      item: contentItems,
-      event: regulatoryEvents,
-    })
-    .from(contentItems)
-    .innerJoin(regulatoryEvents, eq(regulatoryEvents.contentItemId, contentItems.id))
-    .orderBy(desc(contentItems.updatedAt))
-    .all()
-    .slice(0, 100)
-    .map(({ item, event }) => ({
-      id: item.id,
-      kind: 'tga_rss_notice',
-      title: item.title,
-      summary: item.summary,
-      jurisdiction: event.jurisdiction ?? 'AU',
-      authority: event.authority ?? 'TGA',
-      severityClass: event.category ?? null,
-      officialUrl: event.officialUrl ?? item.canonicalUrl,
-      severityCaveat: 'Notice presence is not a dosing or treatment recommendation.',
-      currentState: 'current',
-      createdAt: event.publishedAt ?? item.sourcePublishedAt ?? item.createdAt,
-      updatedAt: item.updatedAt,
-      source: 'regulatory_events',
-    }));
-
-  const combined = [...items.map((i) => ({ ...i, source: 'safety_items' as const })), ...events];
-  if (query.jurisdiction) {
-    const j = query.jurisdiction.toLowerCase();
-    return paginate(
-      combined.filter((i) => String(i.jurisdiction).toLowerCase() === j),
-      query.limit,
-      query.offset,
-    );
-  }
-  return paginate(combined, query.limit, query.offset);
-}
-
-export function listSafetySignals(
-  db: HealthspanDb,
-  query: { entityId?: string; limit?: string; offset?: string },
-) {
-  let rows = db
-    .select()
-    .from(regulatorSignalRecords)
-    .orderBy(desc(regulatorSignalRecords.createdAt))
-    .all();
-  if (query.entityId) rows = rows.filter((r) => r.entityId === query.entityId);
-  const page = paginate(rows, query.limit, query.offset);
-  return {
-    ...page,
-    items: page.items.map((s) => ({
-      ...s,
-      provenCausality: false,
-      caveat: 'AEMS potential signals are not proven causality or incidence.',
-    })),
-    rankingProhibited: true,
-  };
-}
-
-export function listReportingPatterns(
-  db: HealthspanDb,
-  query: { entityId?: string; limit?: string; offset?: string },
-) {
-  let snapshots = db
-    .select()
-    .from(adverseEventReportingSnapshots)
-    .orderBy(desc(adverseEventReportingSnapshots.createdAt))
-    .all();
-  if (query.entityId) snapshots = snapshots.filter((s) => s.entityId === query.entityId);
-  const page = paginate(snapshots, query.limit, query.offset);
-  return {
-    ...page,
-    items: page.items.map((s) => ({
-      ...s,
-      terms: db
-        .select()
-        .from(adverseEventTermCounts)
-        .where(eq(adverseEventTermCounts.snapshotId, s.id))
-        .all(),
-      caveat: s.caveat || SPONTANEOUS_CAVEAT,
-      zeroIsNotSafe: true,
-      notIncidence: true,
-      notCausality: true,
-    })),
-  };
-}
 
 export function persistAemsSignals(
   db: HealthspanDb,
@@ -517,54 +303,6 @@ export async function runSafetyRefresh(
       noRanking: true,
       noDosing: true,
     },
-  };
-}
-
-export function workspaceSummary(db: HealthspanDb) {
-  const products =
-    db
-      .select({ c: sql<number>`count(*)` })
-      .from(regulatedProducts)
-      .all()[0]?.c ?? 0;
-  const assertions =
-    db
-      .select({ c: sql<number>`count(*)` })
-      .from(regulatoryAssertions)
-      .all()[0]?.c ?? 0;
-  const signals =
-    db
-      .select({ c: sql<number>`count(*)` })
-      .from(regulatorSignalRecords)
-      .all()[0]?.c ?? 0;
-  const labels =
-    db
-      .select({ c: sql<number>`count(*)` })
-      .from(productLabelRecords)
-      .all()[0]?.c ?? 0;
-  const patterns =
-    db
-      .select({ c: sql<number>`count(*)` })
-      .from(adverseEventReportingSnapshots)
-      .all()[0]?.c ?? 0;
-  const links =
-    db
-      .select({ c: sql<number>`count(*)` })
-      .from(interventionSafetyLinks)
-      .all()[0]?.c ?? 0;
-  return {
-    productCount: Number(products),
-    assertionCount: Number(assertions),
-    signalCount: Number(signals),
-    labelCount: Number(labels),
-    reportingPatternCount: Number(patterns),
-    safetyLinkCount: Number(links),
-    caveats: [
-      'Miss ≠ unapproved',
-      'Trial ≠ authorization',
-      'Label presence ≠ approval',
-      'AEMS/report count ≠ causality or incidence',
-      'No dosing, vendors, or ranking',
-    ],
   };
 }
 
