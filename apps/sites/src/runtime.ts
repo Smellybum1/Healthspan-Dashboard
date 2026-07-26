@@ -9,6 +9,7 @@ import {
   SITES_RUNTIME_CAPABILITIES,
   type ContentReadRepository,
   type D1Database,
+  type ReviewRepository,
   type RuntimeCapabilities,
 } from '@healthspan/core';
 // `@healthspan/db/sites`, never `@healthspan/db`. The package root exposes
@@ -25,6 +26,7 @@ import { readSitesEnv, type ConfigProblem, type SitesBindings, type SitesConfig 
  */
 export type SitesRepositories = {
   content: ContentReadRepository | null;
+  review: ReviewRepository | null;
 };
 
 /**
@@ -51,7 +53,8 @@ export type DomainStatus = {
  * `[]` for a missing adapter would look like an empty database.
  */
 export function createSitesRepositories(db: D1Database): SitesRepositories {
-  return { content: createD1Repositories(db).content };
+  const bound = createD1Repositories(db);
+  return { content: bound.content, review: bound.review };
 }
 
 export type SitesRuntime = {
@@ -82,16 +85,19 @@ export function createSitesRuntime(
 ): SitesRuntime {
   const env = readSitesEnv(bindings);
   const factory = options.createRepositories ?? createSitesRepositories;
-  const repositories = bindings.DB ? factory(bindings.DB) : { content: null };
+  const repositories = bindings.DB ? factory(bindings.DB) : { content: null, review: null };
+
+  const describe = (domain: string, port: string, bound: unknown): DomainStatus => ({
+    domain,
+    port,
+    ported: true,
+    bound: bound !== null,
+    ...(bound === null ? { reason: 'D1 binding "DB" is not provisioned' } : {}),
+  });
 
   const domains: DomainStatus[] = [
-    {
-      domain: 'content',
-      port: 'ContentReadRepository',
-      ported: true,
-      bound: repositories.content !== null,
-      ...(repositories.content ? {} : { reason: 'D1 binding "DB" is not provisioned' }),
-    },
+    describe('content', 'ContentReadRepository', repositories.content),
+    describe('review', 'ReviewRepository', repositories.review),
   ];
 
   return {

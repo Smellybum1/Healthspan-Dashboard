@@ -22,7 +22,38 @@ import {
   detectClaimRelationship,
   type NormalizedLiveRecord,
 } from '@healthspan/intelligence';
-import { markOpenReviewsStaleForContent } from './review-service.js';
+
+/**
+ * Mark every open review task for a content item stale.
+ *
+ * Lives here rather than in a review module because this is the only caller: it is part
+ * of the reassessment flow, not of the review surface. The review reads and the resolve
+ * path moved to `@healthspan/runtime` when that domain was ported; this one stayed
+ * behind with `intelligence-service.ts`, which is still a `pending` ledger row and still
+ * synchronous.
+ */
+export function markOpenReviewsStaleForContent(
+  db: HealthspanDb,
+  contentItemId: string,
+  reason: string,
+) {
+  const open = db
+    .select()
+    .from(liveReviewTasks)
+    .where(eq(liveReviewTasks.contentItemId, contentItemId))
+    .all()
+    .filter((t) => t.status === 'open');
+  for (const task of open) {
+    db.update(liveReviewTasks)
+      .set({
+        status: 'stale',
+        resolutionJson: JSON.stringify({ reason, markedAt: Date.now() }),
+      })
+      .where(eq(liveReviewTasks.id, task.id))
+      .run();
+  }
+  return open.length;
+}
 
 function inputHash(record: NormalizedLiveRecord, rulesetVersion: string) {
   return createHash('sha256').update(JSON.stringify({ record, rulesetVersion })).digest('hex');

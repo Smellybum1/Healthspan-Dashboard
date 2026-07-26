@@ -284,6 +284,9 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@13.0.1)
     devDependencies:
+      '@healthspan/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13

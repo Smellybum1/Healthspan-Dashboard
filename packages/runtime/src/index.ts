@@ -10,3 +10,4 @@
  * still sitting in `apps/api/src` is one that has not been ported yet.
  */
 export * from './content.js';
+export * from './review.js';

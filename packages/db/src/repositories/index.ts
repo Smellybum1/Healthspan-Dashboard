@@ -7,11 +7,13 @@
  * edge bundle.
  */
 
-import type { ContentReadRepository } from '@healthspan/core';
+import type { ContentReadRepository, ReviewRepository } from '@healthspan/core';
 import type { HealthspanDb } from '../client.js';
 import { createLocalContentReadRepository } from './content.js';
+import { createLocalReviewRepository } from './review.js';
 
 export * from './content.js';
+export * from './review.js';
 
 /**
  * The set of ports a runtime binds. Grows one domain at a time as the porting ledger
@@ -20,10 +22,12 @@ export * from './content.js';
  */
 export type HealthspanRepositories = {
   content: ContentReadRepository;
+  review: ReviewRepository;
 };
 
 export function createLocalRepositories(db: HealthspanDb): HealthspanRepositories {
   return {
     content: createLocalContentReadRepository(db),
+    review: createLocalReviewRepository(db),
   };
 }

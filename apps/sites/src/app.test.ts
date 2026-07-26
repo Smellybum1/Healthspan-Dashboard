@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   normaliseContentPaging,
+  normaliseReviewLimit,
   toContentItemDto,
   type ContentItemRow,
   type ContentListQuery,
   type ContentReadRepository,
+  type ReviewRepository,
+  type ReviewTaskDto,
 } from '@healthspan/core';
 import { createSitesApp } from './app.js';
 import type { SitesBindings } from './env.js';
@@ -63,8 +66,65 @@ function memoryContentRepository(rows = ROWS): ContentReadRepository {
   };
 }
 
+const REVIEW_TASKS = [
+  {
+    id: 'task-open',
+    contentItemId: 'item-1',
+    claimId: 'claim-1',
+    analysisId: 'analysis-1',
+    sourceRecordVersionId: null,
+    expectedAnalysisId: 'analysis-1',
+    title: 'Open task',
+    reason: 'low confidence',
+    status: 'open',
+    confidence: 'low',
+    createdAt: Date.UTC(2026, 0, 3),
+    resolvedAt: null,
+    resolutionJson: null,
+  },
+  {
+    id: 'task-resolved',
+    contentItemId: null,
+    claimId: null,
+    analysisId: null,
+    sourceRecordVersionId: null,
+    expectedAnalysisId: null,
+    title: 'Resolved task',
+    reason: 'checked',
+    status: 'resolved',
+    confidence: 'high',
+    createdAt: Date.UTC(2026, 0, 2),
+    resolvedAt: Date.UTC(2026, 0, 2),
+    resolutionJson: null,
+  },
+] satisfies ReviewTaskDto[];
+
+/**
+ * Read-only in-memory review port. The hosted app exposes no review mutation, so the
+ * write methods reject rather than pretending to succeed — if a hosted write path is
+ * ever wired without the session provider, these tests fail loudly.
+ */
+function memoryReviewRepository(): ReviewRepository {
+  const reject = () => Promise.reject(new Error('hosted review writes are not exposed'));
+  return {
+    listTasks: ({ limit }) => Promise.resolve(REVIEW_TASKS.slice(0, normaliseReviewLimit(limit))),
+    listDecisions: () => Promise.resolve([]),
+    getTask: (id) => Promise.resolve(REVIEW_TASKS.find((t) => t.id === id) ?? null),
+    getIntelligenceState: () => Promise.resolve(null),
+    appendDecision: reject,
+    updateClaimReviewState: reject,
+    markTaskResolved: reject,
+    recordReviewTouch: reject,
+  };
+}
+
 function bound() {
-  return createSitesApp({ createRepositories: () => ({ content: memoryContentRepository() }) });
+  return createSitesApp({
+    createRepositories: () => ({
+      content: memoryContentRepository(),
+      review: memoryReviewRepository(),
+    }),
+  });
 }
 
 function get(path: string, headers: Record<string, string> = {}) {
@@ -276,6 +336,56 @@ describe('sites entrypoint — content through the shared port', () => {
     expect(body.capability).toBe('content');
     expect(body.reason).toContain('"DB" is not provisioned');
     expect(body.items).toBeUndefined();
+  });
+});
+
+describe('sites entrypoint — review through the shared port', () => {
+  it('serves review tasks in the local response shape', async () => {
+    const res = await bound().fetch(get('/api/review/tasks'), CONFIGURED);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.dataMode).toBe('live');
+    expect(body.tasks).toHaveLength(2);
+    expect(body.tasks[0]).toMatchObject({
+      id: 'task-open',
+      status: 'open',
+      createdAt: '2026-01-03T00:00:00.000Z',
+    });
+  });
+
+  it('applies the status filter through the shared service', async () => {
+    const res = await bound().fetch(get('/api/review/tasks?status=open'), CONFIGURED);
+    const body = await res.json();
+    expect(body.tasks.map((t: { id: string }) => t.id)).toEqual(['task-open']);
+  });
+
+  it('serves review decisions', async () => {
+    const res = await bound().fetch(get('/api/review/decisions'), CONFIGURED);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ dataMode: 'live', decisions: [] });
+  });
+
+  it('refuses the resolve mutation rather than exposing an unauthenticated write', async () => {
+    // The resolve path is ported and its contract passes against D1, but no hosted
+    // session or owner principal exists yet. This must stay a refusal until it does.
+    const req = new Request(`${ORIGIN}/api/review/tasks/task-open/resolve`, {
+      method: 'POST',
+      headers: { host: HOST, origin: ORIGIN },
+    });
+    const res = await bound().fetch(req, CONFIGURED);
+    expect(res.status).toBe(501);
+    expect((await res.json()).capability).toBe('mutations');
+  });
+
+  it('refuses rather than returning an empty list when unbound', async () => {
+    const res = await createSitesApp().fetch(get('/api/review/tasks'), {
+      ...CONFIGURED,
+      DB: undefined,
+    });
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.capability).toBe('review');
+    expect(body.tasks).toBeUndefined();
   });
 });
 

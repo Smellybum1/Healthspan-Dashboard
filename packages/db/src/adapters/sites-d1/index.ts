@@ -11,12 +11,14 @@
  * is reported by `/api/hosted-readiness` as ported-but-unbound; it is never served as an
  * empty success.
  */
-import type { ContentReadRepository, D1Database } from '@healthspan/core';
+import type { ContentReadRepository, D1Database, ReviewRepository } from '@healthspan/core';
 import { createSitesD1 } from './client.js';
 import { createSitesContentReadRepository } from './content.js';
+import { createSitesReviewRepository } from './review.js';
 
 export * from './client.js';
 export * from './content.js';
+export * from './review.js';
 
 /**
  * The set of ports the hosted runtime binds, built from the `DB` binding.
@@ -27,11 +29,13 @@ export * from './content.js';
  */
 export type SitesRepositories = {
   content: ContentReadRepository;
+  review: ReviewRepository;
 };
 
 export function createSitesRepositories(binding: D1Database): SitesRepositories {
   const db = createSitesD1(binding);
   return {
     content: createSitesContentReadRepository(db),
+    review: createSitesReviewRepository(db),
   };
 }

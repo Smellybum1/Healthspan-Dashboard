@@ -18,7 +18,7 @@
  * - Disabled and unported capabilities answer explicitly. Nothing returns an empty
  *   success to stand in for a feature that is not there.
  */
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import {
   SecurityHeaders,
   fetchMetadataAllowed,
@@ -26,7 +26,12 @@ import {
   parseHostHeader,
   type OriginPolicy,
 } from '@healthspan/core';
-import { listContentItems, parseContentListQuery } from '@healthspan/runtime';
+import {
+  listContentItems,
+  listReviewDecisions,
+  listReviewTasks,
+  parseContentListQuery,
+} from '@healthspan/runtime';
 import type { SitesBindings } from './env.js';
 import {
   HOSTED_UNAVAILABLE,
@@ -72,6 +77,25 @@ function originPolicy(runtime: SitesRuntime, bindings: SitesBindings): OriginPol
     // would mean something other than the owner's Site had satisfied it.
     allowLoopback: false,
   };
+}
+
+/**
+ * The answer for a domain that is ported but has no adapter bound.
+ *
+ * A `503` with the domain's own readiness reason, never an empty `200`. The distinction
+ * is the whole point: an empty success reads as an empty database, which is a very
+ * different thing from a missing binding.
+ */
+function unbound(c: Context<AppEnv>, domain: string) {
+  const status = c.get('runtime').domains.find((d) => d.domain === domain);
+  return c.json(
+    {
+      error: `${domain} is not available in this runtime`,
+      capability: domain,
+      reason: status?.reason ?? 'no adapter bound',
+    },
+    503,
+  );
 }
 
 export function createSitesApp(options: SitesRuntimeOptions = {}) {
@@ -160,19 +184,8 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
   });
 
   app.get('/api/items', async (c) => {
-    const runtime = c.get('runtime');
-    const repo = runtime.repositories.content;
-    if (!repo) {
-      const status = runtime.domains.find((d) => d.domain === 'content');
-      return c.json(
-        {
-          error: 'Content is not available in this runtime',
-          capability: 'content',
-          reason: status?.reason ?? 'no adapter bound',
-        },
-        503,
-      );
-    }
+    const repo = c.get('runtime').repositories.content;
+    if (!repo) return unbound(c, 'content');
     const result = await listContentItems(
       repo,
       parseContentListQuery({
@@ -192,6 +205,54 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
       dataOrigin: 'live',
     });
   });
+
+  app.get('/api/review/tasks', async (c) => {
+    const repo = c.get('runtime').repositories.review;
+    if (!repo) return unbound(c, 'review');
+    const tasks = await listReviewTasks(repo, {
+      status: c.req.query('status') ?? undefined,
+      limit: Number(c.req.query('limit') ?? 100),
+    });
+    return c.json({
+      dataMode: 'live',
+      tasks: tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        reason: t.reason,
+        status: t.status,
+        confidence: t.confidence,
+        contentItemId: t.contentItemId,
+        claimId: t.claimId,
+        analysisId: t.analysisId,
+        expectedAnalysisId: t.expectedAnalysisId,
+        createdAt: new Date(t.createdAt).toISOString(),
+      })),
+    });
+  });
+
+  app.get('/api/review/decisions', async (c) => {
+    const repo = c.get('runtime').repositories.review;
+    if (!repo) return unbound(c, 'review');
+    const decisions = await listReviewDecisions(repo);
+    return c.json({
+      dataMode: 'live',
+      decisions: decisions.map((d) => ({
+        id: d.id,
+        taskId: d.taskId,
+        action: d.action,
+        claimId: d.claimId,
+        notes: d.notes,
+        editedClaimText: d.editedClaimText,
+        createdAt: new Date(d.createdAt).toISOString(),
+      })),
+    });
+  });
+
+  // `POST /api/review/tasks/:id/resolve` is deliberately absent. The resolve path is
+  // ported and its contract passes against the D1 adapter, but exposing it hosted needs
+  // the session/CSRF provider that the compatibility audit §5 leaves open, and an owner
+  // principal to record as the decision actor. Until then the mutation refusal in the
+  // middleware answers it — explicitly, with a reason.
 
   app.all('/api/*', (c) => {
     const unavailable = hostedUnavailableFor(new URL(c.req.url).pathname);

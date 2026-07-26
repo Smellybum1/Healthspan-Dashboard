@@ -60,7 +60,13 @@ import {
   listLiveClaims,
   getLiveClaim,
 } from './intelligence-service.js';
-import { listContentItems, parseContentListQuery } from '@healthspan/runtime';
+import {
+  listContentItems,
+  listReviewDecisions,
+  listReviewTasks,
+  parseContentListQuery,
+  resolveReviewTask,
+} from '@healthspan/runtime';
 import {
   addWatchlistItem,
   applyLegacyPreferenceImport,
@@ -104,13 +110,7 @@ import {
   verifyBackup,
 } from './backup-service.js';
 import { registerM6RemediationRoutes } from './m6-routes.js';
-import {
-  listReviewTasks,
-  listReviewDecisions,
-  resolveReviewTask,
-  REVIEW_ACTIONS,
-  type ReviewAction,
-} from './review-service.js';
+import { REVIEW_ACTIONS, type ReviewAction } from '@healthspan/core';
 import { getAssessment, listAssessments } from './assessment-service.js';
 import {
   bootstrapInterventionCatalog,
@@ -2207,7 +2207,7 @@ export function createApp() {
     return c.json({ accepted: true, ...result });
   });
 
-  app.get('/api/review/tasks', (c) => {
+  app.get('/api/review/tasks', async (c) => {
     if (currentMode() === 'demo') {
       const seed = demoRepo.getDashboardPayload();
       return c.json({
@@ -2215,7 +2215,7 @@ export function createApp() {
         tasks: seed.needsReview,
       });
     }
-    const tasks = listReviewTasks(live.db, {
+    const tasks = await listReviewTasks(repositories.review, {
       status: c.req.query('status') ?? undefined,
       limit: Number(c.req.query('limit') ?? 100),
     });
@@ -2236,9 +2236,9 @@ export function createApp() {
     });
   });
 
-  app.get('/api/review/decisions', (c) => {
+  app.get('/api/review/decisions', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', decisions: [] });
-    const decisions = listReviewDecisions(live.db).map((d) => ({
+    const decisions = (await listReviewDecisions(repositories.review)).map((d) => ({
       id: d.id,
       taskId: d.taskId,
       action: d.action,
@@ -2268,7 +2268,7 @@ export function createApp() {
     if (!body.action || !(REVIEW_ACTIONS as readonly string[]).includes(body.action)) {
       return c.json({ error: 'Invalid action' }, 400);
     }
-    const result = resolveReviewTask(live.db, {
+    const result = await resolveReviewTask(repositories.review, {
       taskId: c.req.param('id'),
       action: body.action as ReviewAction,
       notes: body.notes,

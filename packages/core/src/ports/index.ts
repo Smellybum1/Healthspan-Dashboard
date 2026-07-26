@@ -20,3 +20,4 @@
  */
 
 export * from './content.js';
+export * from './review.js';
