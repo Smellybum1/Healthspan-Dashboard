@@ -30,6 +30,7 @@ import {
   compareInterventions,
   getAssessment,
   getCreatorDetail,
+  getStoredDossier,
   getIntelligenceRun,
   getLiveClaim,
   intelligenceStatus,
@@ -254,6 +255,17 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
     const detail = await getAssessment(repo, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...detail });
+  });
+
+  app.get('/api/interventions/:id/dossier', async (c) => {
+    const repo = c.get('runtime').repositories.intervention;
+    if (!repo) return unbound(c, 'intervention');
+    // Serves the stored snapshot and builds nothing — ledger 00a712. `snapshotOrigin`
+    // reports which snapshot this is, so a client can tell a stored one from a rebuilt
+    // one rather than assuming freshness.
+    const dossier = await getStoredDossier(repo, c.req.param('id'));
+    if (!dossier) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', ...dossier });
   });
 
   app.get('/api/interventions/compare', async (c) => {

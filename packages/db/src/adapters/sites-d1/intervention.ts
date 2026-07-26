@@ -5,6 +5,7 @@ import type {
   TrialPortfolioRow,
 } from '@healthspan/core';
 import {
+  aliasSelection,
   assertionCurrent,
   comparisonEntitySelection,
   dossierSnapshotSelection,
@@ -12,10 +13,13 @@ import {
   entityResolutionTaskOrder,
   entityResolutionTasks,
   interventionEntities,
+  identifierSelection,
+  interventionAliases,
   interventionIdentifiers,
   interventionSummarySelection,
   interventionWhere,
   peptideProfiles,
+  openTasksForEntity,
   peptideSelection,
   regulatoryAssertions,
   trialInterventionEntityLinks,
@@ -123,6 +127,28 @@ export function createSitesInterventionReadRepository(
         .select(dossierSnapshotSelection)
         .from(dossierSnapshots)
         .where(inArray(dossierSnapshots.id, snapshotIds));
+    },
+
+    async listAliases(entityId) {
+      return await db
+        .select(aliasSelection)
+        .from(interventionAliases)
+        .where(eq(interventionAliases.entityId, entityId));
+    },
+
+    async listIdentifierRows(entityId) {
+      return await db
+        .select(identifierSelection)
+        .from(interventionIdentifiers)
+        .where(eq(interventionIdentifiers.entityId, entityId));
+    },
+
+    async countOpenResolutionTasksFor(entityId) {
+      const rows = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(entityResolutionTasks)
+        .where(openTasksForEntity(entityId));
+      return Number(rows[0]?.n ?? 0);
     },
   };
 }

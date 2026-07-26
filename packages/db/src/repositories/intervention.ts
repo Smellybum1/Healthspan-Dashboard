@@ -6,6 +6,7 @@ import type {
 } from '@healthspan/core';
 import type { HealthspanDb } from '../client.js';
 import {
+  aliasSelection,
   assertionCurrent,
   comparisonEntitySelection,
   dossierSnapshotSelection,
@@ -13,10 +14,13 @@ import {
   entityResolutionTaskOrder,
   entityResolutionTasks,
   interventionEntities,
+  identifierSelection,
+  interventionAliases,
   interventionIdentifiers,
   interventionSummarySelection,
   interventionWhere,
   peptideProfiles,
+  openTasksForEntity,
   peptideSelection,
   regulatoryAssertions,
   trialInterventionEntityLinks,
@@ -138,6 +142,35 @@ export function createLocalInterventionReadRepository(
           .where(inArray(dossierSnapshots.id, snapshotIds))
           .all(),
       );
+    },
+
+    listAliases(entityId) {
+      return Promise.resolve(
+        db
+          .select(aliasSelection)
+          .from(interventionAliases)
+          .where(eq(interventionAliases.entityId, entityId))
+          .all(),
+      );
+    },
+
+    listIdentifierRows(entityId) {
+      return Promise.resolve(
+        db
+          .select(identifierSelection)
+          .from(interventionIdentifiers)
+          .where(eq(interventionIdentifiers.entityId, entityId))
+          .all(),
+      );
+    },
+
+    countOpenResolutionTasksFor(entityId) {
+      const row = db
+        .select({ n: sql<number>`count(*)` })
+        .from(entityResolutionTasks)
+        .where(openTasksForEntity(entityId))
+        .all()[0];
+      return Promise.resolve(Number(row?.n ?? 0));
     },
   };
 }

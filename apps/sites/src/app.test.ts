@@ -415,6 +415,29 @@ function memoryInterventionRepository(): InterventionReadRepository {
         },
       ]),
     listTrialPortfolio: () => Promise.resolve([]),
+    listEntitiesByIds: (ids) =>
+      Promise.resolve(
+        ids.includes('ent-metformin')
+          ? [
+              {
+                id: 'ent-metformin',
+                preferredName: 'Metformin',
+                entityType: 'small_molecule',
+                identityConfidence: 'medium',
+                lifecycleState: 'active',
+                shortDescription: 'Synthetic profile.',
+                currentDossierSnapshotId: null,
+              },
+            ]
+          : [],
+      ),
+    listPeptideProfiles: () => Promise.resolve([]),
+    listIdentifiersForEntities: () => Promise.resolve([]),
+    listCurrentAssertionsForEntities: () => Promise.resolve([]),
+    listDossierSnapshots: () => Promise.resolve([]),
+    listAliases: () => Promise.resolve([]),
+    listIdentifierRows: () => Promise.resolve([]),
+    countOpenResolutionTasksFor: () => Promise.resolve(0),
   };
 }
 
@@ -803,6 +826,19 @@ describe('sites entrypoint — interventions through the shared port', () => {
   it('serves entity resolution tasks', async () => {
     const res = await bound().fetch(get('/api/entity-resolution/tasks'), CONFIGURED);
     expect((await res.json()).tasks[0]).toMatchObject({ id: 'task-new', status: 'open' });
+  });
+
+  it('serves a dossier from the stored snapshot, never building one', async () => {
+    // Ledger 00a712. The fake has no stored snapshot, so the response must say so
+    // rather than look like a built dossier that happens to be empty.
+    const res = await bound().fetch(get('/api/interventions/ent-metformin/dossier'), CONFIGURED);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ snapshotId: null, snapshotOrigin: 'none', reused: false });
+    expect(body.entity.id).toBe('ent-metformin');
+
+    const missing = await bound().fetch(get('/api/interventions/nope/dossier'), CONFIGURED);
+    expect(missing.status).toBe(404);
   });
 
   it('refuses rather than returning an empty list when unbound', async () => {

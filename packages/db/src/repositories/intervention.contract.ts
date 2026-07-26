@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { InterventionReadRepository } from '@healthspan/core';
 import {
+  assembleDossier,
   compareInterventions,
+  getDossierContext,
+  getStoredDossier,
   listEntityResolutionTasks,
   listInterventionEntities,
   trialPortfolioForEntity,
@@ -126,6 +129,68 @@ export function runInterventionContract(harness: InterventionContractHarness) {
       expect(portfolio.items.every((i) => i.note.includes('not regulatory authorisation'))).toBe(
         true,
       );
+    });
+
+    it('serves a stored dossier without building one', async () => {
+      // Ledger 00a712: the hosted read never calls buildDossierSnapshot.
+      const repo = await harness.create();
+      const dossier = await getStoredDossier(repo, 'ent-metformin');
+      expect(dossier).toMatchObject({
+        snapshotId: 'snap-metformin',
+        snapshotOrigin: 'stored',
+        reused: true,
+      });
+      expect(dossier?.summary).toEqual({ linkedAnalysisCount: 2, linkedClaimCount: 5 });
+      expect(dossier?.entity).toMatchObject({ id: 'ent-metformin', preferredName: 'Metformin' });
+    });
+
+    it('reports an unbuilt dossier as unbuilt, not as an empty one', async () => {
+      // rapamycin has no snapshot. An empty summary with no origin would read as a built
+      // dossier that happens to be empty, which is a different statement.
+      const repo = await harness.create();
+      const dossier = await getStoredDossier(repo, 'ent-rapamycin');
+      expect(dossier).toMatchObject({ snapshotId: null, snapshotOrigin: 'none', reused: false });
+      expect(dossier?.summary).toEqual({});
+      expect(dossier?.evidenceMap).toEqual({});
+    });
+
+    it('carries aliases, identifiers, the open-task count and the trial portfolio', async () => {
+      const repo = await harness.create();
+      const dossier = await getStoredDossier(repo, 'ent-metformin');
+      expect(dossier?.aliases.map((a) => a.aliasText)).toEqual(['Glucophage']);
+      expect(dossier?.identifiers.map((i) => i.scheme).sort()).toEqual(['rxnorm', 'unii']);
+      // One open task proposes this entity; the resolved one does not count.
+      expect(dossier?.openResolutionTasks).toBe(1);
+      expect(dossier?.trialPortfolio.count).toBe(3);
+    });
+
+    it('returns null for an unknown entity rather than throwing', async () => {
+      const repo = await harness.create();
+      expect(await getStoredDossier(repo, 'nope')).toBeNull();
+    });
+
+    it('assembles the same document from a rebuilt snapshot as from a stored one', async () => {
+      // The local runtime rebuilds and passes the fresh content in; the hosted runtime
+      // reads the stored one. Only snapshotOrigin and reused may differ.
+      const repo = await harness.create();
+      const context = await getDossierContext(repo, 'ent-metformin');
+      expect(context).not.toBeNull();
+      const rebuilt = assembleDossier(context!, {
+        snapshotId: 'snap-metformin',
+        origin: 'rebuilt',
+        summary: context!.storedSnapshot!.summary,
+        evidenceMap: context!.storedSnapshot!.evidenceMap,
+        regulatoryMatrix: context!.storedSnapshot!.regulatoryMatrix,
+        safety: context!.storedSnapshot!.safety,
+      });
+      const stored = await getStoredDossier(repo, 'ent-metformin');
+      expect({ ...rebuilt, snapshotOrigin: null, reused: null }).toEqual({
+        ...stored,
+        snapshotOrigin: null,
+        reused: null,
+      });
+      expect(rebuilt.reused).toBe(false);
+      expect(stored?.reused).toBe(true);
     });
 
     it('refuses a comparison outside two to four entities', async () => {

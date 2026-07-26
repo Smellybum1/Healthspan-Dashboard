@@ -8,6 +8,8 @@ import {
   toTrialPortfolio,
   type ComparisonDimension,
   type ComparisonEntityRow,
+  type DossierContext,
+  type DossierSnapshotContent,
   type EntityIdRow,
   type InterventionListResult,
   type InterventionReadRepository,
@@ -237,4 +239,104 @@ export async function compareInterventions(repo: InterventionReadRepository, ent
     rules: { ...COMPARISON_RULES },
     caveat: COMPARISON_CAVEAT,
   };
+}
+
+/**
+ * Read everything that surrounds a dossier snapshot.
+ *
+ * Concurrent because none of the five depends on another. Under the local adapter that
+ * changes nothing; on D1 it is one batch of round trips rather than five in sequence.
+ */
+export async function getDossierContext(
+  repo: InterventionReadRepository,
+  entityId: string,
+): Promise<DossierContext | null> {
+  const [entity] = await repo.listEntitiesByIds([entityId]);
+  if (!entity) return null;
+
+  const [aliases, identifiers, openResolutionTasks, trialPortfolio, snapshots] = await Promise.all([
+    repo.listAliases(entityId),
+    repo.listIdentifierRows(entityId),
+    repo.countOpenResolutionTasksFor(entityId),
+    trialPortfolioForEntity(repo, entityId),
+    entity.currentDossierSnapshotId
+      ? repo.listDossierSnapshots([entity.currentDossierSnapshotId])
+      : Promise.resolve([]),
+  ]);
+
+  const row = snapshots[0];
+  return {
+    entity,
+    aliases,
+    identifiers,
+    openResolutionTasks,
+    trialPortfolio,
+    storedSnapshot: row
+      ? {
+          snapshotId: row.id,
+          summary: JSON.parse(row.summaryJson) as Record<string, unknown>,
+          evidenceMap: JSON.parse(row.evidenceMapJson) as Record<string, unknown>,
+          regulatoryMatrix: JSON.parse(row.regulatoryMatrixJson) as Record<string, unknown>,
+          safety: JSON.parse(row.safetyJson) as Record<string, unknown>,
+        }
+      : null,
+  };
+}
+
+/**
+ * Assemble the dossier document.
+ *
+ * Called by both runtimes with the same context and a snapshot from wherever that runtime
+ * gets one — rebuilt locally, read as stored hosted. Keeping the assembly here is what
+ * stops the two from drifting while their snapshot sources differ.
+ */
+export function assembleDossier(context: DossierContext, snapshot: DossierSnapshotContent) {
+  const { entity } = context;
+  return {
+    entity: {
+      id: entity.id,
+      preferredName: entity.preferredName,
+      entityType: entity.entityType,
+      identityConfidence: entity.identityConfidence,
+      lifecycleState: entity.lifecycleState,
+      shortDescription: entity.shortDescription ?? null,
+    },
+    aliases: context.aliases,
+    identifiers: context.identifiers,
+    snapshotId: snapshot.snapshotId,
+    snapshotOrigin: snapshot.origin,
+    reused: snapshot.origin === 'reused' || snapshot.origin === 'stored',
+    summary: snapshot.summary,
+    evidenceMap: snapshot.evidenceMap,
+    regulatoryMatrix: snapshot.regulatoryMatrix,
+    safety: snapshot.safety,
+    trialPortfolio: context.trialPortfolio,
+    openResolutionTasks: context.openResolutionTasks,
+  };
+}
+
+/**
+ * The hosted dossier read.
+ *
+ * Serves the stored snapshot and builds nothing — §12. When no snapshot has ever been
+ * built, `snapshotOrigin` is `none` and the snapshot sections are empty, which is a
+ * different statement from "this dossier is empty" and is meant to be read as one.
+ */
+export async function getStoredDossier(repo: InterventionReadRepository, entityId: string) {
+  const context = await getDossierContext(repo, entityId);
+  if (!context) return null;
+  const stored = context.storedSnapshot;
+  return assembleDossier(
+    context,
+    stored
+      ? { ...stored, origin: 'stored' as const }
+      : {
+          snapshotId: null,
+          origin: 'none' as const,
+          summary: {},
+          evidenceMap: {},
+          regulatoryMatrix: {},
+          safety: {},
+        },
+  );
 }

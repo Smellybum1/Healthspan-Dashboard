@@ -4,6 +4,7 @@ import { trials } from '../schema.js';
 import {
   dossierSnapshots,
   entityResolutionTasks,
+  interventionAliases,
   interventionEntities,
   interventionIdentifiers,
   peptideProfiles,
@@ -83,6 +84,7 @@ export const comparisonEntitySelection = {
   entityType: interventionEntities.entityType,
   identityConfidence: interventionEntities.identityConfidence,
   lifecycleState: interventionEntities.lifecycleState,
+  shortDescription: interventionEntities.shortDescription,
   currentDossierSnapshotId: interventionEntities.currentDossierSnapshotId,
 };
 
@@ -97,9 +99,38 @@ export const dossierSnapshotSelection = {
   id: dossierSnapshots.id,
   summaryJson: dossierSnapshots.summaryJson,
   evidenceMapJson: dossierSnapshots.evidenceMapJson,
+  regulatoryMatrixJson: dossierSnapshots.regulatoryMatrixJson,
+  safetyJson: dossierSnapshots.safetyJson,
 };
+
+export const aliasSelection = {
+  aliasText: interventionAliases.aliasText,
+  aliasType: interventionAliases.aliasType,
+  reviewState: interventionAliases.reviewState,
+  collisionFlag: interventionAliases.collisionFlag,
+};
+
+export const identifierSelection = {
+  scheme: interventionIdentifiers.scheme,
+  value: interventionIdentifiers.value,
+  reviewState: interventionIdentifiers.reviewState,
+};
+
+/** Open tasks proposing this entity — the retired in-memory filter, as a predicate. */
+export function openTasksForEntity(entityId: string): SQL | undefined {
+  return and(
+    eq(entityResolutionTasks.status, 'open'),
+    eq(entityResolutionTasks.proposedEntityId, entityId),
+  );
+}
 
 /** Current assertions only — the retired in-memory filter, as a predicate. */
 export const assertionCurrent = eq(regulatoryAssertions.currentState, 'current');
 
-export { dossierSnapshots, interventionIdentifiers, peptideProfiles, regulatoryAssertions };
+export {
+  dossierSnapshots,
+  interventionAliases,
+  interventionIdentifiers,
+  peptideProfiles,
+  regulatoryAssertions,
+};

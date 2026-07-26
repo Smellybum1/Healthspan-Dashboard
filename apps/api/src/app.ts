@@ -69,7 +69,9 @@ import {
   listContentItems,
   listCreatorClaims,
   listEntityResolutionTasks,
+  assembleDossier,
   compareInterventions,
+  getDossierContext,
   listInterventionEntities,
   listRegulatoryAssertions,
   listRegulatoryHistory,
@@ -132,7 +134,6 @@ import { REVIEW_ACTIONS, type ReviewAction } from '@healthspan/core';
 import {
   bootstrapInterventionCatalog,
   buildDossierSnapshot,
-  getDossier,
   runMentionExtractionAndResolution,
 } from './dossier-service.js';
 import { enrichEntityIdentity } from './identity-enrich-runner.js';
@@ -1990,15 +1991,29 @@ export function createApp() {
     return c.json({ accepted: true, ...result });
   });
 
-  app.get('/api/interventions/:id/dossier', (c) => {
+  app.get('/api/interventions/:id/dossier', async (c) => {
     if (currentMode() === 'demo') {
       return c.json(
         { error: 'Live dossiers are Live-only; use Demo detail pages for seed dossiers.' },
         400,
       );
     }
-    const dossier = getDossier(live.db, c.req.param('id'));
-    if (!dossier) return c.json({ error: 'Not found' }, 404);
+    // The local runtime rebuilds before reading, which is what it has always done. The
+    // build writes, so the hosted runtime serves the stored snapshot instead — see
+    // ledger 00a712. Both then call the same assembler.
+    const entityId = c.req.param('id');
+    const built = buildDossierSnapshot(live.db, entityId);
+    if (!built) return c.json({ error: 'Not found' }, 404);
+    const context = await getDossierContext(repositories.intervention, entityId);
+    if (!context) return c.json({ error: 'Not found' }, 404);
+    const dossier = assembleDossier(context, {
+      snapshotId: built.snapshotId,
+      origin: built.reused ? 'reused' : 'rebuilt',
+      summary: built.summary,
+      evidenceMap: built.evidenceMap,
+      regulatoryMatrix: built.regulatoryMatrix,
+      safety: built.safety,
+    });
     return c.json({ dataMode: 'live', ...dossier });
   });
 

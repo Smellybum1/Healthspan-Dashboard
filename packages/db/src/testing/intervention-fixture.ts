@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import {
   dossierSnapshots,
   entityResolutionTasks,
+  interventionAliases,
   interventionEntities,
   interventionIdentifiers,
   peptideProfiles,
@@ -180,6 +181,17 @@ export function seedInterventionFixture(): SeededInterventionDatabase {
       })
       .run();
   }
+
+  db.insert(interventionAliases)
+    .values({
+      id: 'alias-1',
+      entityId: 'ent-metformin',
+      aliasText: 'Glucophage',
+      normalizedAlias: 'glucophage',
+      aliasType: 'brand',
+      createdAt: BASE,
+    })
+    .run();
 
   db.insert(dossierSnapshots)
     .values({

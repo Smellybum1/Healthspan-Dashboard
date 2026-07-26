@@ -151,6 +151,11 @@ export interface InterventionReadRepository {
   /** Current assertions only, as the retired in-memory filter did. */
   listCurrentAssertionsForEntities(entityIds: string[]): Promise<EntityIdRow[]>;
   listDossierSnapshots(snapshotIds: string[]): Promise<DossierSnapshotRow[]>;
+
+  /* Dossier reads — the build stays local; this reads what surrounds it. */
+  listAliases(entityId: string): Promise<DossierAliasRow[]>;
+  listIdentifierRows(entityId: string): Promise<DossierIdentifierRow[]>;
+  countOpenResolutionTasksFor(entityId: string): Promise<number>;
 }
 
 /* ------------------------------------------------------------------------- *
@@ -172,6 +177,7 @@ export type ComparisonEntityRow = {
   entityType: string;
   identityConfidence: string;
   lifecycleState: string;
+  shortDescription: string | null;
   currentDossierSnapshotId: string | null;
 };
 
@@ -188,6 +194,8 @@ export type DossierSnapshotRow = {
   id: string;
   summaryJson: string;
   evidenceMapJson: string;
+  regulatoryMatrixJson: string;
+  safetyJson: string;
 };
 
 export type ComparisonDimension = {
@@ -222,3 +230,66 @@ export const COMPARISON_RULES = {
 
 export const COMPARISON_CAVEAT =
   'Comparison is informational and side-by-side only. Cells link to source-backed dossiers; incomparable dimensions are flagged explicitly.';
+
+/* ------------------------------------------------------------------------- *
+ * Dossier reads
+ *
+ * The build stays local (§12): it writes. What is shared is everything *around* the
+ * snapshot — the entity, its aliases and identifiers, the open-resolution-task count, and
+ * the trial portfolio — plus the assembly of the response.
+ *
+ * The hosted runtime reads the **stored** snapshot and never builds one. The local
+ * runtime rebuilds first and passes the freshly computed content in. Both then call the
+ * same assembler, so the document cannot drift, and `snapshotOrigin` states which
+ * happened rather than leaving a caller to guess.
+ * ------------------------------------------------------------------------- */
+
+export type DossierAliasRow = {
+  aliasText: string;
+  aliasType: string;
+  reviewState: string;
+  collisionFlag: boolean | null;
+};
+
+export type DossierIdentifierRow = {
+  scheme: string;
+  value: string;
+  reviewState: string;
+};
+
+export type DossierContext = {
+  entity: ComparisonEntityRow;
+  aliases: DossierAliasRow[];
+  identifiers: DossierIdentifierRow[];
+  openResolutionTasks: number;
+  trialPortfolio: TrialPortfolio;
+  /** The snapshot currently pointed at by the entity, if one has ever been built. */
+  storedSnapshot: StoredSnapshot | null;
+};
+
+export type StoredSnapshot = {
+  snapshotId: string;
+  summary: Record<string, unknown>;
+  evidenceMap: Record<string, unknown>;
+  regulatoryMatrix: Record<string, unknown>;
+  safety: Record<string, unknown>;
+};
+
+/**
+ * Where the snapshot in a dossier response came from.
+ *
+ * `rebuilt` and `reused` are local: the build ran, and either wrote a new snapshot or
+ * found its inputs unchanged. `stored` is hosted: the snapshot was read as it stands.
+ * `none` means no snapshot has ever been built for this entity — reported rather than
+ * served as an empty dossier that looks built.
+ */
+export type SnapshotOrigin = 'rebuilt' | 'reused' | 'stored' | 'none';
+
+export type DossierSnapshotContent = {
+  snapshotId: string | null;
+  origin: SnapshotOrigin;
+  summary: Record<string, unknown>;
+  evidenceMap: Record<string, unknown>;
+  regulatoryMatrix: Record<string, unknown>;
+  safety: Record<string, unknown>;
+};
