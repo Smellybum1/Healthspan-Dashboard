@@ -46,4 +46,10 @@ Exact filesystem paths are terminal-only (`pnpm data:path`); browser health/sour
 
 Source connector → raw snapshot → normalised version → content upsert → change events → deterministic intelligence analysis → claims + provenance spans → research-activity Signal Radar / Review Queue.
 
-Optional AI remains disabled by default (ADR-0008). Hosted D1/R2/Sites remain Milestone 7.
+Optional AI remains disabled by default (ADR-0008). Hosted D1/R2/Sites are Milestone 7:
+the same repository contracts gain a second, environment-selected adapter for the
+hosted-reachable slice only. Exactly one adapter is active at a time — there is no
+dual-write, replication, or synchronisation, and local SQLite remains the reference
+runtime. Ingestion, connectors, backup/restore, PRAGMA/VACUUM, local scheduling, and
+platform compliance stay local-only and synchronous. See
+`docs/sites/SITES_COMPATIBILITY_AUDIT.md`.

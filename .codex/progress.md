@@ -1,5 +1,36 @@
 # Progress log
 
+## 2026-07-26 — M6 ACCEPTED by Pro (M7 withheld)
+
+- Pro: **ACCEPT — Milestone 6 is officially closed**
+- Accepted tip: `e876231f950d1a134394a0adb50cabd5966bce28`
+- Branch: `milestone-6/personalisation-production-hardening`
+- CI: https://github.com/Smellybum1/Healthspan-Dashboard/actions/runs/30117787763 (5/5)
+- Performance remains documented proportional DEVIATION (non-blocking)
+- Non-blocking hygiene: §14 CI placeholder wording — do **not** chase tip with report-only commit; record tip/CI in eventual M7 start docs
+- Merge to `main`: **NOT AUTHORISED**
+- M7: **NOT STARTED / NOT AUTHORISED** — stop; no Sites/D1/R2/Wrangler/hosted auth/scheduler/deploy
+
+### Next recommended work
+
+Remain stopped until Pro authorises Milestone 7 (or owner requests merge). Do not open `milestone-7/*`.
+
+## 2026-07-25 — M6 Remediation V complete (M7 withheld)
+
+- Branch `milestone-6/personalisation-production-hardening`
+- Base: `59eb7c51ff9cab82ad3155438912e76b047b8379`
+- Authoritative tip: `e876231f950d1a134394a0adb50cabd5966bce28`
+- CI 5/5 green: https://github.com/Smellybum1/Healthspan-Dashboard/actions/runs/30117787763
+- Product depth: Saved Search multiselect builder, Alert Centre filters/snooze, Briefings, watchlist batch, Mute rules page, Today actions, Ops panels
+- Gates: `m6-product:eval` 87 cases; hardened `m6-product:doctor` + `completion-report:doctor` (no criterion-ID bypass); mobile action E2E
+- Supply chain: `react-router` override `8.3.0` for GHSA-qwww-vcr4-c8h2
+- Report: `docs/milestones/M6_COMPLETION_REPORT.md` §14 Remediation V addendum
+- M7 not started; no merge to `main`
+
+### Next recommended work
+
+Handoff tip + CI to ChatGPT Pro for M6 closure acceptance; do not start Milestone 7 until authorised.
+
 ## 2026-07-24 — M5 Section 34 complete (M6 unblocked for Pro request)
 
 - Residual packet: identity decisions/roles/commercial/snapshots, recurrence formula, claim taxonomies, evidence links, policy audit queue, Source Health polish, alignment detail UI, reserved AI policy

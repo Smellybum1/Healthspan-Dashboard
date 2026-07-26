@@ -4,7 +4,7 @@ Longevity intelligence, evidence first.
 
 Local-first research intelligence dashboard for longevity and healthspan.
 
-**Current work:** Milestone 6 remediation on `milestone-6/personalisation-production-hardening` (backup/restore, request-integrity, CI, full checklist). Milestone 7 is not authorised.
+**Current work:** Milestone 7 — ChatGPT Sites migration readiness and one owner-only saved preview — on `milestone-7/sites-migration-readiness`, based at `a59d202`. Local-first remains primary; hosted D1/R2 is an additional target with a single active adapter, never a mirror. Saving a private Sites version is authorised; **deploying it is not**, and no real local data is migrated. Milestone 6 is accepted and complete. See `docs/milestones/M7_BASELINE_AND_DECISIONS.md`.
 **Completed:** Milestone 1–5 (prototype → Live ingestion → evidence/claims → interventions/regulatory → creator/social claim intelligence)
 
 ## Requirements
