@@ -4,7 +4,9 @@ Milestone 7, Amendment I §3. Every module that touches data or the request path
 classified here. **No row may read `UNKNOWN`.**
 
 **Baseline commit:** `a59d202a481f8ef4982ad314f88350024b2373cf`
-**Status of this pass:** classification complete; conversion not yet started.
+**Status:** classification complete. Conversion in progress — 1 of 20 convertible rows
+`done` (content). A row may only be marked `done` once its module is a declared root in
+`scripts/sites-bundle-doctor.ts` and that gate is green.
 
 Legend:
 
@@ -25,7 +27,7 @@ wrapping synchronous `better-sqlite3`; the D1 adapter uses the async driver.
 
 | Module                          | Reach | Repository port                                     | Sync/async | Node-only dep                            | Conversion | Test / parity suite            | Capability                                                        |
 | ------------------------------- | ----- | --------------------------------------------------- | ---------- | ---------------------------------------- | ---------- | ------------------------------ | ----------------------------------------------------------------- |
-| `content-service.ts`            | both  | `ContentReadRepository`                             | sync       | none                                     | pending    | `sites:parity` content         | operational                                                       |
+| `content-service.ts`            | both  | `ContentReadRepository`                             | **async**  | none                                     | **done**   | `content.contract.ts`          | operational                                                       |
 | `trial-portfolio.ts`            | both  | `TrialReadRepository`                               | sync       | none                                     | pending    | `sites:parity` trials          | operational                                                       |
 | `dossier-service.ts`            | both  | `InterventionReadRepository`                        | sync       | none                                     | pending    | `sites:parity` interventions   | operational                                                       |
 | `comparison-service.ts`         | both  | `InterventionReadRepository`                        | sync       | none                                     | pending    | `sites:parity` interventions   | operational                                                       |

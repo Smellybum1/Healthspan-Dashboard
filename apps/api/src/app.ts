@@ -15,6 +15,7 @@ import {
 } from '@healthspan/operations';
 import {
   createSeedRepository,
+  createLocalRepositories,
   openDatabase,
   seedOperationalSources,
   FileRawSnapshotStore,
@@ -242,6 +243,10 @@ export function createApp() {
   });
   seedOperationalSources(live.db);
   const rawStore = new FileRawSnapshotStore(live.paths.rawDir);
+  // Hosted-reachable services resolve through these ports rather than `live.db`, so the
+  // same handlers run against the D1 adapter with no branch at the call site. One
+  // adapter is bound per runtime — never both.
+  const repositories = createLocalRepositories(live.db);
   warnIfRemoteAdminEnabled();
 
   const scheduler = createLocalScheduler({
@@ -709,7 +714,7 @@ export function createApp() {
     });
   });
 
-  app.get('/api/items', (c) => {
+  app.get('/api/items', async (c) => {
     if (currentMode() === 'demo') {
       const q = c.req.query('q') ?? undefined;
       const type = c.req.query('type') ?? undefined;
@@ -772,7 +777,13 @@ export function createApp() {
     const pageSize = Number(c.req.query('pageSize') ?? 25);
     const sort =
       (c.req.query('sort') as 'updated' | 'title' | 'published' | undefined) ?? 'updated';
-    const result = listContentItems(live.db, { type, q, page, pageSize, sort });
+    const result = await listContentItems(repositories.content, {
+      type,
+      q,
+      page,
+      pageSize,
+      sort,
+    });
     return c.json({
       count: result.total,
       page: result.page,

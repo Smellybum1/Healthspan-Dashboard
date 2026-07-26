@@ -59,6 +59,7 @@
     "briefs:eval": "tsx scripts/briefs-eval.ts",
     "backup:doctor": "tsx scripts/backup-doctor.ts",
     "operations:doctor": "tsx scripts/operations-doctor.ts",
+    "sites:bundle:doctor": "tsx scripts/sites-bundle-doctor.ts",
     "backup:create": "tsx scripts/backup-create.ts",
     "backup:list": "tsx scripts/backup-list.ts",
     "backup:verify": "tsx scripts/backup-verify.ts",
