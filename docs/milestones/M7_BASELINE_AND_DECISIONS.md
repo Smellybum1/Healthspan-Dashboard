@@ -148,9 +148,25 @@ any decision recorded here:
 
 ---
 
-## 9. Related work outside this milestone
+## 9. Merged work that is not Sites scope
 
-A separate branch, `design/ui-theme-and-hierarchy`, carries front-end token,
-accessibility, and screenshot-evidence corrections. It is **not** an ancestor of this
-branch and is not part of M7. It is recorded here only so the two lines of work are not
-confused; merging it is an owner decision independent of this milestone.
+`design/ui-theme-and-hierarchy` was merged into this branch **at owner direction**, so
+that the owner-only Sites preview does not present the light-theme contrast defect. The
+two branches touched disjoint files and the merge was clean.
+
+It is recorded here so that the M7 diff is not mistaken for Sites work. None of it is
+migration scope, and none of it should be assessed against the M7 acceptance checks:
+
+| Correction                                       | Why it could not wait for a later milestone                                                                                                                                                                                                                                                 |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@source` directive for `@healthspan/ui`         | Tailwind v4 skips `node_modules`, and the workspace package resolves through the symlink there, so **none** of the shared package's utility classes were ever emitted. Every evidence, confidence, regulatory and safety badge rendered with no tint, ring, or text colour in either theme. |
+| 61 hardcoded palette classes → semantic tokens   | The classes did not swap with the theme. Error text sat at roughly 1.9:1 on white across 16 sites, i.e. effectively invisible in light mode. Tone steps are validated all-pairs against each theme surface; colour is never the only signal.                                                |
+| Type scale, single card definition, section rank | 95.7% of typography was `text-sm`/`text-xs`, so thirty `h2` elements rendered at body size and no page established rank.                                                                                                                                                                    |
+| Playwright screenshot ownership                  | Both projects wrote the same paths, so the mobile project silently replaced every desktop capture. Milestone evidence held 21 unique images across 48 files; it now holds 39, with desktop captures at 1280px for the first time. A guard test prevents recurrence.                         |
+
+Five screenshot files remain stale and are explicitly allowlisted rather than quietly
+accepted: `m6-alert-detail`, `m6-brief-source-coverage` and `m6-weekly-review` are cited
+in `M6_COMPLETION_REPORT.md` but have **no generator in the E2E suite at all**;
+`m6-prune-preview` and `m6-retention-preview` are captured inside conditional branches
+that do not fire in the seeded environment. Resolving those touches an accepted
+milestone report and is an owner or project-manager decision, not an implementation one.
