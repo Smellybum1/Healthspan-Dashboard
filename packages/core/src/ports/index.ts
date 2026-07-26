@@ -19,5 +19,6 @@
  * `BetterSQLite3Database` — is never exposed as a shared runtime contract.
  */
 
+export * from './assessment.js';
 export * from './content.js';
 export * from './review.js';

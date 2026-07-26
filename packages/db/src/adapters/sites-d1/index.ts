@@ -11,11 +11,18 @@
  * is reported by `/api/hosted-readiness` as ported-but-unbound; it is never served as an
  * empty success.
  */
-import type { ContentReadRepository, D1Database, ReviewRepository } from '@healthspan/core';
+import type {
+  ClaimAssessmentRepository,
+  ContentReadRepository,
+  D1Database,
+  ReviewRepository,
+} from '@healthspan/core';
 import { createSitesD1 } from './client.js';
+import { createSitesClaimAssessmentRepository } from './assessment.js';
 import { createSitesContentReadRepository } from './content.js';
 import { createSitesReviewRepository } from './review.js';
 
+export * from './assessment.js';
 export * from './client.js';
 export * from './content.js';
 export * from './review.js';
@@ -28,6 +35,7 @@ export * from './review.js';
  * runtime they are in.
  */
 export type SitesRepositories = {
+  assessment: ClaimAssessmentRepository;
   content: ContentReadRepository;
   review: ReviewRepository;
 };
@@ -35,6 +43,7 @@ export type SitesRepositories = {
 export function createSitesRepositories(binding: D1Database): SitesRepositories {
   const db = createSitesD1(binding);
   return {
+    assessment: createSitesClaimAssessmentRepository(db),
     content: createSitesContentReadRepository(db),
     review: createSitesReviewRepository(db),
   };

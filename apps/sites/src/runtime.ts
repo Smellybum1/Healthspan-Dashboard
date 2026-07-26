@@ -7,6 +7,7 @@
  */
 import {
   SITES_RUNTIME_CAPABILITIES,
+  type ClaimAssessmentRepository,
   type ContentReadRepository,
   type D1Database,
   type ReviewRepository,
@@ -25,6 +26,7 @@ import { readSitesEnv, type ConfigProblem, type SitesBindings, type SitesConfig 
  * no D1 adapter. Both cases are reported; neither is served as an empty success.
  */
 export type SitesRepositories = {
+  assessment: ClaimAssessmentRepository | null;
   content: ContentReadRepository | null;
   review: ReviewRepository | null;
 };
@@ -54,7 +56,7 @@ export type DomainStatus = {
  */
 export function createSitesRepositories(db: D1Database): SitesRepositories {
   const bound = createD1Repositories(db);
-  return { content: bound.content, review: bound.review };
+  return { assessment: bound.assessment, content: bound.content, review: bound.review };
 }
 
 export type SitesRuntime = {
@@ -85,7 +87,9 @@ export function createSitesRuntime(
 ): SitesRuntime {
   const env = readSitesEnv(bindings);
   const factory = options.createRepositories ?? createSitesRepositories;
-  const repositories = bindings.DB ? factory(bindings.DB) : { content: null, review: null };
+  const repositories = bindings.DB
+    ? factory(bindings.DB)
+    : { assessment: null, content: null, review: null };
 
   const describe = (domain: string, port: string, bound: unknown): DomainStatus => ({
     domain,
@@ -96,6 +100,7 @@ export function createSitesRuntime(
   });
 
   const domains: DomainStatus[] = [
+    describe('assessment', 'ClaimAssessmentRepository', repositories.assessment),
     describe('content', 'ContentReadRepository', repositories.content),
     describe('review', 'ReviewRepository', repositories.review),
   ];

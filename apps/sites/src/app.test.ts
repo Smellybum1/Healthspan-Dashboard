@@ -3,6 +3,8 @@ import {
   normaliseContentPaging,
   normaliseReviewLimit,
   toContentItemDto,
+  type AssessmentRow,
+  type ClaimAssessmentRepository,
   type ContentItemRow,
   type ContentListQuery,
   type ContentReadRepository,
@@ -118,9 +120,71 @@ function memoryReviewRepository(): ReviewRepository {
   };
 }
 
+const ASSESSMENT_ROW: AssessmentRow = {
+  analysisId: 'analysis-1',
+  contentItemId: 'item-1',
+  title: 'Metformin randomised trial',
+  contentType: 'paper',
+  summary: 'A human RCT.',
+  evidenceMaturity: 'clinical',
+  evidenceAvailability: 'full_text',
+  studyDesign: 'rct',
+  organismLevel: 'human',
+  classificationConfidence: 'low',
+  assessmentCompleteness: 'partial',
+  resultsPresent: false,
+  status: 'complete',
+  stale: false,
+  translationGapsJson: '[]',
+  methodologicalSignalsJson: '[]',
+  whatWouldChangeJson: '[]',
+  hallmarksJson: '[]',
+  rulesetVersion: 'v1',
+  createdAt: Date.UTC(2026, 0, 5),
+};
+
+/** In-memory assessment port. Filtering stays in the shared service, as in a real adapter. */
+function memoryAssessmentRepository(): ClaimAssessmentRepository {
+  return {
+    listCurrent: (filters) =>
+      Promise.resolve(
+        filters.evidenceMaturity && filters.evidenceMaturity !== ASSESSMENT_ROW.evidenceMaturity
+          ? []
+          : [ASSESSMENT_ROW],
+      ),
+    getAnalysis: (id) =>
+      Promise.resolve(
+        id === 'analysis-1'
+          ? {
+              id: 'analysis-1',
+              contentItemId: 'item-1',
+              evidenceMaturity: 'clinical',
+              evidenceAvailability: 'full_text',
+              studyDesign: 'rct',
+              organismLevel: 'human',
+              classificationConfidence: 'low',
+              assessmentCompleteness: 'partial',
+              resultsPresent: false,
+              translationGapsJson: '[]',
+              methodologicalSignalsJson: '[]',
+              whatWouldChangeJson: '[]',
+              hallmarksJson: '[]',
+              rulesetVersion: 'v1',
+              createdAt: Date.UTC(2026, 0, 5),
+              supersededAt: null,
+            }
+          : null,
+      ),
+    getItem: () =>
+      Promise.resolve({ id: 'item-1', title: 'Metformin randomised trial', type: 'paper' }),
+    listAnalysisHistory: () => Promise.resolve([]),
+  };
+}
+
 function bound() {
   return createSitesApp({
     createRepositories: () => ({
+      assessment: memoryAssessmentRepository(),
       content: memoryContentRepository(),
       review: memoryReviewRepository(),
     }),
@@ -386,6 +450,47 @@ describe('sites entrypoint — review through the shared port', () => {
     const body = await res.json();
     expect(body.capability).toBe('review');
     expect(body.tasks).toBeUndefined();
+  });
+});
+
+describe('sites entrypoint — assessments through the shared port', () => {
+  it('serves the assessments list in the local response shape', async () => {
+    const res = await bound().fetch(get('/api/assessments'), CONFIGURED);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      dataMode: 'live',
+      page: 1,
+      pageSize: 25,
+      total: 1,
+      totalPages: 1,
+      items: [expect.objectContaining({ analysisId: 'analysis-1', retractionOrCorrection: false })],
+    });
+  });
+
+  it('passes filters through to the port', async () => {
+    const res = await bound().fetch(
+      get('/api/assessments?evidenceMaturity=preclinical'),
+      CONFIGURED,
+    );
+    expect((await res.json()).total).toBe(0);
+  });
+
+  it('serves an assessment detail and 404s an unknown one', async () => {
+    const found = await bound().fetch(get('/api/assessments/analysis-1'), CONFIGURED);
+    expect(found.status).toBe(200);
+    expect((await found.json()).analysis.id).toBe('analysis-1');
+
+    const missing = await bound().fetch(get('/api/assessments/nope'), CONFIGURED);
+    expect(missing.status).toBe(404);
+  });
+
+  it('refuses rather than returning an empty list when unbound', async () => {
+    const res = await createSitesApp().fetch(get('/api/assessments'), {
+      ...CONFIGURED,
+      DB: undefined,
+    });
+    expect(res.status).toBe(503);
+    expect((await res.json()).capability).toBe('assessment');
   });
 });
 

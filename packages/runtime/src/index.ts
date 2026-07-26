@@ -9,5 +9,6 @@
  * Services move here from `apps/api/src` one porting-ledger row at a time. A service
  * still sitting in `apps/api/src` is one that has not been ported yet.
  */
+export * from './assessment.js';
 export * from './content.js';
 export * from './review.js';

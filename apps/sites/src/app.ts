@@ -27,6 +27,8 @@ import {
   type OriginPolicy,
 } from '@healthspan/core';
 import {
+  getAssessment,
+  listAssessments,
   listContentItems,
   listReviewDecisions,
   listReviewTasks,
@@ -204,6 +206,32 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
       dataMode: 'live',
       dataOrigin: 'live',
     });
+  });
+
+  app.get('/api/assessments', async (c) => {
+    const repo = c.get('runtime').repositories.assessment;
+    if (!repo) return unbound(c, 'assessment');
+    return c.json({
+      dataMode: 'live',
+      ...(await listAssessments(repo, {
+        page: Number(c.req.query('page') ?? 1),
+        pageSize: Number(c.req.query('pageSize') ?? 25),
+        evidenceMaturity: c.req.query('evidenceMaturity') ?? undefined,
+        evidenceAvailability: c.req.query('evidenceAvailability') ?? undefined,
+        studyDesign: c.req.query('studyDesign') ?? undefined,
+        organism: c.req.query('organism') ?? undefined,
+        retractionOrCorrection: c.req.query('retractionOrCorrection') ?? undefined,
+        q: c.req.query('q') ?? undefined,
+      })),
+    });
+  });
+
+  app.get('/api/assessments/:id', async (c) => {
+    const repo = c.get('runtime').repositories.assessment;
+    if (!repo) return unbound(c, 'assessment');
+    const detail = await getAssessment(repo, c.req.param('id'));
+    if (!detail) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', ...detail });
   });
 
   app.get('/api/review/tasks', async (c) => {

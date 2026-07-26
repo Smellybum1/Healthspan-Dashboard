@@ -7,11 +7,17 @@
  * edge bundle.
  */
 
-import type { ContentReadRepository, ReviewRepository } from '@healthspan/core';
+import type {
+  ClaimAssessmentRepository,
+  ContentReadRepository,
+  ReviewRepository,
+} from '@healthspan/core';
 import type { HealthspanDb } from '../client.js';
+import { createLocalClaimAssessmentRepository } from './assessment.js';
 import { createLocalContentReadRepository } from './content.js';
 import { createLocalReviewRepository } from './review.js';
 
+export * from './assessment.js';
 export * from './content.js';
 export * from './review.js';
 
@@ -21,12 +27,14 @@ export * from './review.js';
  * `docs/sites/HOSTED_REACHABILITY_AND_ASYNC_PORTING_LEDGER.md`.
  */
 export type HealthspanRepositories = {
+  assessment: ClaimAssessmentRepository;
   content: ContentReadRepository;
   review: ReviewRepository;
 };
 
 export function createLocalRepositories(db: HealthspanDb): HealthspanRepositories {
   return {
+    assessment: createLocalClaimAssessmentRepository(db),
     content: createLocalContentReadRepository(db),
     review: createLocalReviewRepository(db),
   };

@@ -61,6 +61,8 @@ import {
   getLiveClaim,
 } from './intelligence-service.js';
 import {
+  getAssessment,
+  listAssessments,
   listContentItems,
   listReviewDecisions,
   listReviewTasks,
@@ -111,7 +113,6 @@ import {
 } from './backup-service.js';
 import { registerM6RemediationRoutes } from './m6-routes.js';
 import { REVIEW_ACTIONS, type ReviewAction } from '@healthspan/core';
-import { getAssessment, listAssessments } from './assessment-service.js';
 import {
   bootstrapInterventionCatalog,
   buildDossierSnapshot,
@@ -1294,7 +1295,7 @@ export function createApp() {
     });
   });
 
-  app.get('/api/assessments', (c) => {
+  app.get('/api/assessments', async (c) => {
     if (currentMode() === 'demo') {
       return c.json({
         dataMode: 'demo',
@@ -1308,7 +1309,7 @@ export function createApp() {
     }
     return c.json({
       dataMode: 'live',
-      ...listAssessments(live.db, {
+      ...(await listAssessments(repositories.assessment, {
         page: Number(c.req.query('page') ?? 1),
         pageSize: Number(c.req.query('pageSize') ?? 25),
         evidenceMaturity: c.req.query('evidenceMaturity') ?? undefined,
@@ -1317,13 +1318,13 @@ export function createApp() {
         organism: c.req.query('organism') ?? undefined,
         retractionOrCorrection: c.req.query('retractionOrCorrection') ?? undefined,
         q: c.req.query('q') ?? undefined,
-      }),
+      })),
     });
   });
 
-  app.get('/api/assessments/:id', (c) => {
+  app.get('/api/assessments/:id', async (c) => {
     if (currentMode() === 'demo') return c.json({ error: 'Not found in demo mode' }, 404);
-    const detail = getAssessment(live.db, c.req.param('id'));
+    const detail = await getAssessment(repositories.assessment, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...detail });
   });
