@@ -5,6 +5,23 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const shotDir = path.resolve(__dirname, '../../../docs/milestones/screenshots');
 
+/**
+ * Capture desktop-named evidence from the desktop project only.
+ *
+ * Both Playwright projects execute these specs, and every desktop-named screenshot
+ * was previously written by both. The mobile project runs last, so it silently
+ * replaced each desktop capture with a 375px one — which is why no desktop-width
+ * evidence existed and every mobile/desktop pair was byte-identical.
+ */
+async function captureDesktop(
+  page: import('@playwright/test').Page,
+  isMobile: boolean | undefined,
+  file: string,
+) {
+  if (isMobile) return;
+  await page.screenshot({ path: path.join(shotDir, file), fullPage: true });
+}
+
 test.describe('Milestone 1 smoke', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
@@ -14,7 +31,7 @@ test.describe('Milestone 1 smoke', () => {
       await expect(page.getByText(/Current:\s*demo/i)).toBeVisible({ timeout: 10_000 });
     }
   });
-  test('Today page loads and shows differentiators', async ({ page }) => {
+  test('Today page loads and shows differentiators', async ({ page, isMobile }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
     await expect(page.getByText(/Demo snapshot/i).first()).toBeVisible();
@@ -22,21 +39,18 @@ test.describe('Milestone 1 smoke', () => {
     await expect(
       page.getByRole('heading', { name: 'What changed since last visit' }),
     ).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'today.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'today.png');
   });
 
-  test('detail page exposes assessment rationale', async ({ page }) => {
+  test('detail page exposes assessment rationale', async ({ page, isMobile }) => {
     await page.goto('/interventions/int-metformin');
     await expect(page.getByRole('heading', { name: 'Metformin' })).toBeVisible();
     await expect(page.getByText(/Confidence rationale/i)).toBeVisible();
     await expect(page.getByText('Provenance', { exact: true })).toBeVisible();
-    await page.screenshot({
-      path: path.join(shotDir, 'intervention-metformin.png'),
-      fullPage: true,
-    });
+    await captureDesktop(page, isMobile, 'intervention-metformin.png');
   });
 
-  test('watchlist follow persists across refresh', async ({ page }) => {
+  test('watchlist follow persists across refresh', async ({ page, isMobile }) => {
     await page.goto('/peptides/pep-bpc157');
     const follow = page.getByRole('button', { name: /Follow|Unfollow/i });
     await expect(follow).toBeVisible();
@@ -50,17 +64,17 @@ test.describe('Milestone 1 smoke', () => {
     await expect(page.getByRole('button', { name: /Unfollow/i })).toBeVisible();
     await page.goto('/watchlists');
     await expect(page.getByText(/BPC-157/i)).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'watchlists.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'watchlists.png');
   });
 
-  test('theme toggle switches document theme', async ({ page }) => {
+  test('theme toggle switches document theme', async ({ page, isMobile }) => {
     await page.goto('/');
     const toggle = page.getByRole('button', {
       name: /Switch to light theme|Switch to dark theme/i,
     });
     await toggle.click();
     await expect.poll(async () => page.locator('html').getAttribute('data-theme')).toBe('light');
-    await page.screenshot({ path: path.join(shotDir, 'theme-light.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'theme-light.png');
   });
 
   test('mobile navigation drawer works', async ({ page, isMobile }) => {
@@ -78,14 +92,14 @@ test.describe('Milestone 1 smoke', () => {
 });
 
 test.describe('Milestone 3 Live intelligence surfaces', () => {
-  test('claims workspace and review queue are reachable', async ({ page }) => {
+  test('claims workspace and review queue are reachable', async ({ page, isMobile }) => {
     await page.goto('/claims');
     await expect(page.getByRole('heading', { name: 'Claims workspace' })).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm3-claims.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm3-claims.png');
 
     await page.goto('/review');
     await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm3-review.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm3-review.png');
   });
 
   test('mobile review queue is reachable', async ({ page, isMobile }) => {
@@ -100,19 +114,19 @@ test.describe('Milestone 3 Live intelligence surfaces', () => {
 });
 
 test.describe('Milestone 4 intervention surfaces', () => {
-  test('entity resolution, compare, and methodology are reachable', async ({ page }) => {
+  test('entity resolution, compare, and methodology are reachable', async ({ page, isMobile }) => {
     await page.goto('/entity-resolution');
     await expect(page.getByRole('heading', { name: 'Entity Resolution Queue' })).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm4-entity-resolution.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm4-entity-resolution.png');
 
     await page.goto('/compare');
     await expect(page.getByRole('heading', { name: 'Intervention comparison' })).toBeVisible();
     await expect(page.getByText(/No winner/i)).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm4-compare.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm4-compare.png');
 
     await page.goto('/methodology');
     await expect(page.getByText(/Intervention identity and aliases/i)).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm4-methodology.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm4-methodology.png');
   });
 
   test('mobile compare is reachable', async ({ page, isMobile }) => {
@@ -127,18 +141,21 @@ test.describe('Milestone 4 intervention surfaces', () => {
 });
 
 test.describe('Milestone 5 creator surfaces', () => {
-  test('creators list, claims workspace, and methodology are reachable', async ({ page }) => {
+  test('creators list, claims workspace, and methodology are reachable', async ({
+    page,
+    isMobile,
+  }) => {
     await page.goto('/creators');
     await expect(page.getByRole('heading', { name: 'Creators' })).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm5-creators.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm5-creators.png');
 
     await page.goto('/creator-claims');
     await expect(page.getByRole('heading', { name: 'Creator Claims' })).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm5-creator-claims.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm5-creator-claims.png');
 
     await page.goto('/methodology');
     await expect(page.getByText(/Creator claims, not creator worth/i)).toBeVisible();
-    await page.screenshot({ path: path.join(shotDir, 'm5-methodology.png'), fullPage: true });
+    await captureDesktop(page, isMobile, 'm5-methodology.png');
   });
 
   test('mobile creator claims is reachable', async ({ page, isMobile }) => {
