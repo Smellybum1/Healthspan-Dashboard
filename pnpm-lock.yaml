@@ -357,6 +357,9 @@ importers:
       '@healthspan/core':
         specifier: workspace:*
         version: link:../core
+      '@healthspan/creators':
+        specifier: workspace:*
+        version: link:../creators
     devDependencies:
       typescript:
         specifier: ^5.8.2

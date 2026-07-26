@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { desc, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import {
   creatorAliases,
   creatorClaims,
@@ -9,14 +9,12 @@ import {
   creatorClaimAlignmentDimensions,
   creatorClaimFindings,
   creatorClaimSourceSpans,
-  creatorContentItems,
   creatorDisclosures,
   creatorDocuments,
   creatorDocumentSegments,
   creatorEntities,
   creatorPlatformAccounts,
   creatorProfileSnapshots,
-  platformContentCurrent,
   platformPolicyState,
   xBudgetLedger,
   type HealthspanDb,
@@ -33,8 +31,7 @@ import {
   parseTranscriptDocument,
   type RightsBasis,
 } from '@healthspan/creators';
-import { getCreatorRecurrence } from './creator-recurrence-service.js';
-import { listCreatorRoles, queueAmbiguousIdentityIfNeeded } from './creator-identity-service.js';
+import { queueAmbiguousIdentityIfNeeded } from './creator-identity-service.js';
 
 const BOOTSTRAP = [
   {
@@ -185,33 +182,6 @@ export function bootstrapCreatorCatalog(db: HealthspanDb) {
       .values({ ...p, detailJson: '{}', updatedAt: now })
       .run();
   }
-}
-
-export function listCreators(
-  db: HealthspanDb,
-  opts?: { page?: number; pageSize?: number; q?: string },
-) {
-  bootstrapCreatorCatalog(db);
-  const page = Math.max(1, opts?.page ?? 1);
-  const pageSize = Math.min(100, Math.max(1, opts?.pageSize ?? 25));
-  let rows = db
-    .select()
-    .from(creatorEntities)
-    .all()
-    .filter((c) => c.lifecycleState === 'active');
-  if (opts?.q) {
-    const q = opts.q.toLowerCase();
-    rows = rows.filter((c) => c.preferredName.toLowerCase().includes(q));
-  }
-  const total = rows.length;
-  const items = rows.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize).map((c) => ({
-    id: c.id,
-    preferredName: c.preferredName,
-    creatorKind: c.creatorKind,
-    identityConfidence: c.identityConfidence,
-    neutralDescription: c.neutralDescription,
-  }));
-  return { items, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
 }
 
 export function importCreatorDocument(
@@ -514,134 +484,6 @@ export function deleteCreatorDocument(
   };
 }
 
-export function listCreatorClaims(db: HealthspanDb, opts?: { creatorId?: string; limit?: number }) {
-  bootstrapCreatorCatalog(db);
-  const limit = Math.min(200, Math.max(1, opts?.limit ?? 50));
-  let rows = db
-    .select()
-    .from(creatorClaims)
-    .orderBy(desc(creatorClaims.createdAt))
-    .all()
-    .filter((r) => r.active && (!opts?.creatorId || r.creatorId === opts.creatorId));
-  rows = rows.slice(0, limit);
-  return rows.map((r) => ({
-    id: r.id,
-    creatorId: r.creatorId,
-    claimText: r.claimText,
-    assertionRole: r.assertionRole,
-    claimKind: r.claimKind,
-    direction: r.direction,
-    certaintyLanguage: r.certaintyLanguage,
-    confidence: r.confidence,
-    reviewStatus: r.reviewStatus ?? 'unreviewed',
-    recurrenceKey: r.recurrenceKey,
-    alignment: JSON.parse(r.alignmentJson) as Record<string, unknown>,
-    createdAt: new Date(r.createdAt).toISOString(),
-  }));
-}
-
-export function getCreatorDetail(db: HealthspanDb, id: string) {
-  bootstrapCreatorCatalog(db);
-  const creator = db.select().from(creatorEntities).where(eq(creatorEntities.id, id)).all()[0];
-  if (!creator) return null;
-  const accounts = db
-    .select()
-    .from(creatorPlatformAccounts)
-    .all()
-    .filter((a) => a.creatorId === id);
-  const claims = listCreatorClaims(db, { creatorId: id, limit: 100 });
-  const disclosures = db
-    .select()
-    .from(creatorDisclosures)
-    .all()
-    .filter((d) => d.creatorId === id);
-  const documents = db
-    .select()
-    .from(creatorDocuments)
-    .all()
-    .filter((d) => d.creatorId === id && d.lifecycleState !== 'deleted')
-    .map((d) => ({
-      id: d.id,
-      filename: d.filename,
-      documentKind: d.documentKind,
-      rightsBasis: d.rightsBasis,
-      claimEligible: Boolean(d.claimEligible),
-      lifecycleState: d.lifecycleState,
-      createdAt: new Date(d.createdAt).toISOString(),
-    }));
-  const now = Date.now();
-  const youtubeVideos = db
-    .select()
-    .from(creatorContentItems)
-    .all()
-    .filter((c) => c.creatorId === id && c.platform === 'youtube' && c.currentState === 'current')
-    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0))
-    .slice(0, 40)
-    .map((item) => {
-      const current = db
-        .select()
-        .from(platformContentCurrent)
-        .all()
-        .find((r) => r.contentItemId === item.id);
-      const expired = current?.expiryAt != null && current.expiryAt < now;
-      return {
-        id: item.id,
-        videoId: item.externalId,
-        title: item.title,
-        publishedAt: item.publishedAt ? new Date(item.publishedAt).toISOString() : null,
-        canonicalUrl: item.canonicalUrl,
-        thumbnailUrl: current?.thumbnailUrl ?? null,
-        captionAvailable: Boolean(current?.captionAvailable),
-        paidPlacementDeclared: Boolean(current?.paidPlacementDeclared),
-        displayEligible: Boolean(current?.displayEligible) && !expired,
-        claimEvidence: false as const,
-        metadataOnly: true as const,
-        note: 'YouTube API metadata is operational context only — not claim evidence',
-      };
-    });
-  const recurrence = getCreatorRecurrence(db, id).groups.map((g) => ({
-    recurrenceKey: g.recurrenceKey,
-    reviewedClaimCount: g.reviewedClaimCount,
-    distinctMonitoredSourceCount: g.distinctMonitoredSourceCount,
-    formulaVersion: g.formulaVersion,
-    firstObservedAt: g.firstObservedAt ? new Date(g.firstObservedAt).toISOString() : null,
-    firstObservedScope: g.firstObservedScope,
-    notPopularity: true as const,
-  }));
-
-  return {
-    id: creator.id,
-    preferredName: creator.preferredName,
-    creatorKind: creator.creatorKind,
-    identityConfidence: creator.identityConfidence,
-    identityRevision: creator.identityRevision,
-    currentProfileSnapshotId: creator.currentProfileSnapshotId,
-    neutralDescription: creator.neutralDescription,
-    lifecycleState: creator.lifecycleState,
-    accounts,
-    claims,
-    disclosures: disclosures.map((d) => ({
-      id: d.id,
-      disclosureText: d.disclosureText,
-      source: d.source,
-      createdAt: new Date(d.createdAt).toISOString(),
-    })),
-    documents,
-    youtubeVideos,
-    roles: listCreatorRoles(db, id),
-    recurrence,
-    prohibitedScores: [
-      'trust_score',
-      'credibility_score',
-      'misinformation_rank',
-      'influence_score',
-      'attention_score',
-      'engagement_score',
-      'popularity_score',
-    ],
-  };
-}
-
 /** Parse YouTube channel URL, @handle, or UC… channel id. */
 export function parseYoutubeChannelRef(input: string): {
   externalAccountId: string;
@@ -835,19 +677,6 @@ export function createManualCreatorClaim(
     .where(eq(creatorClaims.id, id))
     .run();
   return { ok: true as const, claimId: id };
-}
-
-export function creatorWatchItems(db: HealthspanDb, limit = 12) {
-  bootstrapCreatorCatalog(db);
-  return listCreatorClaims(db, { limit }).map((c) => ({
-    id: c.id,
-    type: 'claim',
-    title: c.claimText.slice(0, 120),
-    summary: `${c.assertionRole} · confidence ${c.confidence}`,
-    meta: 'Creator claim (not a person score)',
-    dataOrigin: 'live' as const,
-    href: `/creator-claims/${c.id}`,
-  }));
 }
 
 export function ensureXBudgetRow(db: HealthspanDb) {

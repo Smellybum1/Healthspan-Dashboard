@@ -28,8 +28,12 @@ import {
 } from '@healthspan/core';
 import {
   getAssessment,
+  getCreatorDetail,
   listAssessments,
   listContentItems,
+  listCreatorClaims,
+  listCreators,
+  listRecurrenceSnapshots,
   listReviewDecisions,
   listReviewTasks,
   parseContentListQuery,
@@ -232,6 +236,43 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
     const detail = await getAssessment(repo, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...detail });
+  });
+
+  app.get('/api/creators', async (c) => {
+    const repo = c.get('runtime').repositories.creator;
+    if (!repo) return unbound(c, 'creator');
+    // No bootstrap. The local runtime seeds its curated catalog from its own route; a
+    // hosted read may not write, and hosted data is synthetic-fixture-only.
+    const listed = await listCreators(repo, {
+      page: Number(c.req.query('page') ?? 1),
+      pageSize: Number(c.req.query('pageSize') ?? 50),
+      q: c.req.query('q') ?? undefined,
+    });
+    return c.json({ dataMode: 'live', dataOrigin: 'live', ...listed });
+  });
+
+  app.get('/api/creators/:id', async (c) => {
+    const repo = c.get('runtime').repositories.creator;
+    if (!repo) return unbound(c, 'creator');
+    const detail = await getCreatorDetail(repo, c.req.param('id'));
+    if (!detail) return c.json({ error: 'Not found' }, 404);
+    return c.json({ dataMode: 'live', dataOrigin: 'live', type: 'creator', ...detail });
+  });
+
+  app.get('/api/creator-claims', async (c) => {
+    const repo = c.get('runtime').repositories.creator;
+    if (!repo) return unbound(c, 'creator');
+    const claims = await listCreatorClaims(repo, {
+      creatorId: c.req.query('creatorId') ?? undefined,
+      limit: Number(c.req.query('limit') ?? 50),
+    });
+    return c.json({ dataMode: 'live', claims });
+  });
+
+  app.get('/api/claim-recurrence', async (c) => {
+    const repo = c.get('runtime').repositories.creator;
+    if (!repo) return unbound(c, 'creator');
+    return c.json({ dataMode: 'live', snapshots: await listRecurrenceSnapshots(repo) });
   });
 
   app.get('/api/review/tasks', async (c) => {

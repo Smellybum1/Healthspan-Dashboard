@@ -8,6 +8,7 @@ import {
   type ContentItemRow,
   type ContentListQuery,
   type ContentReadRepository,
+  type CreatorReadRepository,
   type ReviewRepository,
   type ReviewTaskDto,
 } from '@healthspan/core';
@@ -181,11 +182,93 @@ function memoryAssessmentRepository(): ClaimAssessmentRepository {
   };
 }
 
+/**
+ * In-memory creator port.
+ *
+ * The video row carries no `platform_content_current` metadata, which is the case the
+ * left join exists to preserve — the route must still render it.
+ */
+function memoryCreatorRepository(): CreatorReadRepository {
+  return {
+    listCreators: ({ q }) =>
+      Promise.resolve(
+        q && !'ada longevity'.includes(q.toLowerCase())
+          ? { rows: [], total: 0 }
+          : {
+              rows: [
+                {
+                  id: 'creator-a',
+                  preferredName: 'Ada Longevity',
+                  creatorKind: 'individual',
+                  identityConfidence: 'medium',
+                  neutralDescription: 'Synthetic profile.',
+                },
+              ],
+              total: 1,
+            },
+      ),
+    getCreator: (id) =>
+      Promise.resolve(
+        id === 'creator-a'
+          ? {
+              id: 'creator-a',
+              preferredName: 'Ada Longevity',
+              creatorKind: 'individual',
+              identityConfidence: 'medium',
+              identityRevision: 1,
+              currentProfileSnapshotId: null,
+              neutralDescription: 'Synthetic profile.',
+              lifecycleState: 'active',
+            }
+          : null,
+      ),
+    listClaims: () =>
+      Promise.resolve([
+        {
+          id: 'claim-a1',
+          creatorId: 'creator-a',
+          claimText: 'Synthetic creator claim',
+          assertionRole: 'reported_finding',
+          claimKind: 'efficacy',
+          direction: 'positive',
+          certaintyLanguage: null,
+          confidence: 'low',
+          reviewStatus: 'reviewed_accepted',
+          recurrenceKey: 'theme-1',
+          alignmentJson: '{}',
+          createdAt: Date.UTC(2026, 0, 3),
+        },
+      ]),
+    listAccounts: () => Promise.resolve([]),
+    listDisclosures: () => Promise.resolve([]),
+    listDocuments: () => Promise.resolve([]),
+    listYoutubeVideos: () =>
+      Promise.resolve([
+        {
+          id: 'video-1',
+          externalId: 'ext-video-1',
+          title: 'Video one',
+          publishedAt: Date.UTC(2026, 0, 2),
+          canonicalUrl: 'https://example.invalid/video-1',
+          currentThumbnailUrl: null,
+          currentCaptionAvailable: null,
+          currentPaidPlacementDeclared: null,
+          currentDisplayEligible: null,
+          currentExpiryAt: null,
+        },
+      ]),
+    listRoles: () => Promise.resolve([]),
+    listRecurrenceInputs: () => Promise.resolve([]),
+    listRecurrenceSnapshots: () => Promise.resolve([]),
+  };
+}
+
 function bound() {
   return createSitesApp({
     createRepositories: () => ({
       assessment: memoryAssessmentRepository(),
       content: memoryContentRepository(),
+      creator: memoryCreatorRepository(),
       review: memoryReviewRepository(),
     }),
   });
@@ -491,6 +574,64 @@ describe('sites entrypoint — assessments through the shared port', () => {
     });
     expect(res.status).toBe(503);
     expect((await res.json()).capability).toBe('assessment');
+  });
+});
+
+describe('sites entrypoint — creators through the shared port', () => {
+  it('serves the creator list without bootstrapping the catalog', async () => {
+    // The local runtime seeds its curated catalog from its own route. A hosted read may
+    // not write, and hosted data is synthetic-fixture-only.
+    const res = await bound().fetch(get('/api/creators'), CONFIGURED);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.dataMode).toBe('live');
+    expect(body.items.map((c: { id: string }) => c.id)).toEqual(['creator-a']);
+    expect(body.total).toBe(1);
+  });
+
+  it('passes the search term to the port', async () => {
+    const res = await bound().fetch(get('/api/creators?q=zzzz'), CONFIGURED);
+    expect((await res.json()).items).toEqual([]);
+  });
+
+  it('serves a creator detail, and 404s an unknown one', async () => {
+    const found = await bound().fetch(get('/api/creators/creator-a'), CONFIGURED);
+    expect(found.status).toBe(200);
+    const detail = await found.json();
+    expect(detail).toMatchObject({ type: 'creator', preferredName: 'Ada Longevity' });
+    expect(detail.prohibitedScores).toContain('influence_score');
+
+    const missing = await bound().fetch(get('/api/creators/nope'), CONFIGURED);
+    expect(missing.status).toBe(404);
+  });
+
+  it('renders a video whose platform metadata row is absent', async () => {
+    // The left join's reason for existing: an inner join would drop this video.
+    const res = await bound().fetch(get('/api/creators/creator-a'), CONFIGURED);
+    const [video] = (await res.json()).youtubeVideos;
+    expect(video).toMatchObject({
+      id: 'video-1',
+      thumbnailUrl: null,
+      displayEligible: false,
+      metadataOnly: true,
+      claimEvidence: false,
+    });
+  });
+
+  it('serves creator claims and recurrence snapshots', async () => {
+    const claims = await bound().fetch(get('/api/creator-claims'), CONFIGURED);
+    expect((await claims.json()).claims[0].id).toBe('claim-a1');
+    const recurrence = await bound().fetch(get('/api/claim-recurrence'), CONFIGURED);
+    expect(await recurrence.json()).toMatchObject({ dataMode: 'live', snapshots: [] });
+  });
+
+  it('refuses rather than returning an empty list when unbound', async () => {
+    const res = await createSitesApp().fetch(get('/api/creators'), {
+      ...CONFIGURED,
+      DB: undefined,
+    });
+    expect(res.status).toBe(503);
+    expect((await res.json()).capability).toBe('creator');
   });
 });
 

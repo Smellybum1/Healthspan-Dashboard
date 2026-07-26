@@ -61,9 +61,14 @@ import {
   getLiveClaim,
 } from './intelligence-service.js';
 import {
+  creatorWatchItems,
   getAssessment,
+  getCreatorDetail,
   listAssessments,
   listContentItems,
+  listCreatorClaims,
+  listCreators,
+  listRecurrenceSnapshots,
   listReviewDecisions,
   listReviewTasks,
   parseContentListQuery,
@@ -142,13 +147,9 @@ import {
 } from './regulatory-safety-service.js';
 import {
   bootstrapCreatorCatalog,
-  creatorWatchItems,
   importCreatorDocument,
   deleteCreatorDocument,
-  listCreatorClaims,
-  listCreators,
   ensureXBudgetRow,
-  getCreatorDetail,
   addYoutubeAccount,
   addXAccount,
   createManualCreatorClaim,
@@ -179,7 +180,7 @@ import {
   rebuildCreatorProfileSnapshot,
   redactProfileSnapshot,
 } from './creator-identity-service.js';
-import { rebuildClaimRecurrence, listRecurrenceSnapshots } from './creator-recurrence-service.js';
+import { rebuildClaimRecurrence } from './creator-recurrence-service.js';
 import { linkCreatorClaimEvidence, listClaimEvidenceLinks } from './creator-evidence-service.js';
 import { runPlatformPolicyAudit, getPlatformSourceHealth } from './platform-policy-service.js';
 import {
@@ -580,9 +581,13 @@ export function createApp() {
     return c.json({ dataMode: mode, mode });
   });
 
-  app.get('/api/dashboard', (c) => {
+  app.get('/api/dashboard', async (c) => {
     if (currentMode() === 'demo') return c.json(demoRepo.getDashboardPayload());
 
+    // The creator reads used to seed this catalog themselves on every call. Seeding is a
+    // write, so it cannot live on a hosted read path; the local runtime keeps the same
+    // behaviour by doing it here, before the shared service runs.
+    bootstrapCreatorCatalog(live.db);
     const contentCount = live.db.select().from(contentItems).all().length;
     const radar = liveRadarPoints(live.db, 40);
     const recentChanges = live.db
@@ -710,7 +715,7 @@ export function createApp() {
           [p?.journal, p?.pmid ? `PMID ${p.pmid}` : null].filter(Boolean).join(' · ') || undefined,
         );
       }),
-      creatorClaims: creatorWatchItems(live.db, 8),
+      creatorClaims: await creatorWatchItems(repositories.creator, 8),
       needsReview: [],
     });
   });
@@ -752,7 +757,7 @@ export function createApp() {
     }
     if (type === 'creator') {
       bootstrapCreatorCatalog(live.db);
-      const listed = listCreators(live.db, {
+      const listed = await listCreators(repositories.creator, {
         page: Number(c.req.query('page') ?? 1),
         pageSize: Number(c.req.query('pageSize') ?? 25),
         q: c.req.query('q') ?? undefined,
@@ -1410,13 +1415,13 @@ export function createApp() {
     });
   });
 
-  app.get('/api/creators', (c) => {
+  app.get('/api/creators', async (c) => {
     if (currentMode() === 'demo') {
       const items = demoRepo.filterItems({ type: 'creator' });
       return c.json({ dataMode: 'demo', dataOrigin: 'demo', count: items.length, items });
     }
     bootstrapCreatorCatalog(live.db);
-    const listed = listCreators(live.db, {
+    const listed = await listCreators(repositories.creator, {
       page: Number(c.req.query('page') ?? 1),
       pageSize: Number(c.req.query('pageSize') ?? 50),
       q: c.req.query('q') ?? undefined,
@@ -1441,7 +1446,7 @@ export function createApp() {
     });
   });
 
-  app.get('/api/creators/:id', (c) => {
+  app.get('/api/creators/:id', async (c) => {
     if (currentMode() === 'demo') {
       const found = demoRepo.getItemById(c.req.param('id'));
       if (!found || found.item.type !== 'creator') return c.json({ error: 'Not found' }, 404);
@@ -1452,7 +1457,8 @@ export function createApp() {
         dataOrigin: 'demo',
       });
     }
-    const detail = getCreatorDetail(live.db, c.req.param('id'));
+    bootstrapCreatorCatalog(live.db);
+    const detail = await getCreatorDetail(repositories.creator, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({
       dataMode: 'live',
@@ -1656,14 +1662,15 @@ export function createApp() {
     );
   });
 
-  app.get('/api/creators/:id/export', (c) => {
+  app.get('/api/creators/:id/export', async (c) => {
     if (currentMode() === 'demo') {
       return c.json({
         dataMode: 'demo',
         export: buildSafeCreatorExportBundle({ creatorId: c.req.param('id') }),
       });
     }
-    const detail = getCreatorDetail(live.db, c.req.param('id'));
+    bootstrapCreatorCatalog(live.db);
+    const detail = await getCreatorDetail(repositories.creator, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     const xPosts = live.db
       .select()
@@ -1715,9 +1722,10 @@ export function createApp() {
     return c.json({ accepted: true, ...result });
   });
 
-  app.get('/api/creator-claims', (c) => {
+  app.get('/api/creator-claims', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', claims: [] });
-    const claims = listCreatorClaims(live.db, {
+    bootstrapCreatorCatalog(live.db);
+    const claims = await listCreatorClaims(repositories.creator, {
       creatorId: c.req.query('creatorId') ?? undefined,
       limit: Number(c.req.query('limit') ?? 50),
     });
@@ -1956,9 +1964,12 @@ export function createApp() {
     });
   });
 
-  app.get('/api/claim-recurrence', (c) => {
+  app.get('/api/claim-recurrence', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', snapshots: [] });
-    return c.json({ dataMode: 'live', snapshots: listRecurrenceSnapshots(live.db) });
+    return c.json({
+      dataMode: 'live',
+      snapshots: await listRecurrenceSnapshots(repositories.creator),
+    });
   });
 
   app.get('/api/creator-claims/:id/evidence', (c) => {

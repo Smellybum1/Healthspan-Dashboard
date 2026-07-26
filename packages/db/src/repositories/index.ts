@@ -10,15 +10,18 @@
 import type {
   ClaimAssessmentRepository,
   ContentReadRepository,
+  CreatorReadRepository,
   ReviewRepository,
 } from '@healthspan/core';
 import type { HealthspanDb } from '../client.js';
 import { createLocalClaimAssessmentRepository } from './assessment.js';
 import { createLocalContentReadRepository } from './content.js';
+import { createLocalCreatorReadRepository } from './creator.js';
 import { createLocalReviewRepository } from './review.js';
 
 export * from './assessment.js';
 export * from './content.js';
+export * from './creator.js';
 export * from './review.js';
 
 /**
@@ -29,6 +32,7 @@ export * from './review.js';
 export type HealthspanRepositories = {
   assessment: ClaimAssessmentRepository;
   content: ContentReadRepository;
+  creator: CreatorReadRepository;
   review: ReviewRepository;
 };
 
@@ -36,6 +40,7 @@ export function createLocalRepositories(db: HealthspanDb): HealthspanRepositorie
   return {
     assessment: createLocalClaimAssessmentRepository(db),
     content: createLocalContentReadRepository(db),
+    creator: createLocalCreatorReadRepository(db),
     review: createLocalReviewRepository(db),
   };
 }

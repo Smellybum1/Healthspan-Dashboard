@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 export const RECURRENCE_FORMULA_VERSION = 'm5.recurrence.1';
 
 export type RecurrenceClaimInput = {
@@ -168,11 +166,4 @@ export function computeClaimRecurrence(claims: RecurrenceClaimInput[]): Recurren
   }
 
   return groups.sort((a, b) => b.distinctMonitoredSourceCount - a.distinctMonitoredSourceCount);
-}
-
-export function recurrenceSourceScopeHash(sourceKeys: string[]): string {
-  return createHash('sha256')
-    .update([...sourceKeys].sort().join('|'))
-    .digest('hex')
-    .slice(0, 24);
 }

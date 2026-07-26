@@ -9,6 +9,7 @@ import {
   SITES_RUNTIME_CAPABILITIES,
   type ClaimAssessmentRepository,
   type ContentReadRepository,
+  type CreatorReadRepository,
   type D1Database,
   type ReviewRepository,
   type RuntimeCapabilities,
@@ -28,6 +29,7 @@ import { readSitesEnv, type ConfigProblem, type SitesBindings, type SitesConfig 
 export type SitesRepositories = {
   assessment: ClaimAssessmentRepository | null;
   content: ContentReadRepository | null;
+  creator: CreatorReadRepository | null;
   review: ReviewRepository | null;
 };
 
@@ -56,7 +58,12 @@ export type DomainStatus = {
  */
 export function createSitesRepositories(db: D1Database): SitesRepositories {
   const bound = createD1Repositories(db);
-  return { assessment: bound.assessment, content: bound.content, review: bound.review };
+  return {
+    assessment: bound.assessment,
+    content: bound.content,
+    creator: bound.creator,
+    review: bound.review,
+  };
 }
 
 export type SitesRuntime = {
@@ -89,7 +96,7 @@ export function createSitesRuntime(
   const factory = options.createRepositories ?? createSitesRepositories;
   const repositories = bindings.DB
     ? factory(bindings.DB)
-    : { assessment: null, content: null, review: null };
+    : { assessment: null, content: null, creator: null, review: null };
 
   const describe = (domain: string, port: string, bound: unknown): DomainStatus => ({
     domain,
@@ -102,6 +109,7 @@ export function createSitesRuntime(
   const domains: DomainStatus[] = [
     describe('assessment', 'ClaimAssessmentRepository', repositories.assessment),
     describe('content', 'ContentReadRepository', repositories.content),
+    describe('creator', 'CreatorReadRepository', repositories.creator),
     describe('review', 'ReviewRepository', repositories.review),
   ];
 

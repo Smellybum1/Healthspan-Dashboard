@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./recurrence": {
+      "types": "./src/recurrence.ts",
+      "default": "./src/recurrence.ts"
     }
   },
   "scripts": {

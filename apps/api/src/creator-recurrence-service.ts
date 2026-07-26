@@ -29,17 +29,6 @@ function toInputs(db: HealthspanDb, creatorId?: string) {
   }));
 }
 
-export function getCreatorRecurrence(db: HealthspanDb, creatorId: string) {
-  const inputs = toInputs(db, creatorId);
-  const groups = computeClaimRecurrence(inputs);
-  return {
-    formulaVersion: RECURRENCE_FORMULA_VERSION,
-    groupCount: groups.length,
-    groups,
-    note: 'Recurrence is not popularity, influence, attention, engagement, or truth.',
-  };
-}
-
 export function rebuildClaimRecurrence(db: HealthspanDb, opts?: { creatorId?: string }) {
   const now = Date.now();
   const inputs = toInputs(db, opts?.creatorId);
@@ -110,24 +99,4 @@ export function rebuildClaimRecurrence(db: HealthspanDb, opts?: { creatorId?: st
     snapshots,
     note: 'Recurrence is not popularity, influence, attention, engagement, or truth.',
   };
-}
-
-export function listRecurrenceSnapshots(db: HealthspanDb, limit = 50) {
-  return db
-    .select()
-    .from(claimRecurrenceSnapshots)
-    .all()
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, limit)
-    .map((s) => ({
-      id: s.id,
-      claimThemeConcept: s.claimThemeConcept,
-      distinctMonitoredSourceCount: s.distinctMonitoredSourceCount,
-      reviewedClaimCount: s.reviewedClaimCount,
-      sourceUnavailableCount: s.sourceUnavailableCount,
-      formulaVersion: s.formulaVersion,
-      firstObservedScope: 'monitored_sources' as const,
-      notPopularity: true,
-      createdAt: new Date(s.createdAt).toISOString(),
-    }));
 }

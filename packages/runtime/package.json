@@ -15,7 +15,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@healthspan/core": "workspace:*"
+    "@healthspan/core": "workspace:*",
+    "@healthspan/creators": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.8.2"
