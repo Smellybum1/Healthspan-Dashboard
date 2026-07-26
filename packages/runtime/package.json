@@ -1,8 +1,9 @@
 {
-  "name": "@healthspan/operations",
-  "version": "0.6.0",
+  "name": "@healthspan/runtime",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Hosted-reachable service layer. Depends on the async ports, never on a driver.",
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -14,11 +15,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@healthspan/core": "workspace:*",
-    "zod": "^3.25.76"
+    "@healthspan/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.13.10",
     "typescript": "^5.8.2"
   }
 }

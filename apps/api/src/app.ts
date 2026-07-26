@@ -60,7 +60,7 @@ import {
   listLiveClaims,
   getLiveClaim,
 } from './intelligence-service.js';
-import { listContentItems } from './content-service.js';
+import { listContentItems, parseContentListQuery } from '@healthspan/runtime';
 import {
   addWatchlistItem,
   applyLegacyPreferenceImport,
@@ -772,18 +772,18 @@ export function createApp() {
       });
     }
 
-    const q = c.req.query('q') ?? undefined;
-    const page = Number(c.req.query('page') ?? 1);
-    const pageSize = Number(c.req.query('pageSize') ?? 25);
-    const sort =
-      (c.req.query('sort') as 'updated' | 'title' | 'published' | undefined) ?? 'updated';
-    const result = await listContentItems(repositories.content, {
-      type,
-      q,
-      page,
-      pageSize,
-      sort,
-    });
+    // Shared with the hosted route so the two runtimes cannot disagree about what an
+    // out-of-range page or an unrecognised sort means.
+    const result = await listContentItems(
+      repositories.content,
+      parseContentListQuery({
+        type,
+        q: c.req.query('q'),
+        page: c.req.query('page'),
+        pageSize: c.req.query('pageSize'),
+        sort: c.req.query('sort'),
+      }),
+    );
     return c.json({
       count: result.total,
       page: result.page,

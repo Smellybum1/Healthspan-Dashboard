@@ -1,0 +1,162 @@
+/**
+ * Hosted runtime assembly: capabilities, bound repositories, and readiness.
+ *
+ * The entrypoint holds no persistence knowledge. It asks this module what the runtime
+ * can do and which ports are bound, and every route answers from that. When the D1
+ * adapters land, only {@link createSitesRepositories} changes — no handler does.
+ */
+import {
+  SITES_RUNTIME_CAPABILITIES,
+  type ContentReadRepository,
+  type RuntimeCapabilities,
+} from '@healthspan/core';
+import { readSitesEnv, type ConfigProblem, type SitesBindings, type SitesConfig } from './env.js';
+
+/**
+ * The ports the hosted runtime binds.
+ *
+ * A port is `null` when its domain has not been ported yet, or has been ported but has
+ * no D1 adapter. Both cases are reported; neither is served as an empty success.
+ */
+export type SitesRepositories = {
+  content: ContentReadRepository | null;
+};
+
+/**
+ * Per-domain hosted status, derived from the ledger.
+ *
+ * `ported` tracks `docs/sites/HOSTED_REACHABILITY_AND_ASYNC_PORTING_LEDGER.md`; `bound`
+ * tracks whether an adapter is actually wired at runtime. The two differ today because
+ * the content domain is ported but its D1 adapter is a later row, and that gap is
+ * exactly what the readiness report exists to make visible.
+ */
+export type DomainStatus = {
+  domain: string;
+  port: string;
+  ported: boolean;
+  bound: boolean;
+  reason?: string;
+};
+
+/**
+ * Build the repository set from the D1 binding.
+ *
+ * Takes no binding yet, and returns every port unbound: the shared contracts exist and
+ * the local SQLite adapters satisfy them, but no D1 adapter has been written. Reporting
+ * that honestly is the point — a hosted `/api/items` that returned `[]` would look like
+ * an empty database rather than an unimplemented adapter. The D1 adapters land with
+ * their own ledger rows and bind here, taking the `db` argument the factory type allows.
+ */
+export function createSitesRepositories(): SitesRepositories {
+  return { content: null };
+}
+
+export type SitesRuntime = {
+  capabilities: RuntimeCapabilities;
+  config: SitesConfig;
+  problems: ConfigProblem[];
+  /** False when configuration failed closed — no data route may serve. */
+  configured: boolean;
+  repositories: SitesRepositories;
+  domains: DomainStatus[];
+};
+
+export type SitesRuntimeOptions = {
+  /**
+   * Override the repository factory.
+   *
+   * Used by the contract and route tests to bind an adapter that satisfies the shared
+   * port, which is what lets the entrypoint be tested against a real port rather than
+   * against a stub of itself. The D1 adapter will replace the default here.
+   */
+  createRepositories?: (db: unknown) => SitesRepositories;
+};
+
+export function createSitesRuntime(
+  bindings: SitesBindings,
+  options: SitesRuntimeOptions = {},
+): SitesRuntime {
+  const env = readSitesEnv(bindings);
+  const factory = options.createRepositories ?? createSitesRepositories;
+  const repositories = bindings.DB ? factory(bindings.DB) : { content: null };
+
+  const domains: DomainStatus[] = [
+    {
+      domain: 'content',
+      port: 'ContentReadRepository',
+      ported: true,
+      bound: repositories.content !== null,
+      ...(repositories.content
+        ? {}
+        : {
+            reason: bindings.DB
+              ? 'no D1 adapter for this port yet'
+              : 'D1 binding "DB" is not provisioned',
+          }),
+    },
+  ];
+
+  return {
+    capabilities: SITES_RUNTIME_CAPABILITIES,
+    config: env.config,
+    problems: env.problems,
+    configured: env.ok,
+    repositories,
+    domains,
+  };
+}
+
+/**
+ * Domains that are reachable locally but must never be operational in the hosted
+ * runtime, with the reason a caller sees instead of a 404.
+ *
+ * Mirrors §2 of the porting ledger. A hosted request for one of these gets an explicit
+ * not-applicable answer, because a 404 would read as "this build is missing a route"
+ * rather than "this capability does not exist here by design".
+ */
+export const HOSTED_UNAVAILABLE: Array<{ prefix: string; capability: string; reason: string }> = [
+  {
+    prefix: '/api/backup',
+    capability: 'localBackupRestore',
+    reason: 'local-only: SQLite online backup and filesystem archives have no hosted equivalent',
+  },
+  {
+    prefix: '/api/restore',
+    capability: 'localBackupRestore',
+    reason: 'local-only: restore replaces local database files',
+  },
+  {
+    prefix: '/api/diagnostics',
+    capability: 'localBackupRestore',
+    reason: 'local-only: diagnostic bundles are written to the local filesystem',
+  },
+  {
+    prefix: '/api/ingest',
+    capability: 'externalConnectors',
+    reason: 'prohibited in hosted: M7 adds no hosted connectors',
+  },
+  {
+    prefix: '/api/sources',
+    capability: 'externalConnectors',
+    reason: 'prohibited in hosted: connector orchestration is local-only',
+  },
+  {
+    prefix: '/api/youtube',
+    capability: 'platformMonitoring',
+    reason: 'prohibited in hosted: no hosted YouTube monitoring',
+  },
+  {
+    prefix: '/api/x',
+    capability: 'platformMonitoring',
+    reason: 'prohibited in hosted: no hosted X monitoring or compliance reconciliation',
+  },
+  {
+    prefix: '/api/scheduler',
+    capability: 'persistentBackgroundScheduler',
+    reason: 'local-only: the hosted runtime has no persistent process timer',
+  },
+];
+
+export function hostedUnavailableFor(pathname: string) {
+  return HOSTED_UNAVAILABLE.find((entry) => pathname.startsWith(entry.prefix));
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": false,
+    // No Node types: this package is reachable from the edge bundle, so a `node:*`
+    // import or a `process.env` read must fail to compile here. `WebWorker` supplies the
+    // platform globals an edge runtime actually has.
+    "lib": ["ES2022", "WebWorker"],
+    "types": []
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts"]
+}

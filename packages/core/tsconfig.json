@@ -3,7 +3,14 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "composite": false
+    "composite": false,
+    // This package is reachable from the edge bundle. `WebWorker` supplies the platform
+    // globals an edge runtime really has — `URL`, `fetch`, `Request` — while `types: []`
+    // withholds the Node definitions, so a `node:*` import or a `process.env` read here
+    // fails to compile rather than failing in a hosted request.
+    "lib": ["ES2022", "WebWorker"],
+    "types": []
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts"]
 }

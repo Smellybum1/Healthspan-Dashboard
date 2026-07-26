@@ -131,6 +131,29 @@ resolutions are recorded in §7 below. No amendment to the M6 report is required
 
 ---
 
+## 7a. Open items raised by the hosted runtime
+
+Neither is a blocker for the current stage. Both are recorded here rather than resolved
+by implementation, because guessing at either would put an invented platform fact into
+the codebase.
+
+**Static asset serving.** The brief requires the static web build to be "served through
+the supported Sites shape" but does not say what that shape is, and the only binding
+names it fixes are `DB` and `FILES`. `apps/sites` therefore serves the API surface only;
+it does not claim an assets binding it cannot verify exists. The web build itself is
+unchanged and already produced by `pnpm build`. This must be confirmed against the Sites
+platform before the owner-provisioning runbook is written, since the runbook tells the
+owner what to configure.
+
+**Hosted session and CSRF state.** `SITES_COMPATIBILITY_AUDIT.md` §5 records that
+integrity sessions are a module-level `Map`, which cannot survive a second isolate. The
+hosted app does not depend on them today because it exposes no mutation — every non-GET
+request is refused with `501` — so the gap is contained rather than papered over. A
+hosted session provider is required before the first hosted write path, and Decision G
+is the frame for it.
+
+---
+
 ## 8. Standing prohibitions
 
 Carried forward from the brief and amendment. None of the following is authorised by

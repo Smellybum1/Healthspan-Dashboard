@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    // WebWorker rather than DOM: the edge runtime has `fetch`, `Request` and `Response`
+    // but no `document` or `window`, and naming the right lib makes a stray DOM
+    // reference a compile error instead of a runtime one.
+    "lib": ["ES2022", "WebWorker"],
+    // Deliberately no `"types": ["node"]`. Omitting the Node type definitions means a
+    // `node:fs` import or a `process.env` read fails to compile here, which is a second
+    // independent gate alongside `pnpm sites:bundle:doctor`.
+    "types": []
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts"]
+}

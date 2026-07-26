@@ -32,7 +32,8 @@ They exist so that scope is argued from measurement rather than impression.
 | `ATTACH`                                                               | **0** |
 | FTS5 / virtual tables                                                  | **0** |
 
-Search is `LIKE`-based (`apps/api/src/content-service.ts`).
+Search is `LIKE`-based (now `packages/db/src/repositories/content.ts`, the local adapter
+behind `ContentReadRepository`).
 
 The M7 brief cited slightly lower figures (657 / 366 / 204 / 393 / 60) measured at
 `e876231`. The differences are the backup hotfix landing between those commits, plus a
