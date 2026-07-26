@@ -57,6 +57,7 @@ import {
   listRecurrenceSnapshots,
   listReviewDecisions,
   listReviewTasks,
+  operationsPanel,
   parseContentListQuery,
 } from '@healthspan/runtime';
 import type { SitesBindings } from './env.js';
@@ -268,6 +269,43 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
     const dossier = await getStoredDossier(repo, c.req.param('id'));
     if (!dossier) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...dossier });
+  });
+
+  app.get('/api/operations', async (c) => {
+    const runtime = c.get('runtime');
+    const repo = runtime.repositories.operations;
+    if (!repo) return unbound(c, 'operations');
+    // Every section the hosted runtime cannot produce is reported as not_applicable with
+    // a reason. An omitted section, or an empty backup list, would read as "none" rather
+    // than "this does not exist here" — brief §8.
+    const jobs = runtime.repositories.job ? await listJobs(runtime.repositories.job, 20) : [];
+    return c.json({
+      dataMode: 'live',
+      panels: await operationsPanel(repo, {
+        database: {
+          status: 'not_applicable',
+          reason: 'D1 exposes no PRAGMA integrity check, foreign-key check, or journal mode',
+        },
+        storage: {
+          status: 'not_applicable',
+          reason: 'the storage walk reads the local filesystem',
+        },
+        backups: {
+          status: 'not_applicable',
+          reason: 'local SQLite online backup has no hosted equivalent (DEGRADED_HOSTED_RECOVERY)',
+        },
+        scheduler: {
+          status: 'not_applicable',
+          reason: 'the hosted runtime has no persistent scheduler',
+        },
+        worker: {
+          status: 'not_applicable',
+          reason: 'no persistent worker; hosted jobs are bounded and request-triggered',
+        },
+        jobs,
+        runtimeVersion: null,
+      }),
+    });
   });
 
   app.get('/api/jobs', async (c) => {

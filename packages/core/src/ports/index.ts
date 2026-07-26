@@ -24,5 +24,6 @@ export * from './content.js';
 export * from './creator.js';
 export * from './intervention.js';
 export * from './job.js';
+export * from './operations.js';
 export * from './regulatory.js';
 export * from './review.js';

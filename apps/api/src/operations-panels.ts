@@ -2,13 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import {
-  APP_VERSION,
-  SCHEMA_VERSION,
-  DEFAULT_RETENTION_RULES,
-  SecurityHeaders,
-  redactLogLine,
-} from '@healthspan/operations';
+import { APP_VERSION, SCHEMA_VERSION, DEFAULT_RETENTION_RULES } from '@healthspan/operations';
 import {
   databaseDoctor,
   diagnosticBundles,
@@ -114,57 +108,30 @@ export function retentionApply(db: HealthspanDb) {
   return { ...preview, dryRun: false, applied: 0, note: 'Protected sets never deleted' };
 }
 
-export function operationsPanels(opts: {
-  db: HealthspanDb;
+/**
+ * The sections only the local runtime can produce.
+ *
+ * PRAGMA integrity, the filesystem storage walk, and the backup listing have no hosted
+ * equivalent, so the hosted runtime supplies `not_applicable` for each instead. The panel
+ * itself is assembled by `operationsPanel` in `@healthspan/runtime`, shared by both.
+ */
+export function localOperationsSections(opts: {
   sqlite: SqliteLike;
   dataDir: string;
   dataMode: string;
-  schedulerStatus: unknown;
-  jobs: unknown[];
 }) {
   const doctor = databaseDoctor(opts.sqlite as Parameters<typeof databaseDoctor>[0]);
-  const storage = opts.dataMode === 'live' ? storageUsage(opts.dataDir) : [];
-  const backups = opts.dataMode === 'live' ? listBackups(opts.dataDir).slice(0, 5) : [];
-  const recentErrors = opts.db
-    .select()
-    .from(operationalEvents)
-    .all()
-    .filter((e) => e.severity === 'error' || e.severity === 'warn')
-    .slice(-20)
-    .map((e) => ({
-      ...e,
-      message: redactLogLine(e.message),
-      detailsJson: redactLogLine(e.detailsJson),
-    }));
   return {
-    overall: doctor.ok ? 'healthy' : 'degraded',
-    versions: {
-      app: APP_VERSION,
-      schema: SCHEMA_VERSION,
-      runtime: process.versions.node,
-    },
     database: {
-      status: doctor.ok ? 'healthy' : 'degraded',
+      status: (doctor.ok ? 'healthy' : 'degraded') as 'healthy' | 'degraded',
       integrity: doctor.integrity,
       foreignKeys: doctor.foreignKeys,
       journalMode: doctor.journalMode,
     },
+    storage: opts.dataMode === 'live' ? storageUsage(opts.dataDir) : [],
+    backups: opts.dataMode === 'live' ? listBackups(opts.dataDir).slice(0, 5) : [],
     worker: { status: 'running' },
-    scheduler: opts.schedulerStatus,
-    jobs: opts.jobs,
-    sources: { note: 'See Source Health for live feed status' },
-    intelligence: { note: 'See Intelligence status endpoints' },
-    alertsBriefs: { note: 'Alert Centre and Briefings are first-class Live routes' },
-    backups,
-    storage,
-    retention: DEFAULT_RETENTION_RULES,
-    platformCompliance: { status: 'local_first' },
-    security: {
-      headers: Object.keys(SecurityHeaders),
-      requestIntegrity: 'session+csrf',
-      allowedHosts: 'loopback-only by default',
-    },
-    recentErrors,
+    runtimeVersion: process.versions.node,
   };
 }
 

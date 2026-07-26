@@ -55,15 +55,15 @@ import {
   createDiagnosticBundle,
   databaseCheck,
   databaseOptimize,
-  operationsPanels,
+  localOperationsSections,
   pruneBackups,
   prunePreview,
   retentionApply,
   retentionPreview,
 } from './operations-panels.js';
 import { storageUsage } from './backup-service.js';
-import { listJobs } from '@healthspan/runtime';
-import type { JobRepository } from '@healthspan/core';
+import { listJobs, operationsPanel } from '@healthspan/runtime';
+import type { JobRepository, OperationsReadRepository } from '@healthspan/core';
 import { APP_VERSION, SCHEMA_VERSION, getIntegritySession } from '@healthspan/operations';
 
 type LiveCtx = {
@@ -82,6 +82,7 @@ export function registerM6RemediationRoutes(
     currentMode: () => 'live' | 'demo';
     scheduler: { getStatus: () => unknown };
     jobRepo: JobRepository;
+    operationsRepo: OperationsReadRepository;
   },
 ) {
   const { live, currentMode, scheduler } = opts;
@@ -613,24 +614,26 @@ export function registerM6RemediationRoutes(
   app.get('/api/operations', async (c) => {
     return c.json({
       dataMode: currentMode(),
-      panels: operationsPanels({
-        db: live.db,
-        sqlite: live.sqlite,
-        dataDir: live.paths.dataDir,
-        dataMode: currentMode(),
-        schedulerStatus: scheduler.getStatus(),
+      panels: await operationsPanel(opts.operationsRepo, {
+        ...localOperationsSections({
+          sqlite: live.sqlite,
+          dataDir: live.paths.dataDir,
+          dataMode: currentMode(),
+        }),
+        scheduler: scheduler.getStatus(),
         jobs: (await listJobs(opts.jobRepo)).slice(0, 20),
       }),
     });
   });
 
-  app.get('/api/operations/events', (c) => {
-    const panels = operationsPanels({
-      db: live.db,
-      sqlite: live.sqlite,
-      dataDir: live.paths.dataDir,
-      dataMode: currentMode(),
-      schedulerStatus: scheduler.getStatus(),
+  app.get('/api/operations/events', async (c) => {
+    const panels = await operationsPanel(opts.operationsRepo, {
+      ...localOperationsSections({
+        sqlite: live.sqlite,
+        dataDir: live.paths.dataDir,
+        dataMode: currentMode(),
+      }),
+      scheduler: scheduler.getStatus(),
       jobs: [],
     });
     return c.json({ dataMode: currentMode(), events: panels.recentErrors });

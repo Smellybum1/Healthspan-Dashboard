@@ -2336,6 +2336,7 @@ export function createApp() {
     currentMode,
     scheduler,
     jobRepo: repositories.job,
+    operationsRepo: repositories.operations,
   });
 
   app.get('/api/profile', (c) => {

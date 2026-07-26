@@ -13,6 +13,7 @@ import type {
   CreatorReadRepository,
   InterventionReadRepository,
   JobRepository,
+  OperationsReadRepository,
   RegulatoryReadRepository,
   ReviewRepository,
 } from '@healthspan/core';
@@ -22,6 +23,7 @@ import { createLocalContentReadRepository } from './content.js';
 import { createLocalCreatorReadRepository } from './creator.js';
 import { createLocalInterventionReadRepository } from './intervention.js';
 import { createLocalJobRepository } from './job.js';
+import { createLocalOperationsReadRepository } from './operations.js';
 import { createLocalRegulatoryReadRepository } from './regulatory.js';
 import { createLocalReviewRepository } from './review.js';
 
@@ -30,6 +32,7 @@ export * from './content.js';
 export * from './creator.js';
 export * from './intervention.js';
 export * from './job.js';
+export * from './operations.js';
 export * from './regulatory.js';
 export * from './review.js';
 
@@ -44,6 +47,7 @@ export type HealthspanRepositories = {
   creator: CreatorReadRepository;
   intervention: InterventionReadRepository;
   job: JobRepository;
+  operations: OperationsReadRepository;
   regulatory: RegulatoryReadRepository;
   review: ReviewRepository;
 };
@@ -55,6 +59,7 @@ export function createLocalRepositories(db: HealthspanDb): HealthspanRepositorie
     creator: createLocalCreatorReadRepository(db),
     intervention: createLocalInterventionReadRepository(db),
     job: createLocalJobRepository(db),
+    operations: createLocalOperationsReadRepository(db),
     regulatory: createLocalRegulatoryReadRepository(db),
     review: createLocalReviewRepository(db),
   };

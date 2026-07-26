@@ -4,15 +4,15 @@ Milestone 7, Amendment I §3. Every module that touches data or the request path
 classified here. **No row may read `UNKNOWN`.**
 
 **Baseline commit:** `a59d202a481f8ef4982ad314f88350024b2373cf`
-**Status:** classification complete. Conversion in progress — **14 of 20 convertible rows
+**Status:** classification complete. Conversion in progress — **15 of 20 convertible rows
 `done`**. Done: content, review, assessment, creator reads, creator-review reads,
 identity-task reads, evidence-link reads, entity resolution, intelligence reads,
-intervention, comparison and dossier reads, regulatory/safety reads, and the job queue. **Nothing is
+intervention, comparison and dossier reads, regulatory/safety reads, the job queue, and operations readiness. **Nothing is
 blocked** — the dossier row is resolved in §12.
 A row may only be marked `done` once its module is a declared root in
 `scripts/sites-bundle-doctor.ts` and that gate is green.
 
-**Remaining convertible rows:** `operations-panels.ts`, the two route layers, and
+**Remaining convertible rows:** the two route layers (`app.ts`, `m6-routes.ts`) and
 personalisation.
 
 **A row may split rather than move.** `creator-service.ts` held hosted-reachable reads and
@@ -82,7 +82,8 @@ wrapping synchronous `better-sqlite3`; the D1 adapter uses the async driver.
 | `personalization-iv.ts`                                                                               | both  | `PersonalisationRepository`, `AlertBriefRepository`   | sync       | none                                     | pending    | `sites:parity` alerts/briefs                              | operational                                                            |
 | `packages/runtime/src/job.ts` (claim, lease, complete, requeue, reads)                                | both  | `JobRepository`                                       | **async**  | none                                     | **done**   | `job.contract.ts`                                         | operational (bounded, request-triggered)                               |
 | `jobs.ts` (`enqueueJob`, `stableDedupeKey`, `startJobWorker`)                                         | local | none — direct `HealthspanDb`                          | sync       | `node:crypto`, `setInterval`             | n/a        | existing                                                  | `disabled` (persistent worker is local-only)                           |
-| `operations-panels.ts`                                                                                | both  | `ObjectMetadataRepository`, readiness status          | sync       | `node:fs` (storage walk), PRAGMA, VACUUM | pending    | `sites:doctor`                                            | readiness `operational`; VACUUM / storage walk / prune `disabled`      |
+| `packages/runtime/src/operations.ts` (events read + shared panel)                                     | both  | `OperationsReadRepository`                            | **async**  | none                                     | **done**   | `operations.contract.ts`                                  | operational                                                            |
+| `operations-panels.ts` (PRAGMA, VACUUM, storage walk, backups, diagnostics, prune, retention)         | local | none — direct `HealthspanDb`                          | sync       | `node:fs`, `node:crypto`, PRAGMA, VACUUM | n/a        | existing                                                  | `disabled` — reported as `not_applicable` with a reason (§16)          |
 | `app.ts`                                                                                              | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                                     | operational                                                            |
 | `m6-routes.ts`                                                                                        | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                                     | operational                                                            |
 | `safe-response.ts`                                                                                    | both  | none (pure)                                           | n/a        | none                                     | n/a        | unit                                                      | operational                                                            |
@@ -624,3 +625,45 @@ every existing dedupe key. When a hosted tick needs to enqueue, both move.
 `meta`, which would have made every hosted claim look like a loss. It now reports
 `better-sqlite3`'s real `changes`. The shim's caveats are otherwise unchanged — see
 `testing/d1-shim.ts`.
+
+---
+
+## 16. Operations readiness — reporting absence instead of hiding it
+
+Almost all of this row is local by nature: PRAGMA integrity checks, `VACUUM`, the
+filesystem storage walk, backup listing, diagnostic bundles, prune previews. None has a
+hosted equivalent and none is ported.
+
+Two things are shared. The **recent operational events** read — previously a whole-table
+load filtered in memory and sliced to the last twenty, now a bounded query with a severity
+predicate, ordered newest-first and reversed so the panel still reads oldest-to-newest.
+And the **panel assembly** itself.
+
+Sharing the assembly is the point of the row. Each runtime supplies the sections it can
+actually produce, and everything else arrives as `{ status: 'not_applicable', reason }`.
+The reason is required by the type. A hosted panel therefore cannot omit the storage walk,
+and cannot return an empty backup list that reads as "no backups" when the truth is
+"backups do not exist here" — brief §8, a disabled feature is reported, never hidden
+behind an empty success.
+
+`overall` has a third value for the same reason. Locally it is `healthy` or `degraded`
+from the PRAGMA check; hosted it is **`unknown`**, because claiming health from a check
+that never ran would be a lie and claiming degradation would be a false alarm.
+
+Verified: making the panel coerce an unavailable `backups` section into `[]` fails the
+contract case that requires a reason on every unavailable section.
+
+### Redaction moved into the shared panel
+
+`redactLogLine` is applied by `operationsPanel`, not by either app. Neither runtime can
+now serve an operational message with a bearer token or an address still in it, and the
+contract asserts a seeded message containing both comes back redacted.
+
+### A constants move this forced
+
+`APP_VERSION`, `SCHEMA_VERSION`, and `DEFAULT_RETENTION_RULES` moved from
+`@healthspan/operations` to `@healthspan/core`. The panel reports all three and the
+operations package root is unreachable from the hosted graph. They are plain values, so
+moving beat duplicating: two copies of a schema version is exactly the drift that goes
+unnoticed until a migration disagrees with a response. `@healthspan/operations` re-exports
+them, so local import sites are unchanged.

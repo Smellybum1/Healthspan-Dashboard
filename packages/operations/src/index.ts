@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import {
+  APP_VERSION,
+  SCHEMA_VERSION,
   hostAllowedIn,
   originAllowedIn,
   parseHostHeader,
@@ -17,6 +19,9 @@ export * from './exclusive-lock.js';
  * local callers keep their existing import site.
  */
 export {
+  APP_VERSION,
+  DEFAULT_RETENTION_RULES,
+  SCHEMA_VERSION,
   SecurityHeaders,
   fetchMetadataAllowed,
   hostAllowedIn,
@@ -26,9 +31,6 @@ export {
   redactLogLine,
   type OriginPolicy,
 } from '@healthspan/core';
-
-export const APP_VERSION = '0.6.0';
-export const SCHEMA_VERSION = 12;
 
 export const BackupManifestSchema = z.object({
   formatVersion: z.literal(1),
@@ -121,13 +123,6 @@ export function originAllowed(
 ): boolean {
   return originAllowedIn(origin, host, localOriginPolicy(), opts);
 }
-
-export const DEFAULT_RETENTION_RULES = {
-  operational_events_days: 90,
-  diagnostic_bundles_days: 30,
-  alert_state_events_days: 180,
-  raw_snapshot_policy: 'content_addressed_keep_referenced',
-} as const;
 
 export type IntegritySession = {
   id: string;

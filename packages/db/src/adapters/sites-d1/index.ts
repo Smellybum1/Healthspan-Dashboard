@@ -17,6 +17,7 @@ import type {
   CreatorReadRepository,
   InterventionReadRepository,
   JobRepository,
+  OperationsReadRepository,
   RegulatoryReadRepository,
   D1Database,
   ReviewRepository,
@@ -27,6 +28,7 @@ import { createSitesContentReadRepository } from './content.js';
 import { createSitesCreatorReadRepository } from './creator.js';
 import { createSitesInterventionReadRepository } from './intervention.js';
 import { createSitesJobRepository } from './job.js';
+import { createSitesOperationsReadRepository } from './operations.js';
 import { createSitesRegulatoryReadRepository } from './regulatory.js';
 import { createSitesReviewRepository } from './review.js';
 
@@ -36,6 +38,7 @@ export * from './content.js';
 export * from './creator.js';
 export * from './intervention.js';
 export * from './job.js';
+export * from './operations.js';
 export * from './regulatory.js';
 export * from './review.js';
 
@@ -52,6 +55,7 @@ export type SitesRepositories = {
   creator: CreatorReadRepository;
   intervention: InterventionReadRepository;
   job: JobRepository;
+  operations: OperationsReadRepository;
   regulatory: RegulatoryReadRepository;
   review: ReviewRepository;
 };
@@ -64,6 +68,7 @@ export function createSitesRepositories(binding: D1Database): SitesRepositories 
     creator: createSitesCreatorReadRepository(db),
     intervention: createSitesInterventionReadRepository(db),
     job: createSitesJobRepository(db),
+    operations: createSitesOperationsReadRepository(db),
     regulatory: createSitesRegulatoryReadRepository(db),
     review: createSitesReviewRepository(db),
   };

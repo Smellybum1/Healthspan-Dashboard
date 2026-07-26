@@ -12,6 +12,7 @@ import {
   type CreatorReadRepository,
   type InterventionReadRepository,
   type JobRepository,
+  type OperationsReadRepository,
   type RegulatoryReadRepository,
   type D1Database,
   type ReviewRepository,
@@ -35,6 +36,7 @@ export type SitesRepositories = {
   creator: CreatorReadRepository | null;
   intervention: InterventionReadRepository | null;
   job: JobRepository | null;
+  operations: OperationsReadRepository | null;
   regulatory: RegulatoryReadRepository | null;
   review: ReviewRepository | null;
 };
@@ -70,6 +72,7 @@ export function createSitesRepositories(db: D1Database): SitesRepositories {
     creator: bound.creator,
     intervention: bound.intervention,
     job: bound.job,
+    operations: bound.operations,
     regulatory: bound.regulatory,
     review: bound.review,
   };
@@ -111,6 +114,7 @@ export function createSitesRuntime(
         creator: null,
         intervention: null,
         job: null,
+        operations: null,
         regulatory: null,
         review: null,
       };
@@ -129,6 +133,7 @@ export function createSitesRuntime(
     describe('creator', 'CreatorReadRepository', repositories.creator),
     describe('intervention', 'InterventionReadRepository', repositories.intervention),
     describe('job', 'JobRepository', repositories.job),
+    describe('operations', 'OperationsReadRepository', repositories.operations),
     describe('regulatory', 'RegulatoryReadRepository', repositories.regulatory),
     describe('review', 'ReviewRepository', repositories.review),
   ];

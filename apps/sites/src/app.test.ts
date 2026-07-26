@@ -487,6 +487,7 @@ function bound() {
       creator: memoryCreatorRepository(),
       intervention: memoryInterventionRepository(),
       job: memoryJobRepository(),
+      operations: { listRecentEvents: () => Promise.resolve([]) },
       review: memoryReviewRepository(),
     }),
   });
@@ -887,6 +888,30 @@ describe('sites entrypoint — interventions through the shared port', () => {
     });
     expect(res.status).toBe(503);
     expect((await res.json()).capability).toBe('intervention');
+  });
+});
+
+describe('sites entrypoint — operations panel', () => {
+  it('reports every local-only capability as not applicable, with a reason', async () => {
+    const res = await bound().fetch(get('/api/operations'), CONFIGURED);
+    expect(res.status).toBe(200);
+    const { panels } = await res.json();
+    for (const key of ['database', 'storage', 'backups', 'scheduler', 'worker']) {
+      expect(panels[key].status).toBe('not_applicable');
+      expect(String(panels[key].reason).length).toBeGreaterThan(0);
+    }
+    // Not healthy — the check never ran — and not degraded either.
+    expect(panels.overall).toBe('unknown');
+    expect(panels.versions.runtime).toBeNull();
+  });
+
+  it('refuses rather than returning an empty panel when unbound', async () => {
+    const res = await createSitesApp().fetch(get('/api/operations'), {
+      ...CONFIGURED,
+      DB: undefined,
+    });
+    expect(res.status).toBe(503);
+    expect((await res.json()).capability).toBe('operations');
   });
 });
 
