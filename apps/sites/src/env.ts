@@ -16,38 +16,9 @@
  *    capability responses structurally incapable of leaking one.
  */
 
-/**
- * Narrow structural shapes for the Sites bindings.
- *
- * These are a deliberate subset of the D1 and R2 worker APIs — enough to hold and pass
- * a binding, not a re-declaration of the platform types. The adapters that actually
- * issue queries land with the `sites-d1` and `sites-r2` porting-ledger rows and will
- * narrow these further at that point.
- */
-export interface D1PreparedStatement {
-  bind(...values: unknown[]): D1PreparedStatement;
-  first<T = unknown>(colName?: string): Promise<T | null>;
-  run<T = unknown>(): Promise<D1Result<T>>;
-  all<T = unknown>(): Promise<D1Result<T>>;
-}
+import type { D1Database, R2Bucket } from '@healthspan/core';
 
-export interface D1Result<T = unknown> {
-  results: T[];
-  success: boolean;
-  meta: Record<string, unknown>;
-}
-
-export interface D1Database {
-  prepare(query: string): D1PreparedStatement;
-  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<Array<D1Result<T>>>;
-}
-
-export interface R2Bucket {
-  head(key: string): Promise<unknown | null>;
-  get(key: string): Promise<unknown | null>;
-  put(key: string, value: ArrayBuffer | ArrayBufferView | string): Promise<unknown>;
-  delete(key: string): Promise<void>;
-}
+export type { D1Database, R2Bucket };
 
 /** Everything the Sites runtime receives. Every field is optional: absence is a state the app must report, not crash on. */
 export type SitesBindings = {

@@ -1,5 +1,6 @@
 export * from './origin.js';
 export * from './http.js';
+export * from './bindings.js';
 export * from './runtime-capabilities.js';
 export * from './taxonomies.js';
 export * from './schemas.js';

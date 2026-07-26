@@ -1,4 +1,3 @@
-import { and, asc, desc, eq, sql, type SQL } from 'drizzle-orm';
 import {
   normaliseContentPaging,
   toContentItemDto,
@@ -8,6 +7,7 @@ import {
 } from '@healthspan/core';
 import { contentItems } from '../schema.js';
 import type { HealthspanDb } from '../client.js';
+import { contentCountProjection, contentListOrder, contentListWhere } from './content-query.js';
 
 /**
  * Local SQLite implementation of {@link ContentReadRepository}.
@@ -16,35 +16,23 @@ import type { HealthspanDb } from '../client.js';
  * signature is not decoration: it is the contract D1 requires, and callers must await
  * regardless of which adapter is bound. Keeping the local adapter async-shaped is what
  * lets the same service code run against either runtime.
+ *
+ * The predicate and the ordering come from `./content-query.js`, shared with the D1
+ * adapter. What differs here is only execution: `.all()` returns rows synchronously.
  */
 export function createLocalContentReadRepository(db: HealthspanDb): ContentReadRepository {
   return {
     list(query: ContentListQuery): Promise<ContentListResult> {
       const { page, pageSize, offset } = normaliseContentPaging(query);
-
-      const filters: SQL[] = [];
-      if (query.type) filters.push(eq(contentItems.type, query.type));
-      if (query.q?.trim()) {
-        const term = `%${query.q.trim().toLowerCase()}%`;
-        filters.push(
-          sql`(lower(${contentItems.title}) like ${term} or lower(coalesce(${contentItems.summary}, '')) like ${term})`,
-        );
-      }
-      const where = filters.length ? and(...filters) : undefined;
-
-      const order =
-        query.sort === 'title'
-          ? asc(contentItems.title)
-          : query.sort === 'published'
-            ? desc(contentItems.sourcePublishedAt)
-            : desc(contentItems.updatedAt);
+      const where = contentListWhere(query);
+      const order = contentListOrder(query.sort);
 
       const base = db.select().from(contentItems);
       const rows = where
         ? base.where(where).orderBy(order).limit(pageSize).offset(offset).all()
         : base.orderBy(order).limit(pageSize).offset(offset).all();
 
-      const countBase = db.select({ count: sql<number>`count(*)` }).from(contentItems);
+      const countBase = db.select(contentCountProjection).from(contentItems);
       const countRow = (where ? countBase.where(where).all() : countBase.all())[0];
 
       return Promise.resolve({

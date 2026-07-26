@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./sites": {
+      "types": "./src/adapters/sites-d1/index.ts",
+      "default": "./src/adapters/sites-d1/index.ts"
     }
   },
   "scripts": {

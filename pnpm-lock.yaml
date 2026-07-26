@@ -149,6 +149,9 @@ importers:
       '@healthspan/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@healthspan/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@healthspan/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime

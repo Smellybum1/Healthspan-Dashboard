@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@healthspan/core": "workspace:*",
+    "@healthspan/db": "workspace:*",
     "@healthspan/runtime": "workspace:*",
     "hono": "^4.12.31"
   },

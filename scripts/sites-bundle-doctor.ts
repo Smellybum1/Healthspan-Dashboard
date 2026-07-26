@@ -48,6 +48,9 @@ const FORBIDDEN: Array<{ test: (spec: string) => boolean; reason: string }> = [
     test: (s) => s.startsWith('drizzle-orm/better-sqlite3'),
     reason: 'better-sqlite3 driver binding',
   },
+  // Exact match only. `@healthspan/db/sites` is the conditional export that reaches the
+  // D1 adapters and nothing else; it is resolved through WORKSPACE_ALIASES below and
+  // walked like any first-party module, so it earns its way in rather than being trusted.
   { test: (s) => s === '@healthspan/db', reason: 'local database package (exposes HealthspanDb)' },
   { test: (s) => s === '@healthspan/connectors', reason: 'network connector package' },
   {
@@ -60,6 +63,7 @@ const FORBIDDEN: Array<{ test: (spec: string) => boolean; reason: string }> = [
 const WORKSPACE_ALIASES: Record<string, string> = {
   '@healthspan/core': 'packages/core/src/index.ts',
   '@healthspan/runtime': 'packages/runtime/src/index.ts',
+  '@healthspan/db/sites': 'packages/db/src/adapters/sites-d1/index.ts',
   '@healthspan/operations': 'packages/operations/src/index.ts',
   '@healthspan/ui': 'packages/ui/src/index.tsx',
   '@healthspan/intelligence': 'packages/intelligence/src/index.ts',
@@ -138,6 +142,10 @@ const report = {
   suite: 'sites:bundle:doctor',
   roots: HOSTED_ROOTS,
   modulesInGraph: visited.size,
+  // Listed, not just counted. A count cannot distinguish "walked the D1 adapter and
+  // found it clean" from "failed to resolve the specifier and walked nothing", and those
+  // two produce the same green result.
+  modules: [...visited].sort(),
   violations,
   ok: violations.length === 0,
 };

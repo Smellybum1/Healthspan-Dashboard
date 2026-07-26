@@ -5,8 +5,9 @@ classified here. **No row may read `UNKNOWN`.**
 
 **Baseline commit:** `a59d202a481f8ef4982ad314f88350024b2373cf`
 **Status:** classification complete. Conversion in progress — 1 of 20 convertible rows
-`done` (content), and the hosted runtime exists. A row may only be marked `done` once
-its module is a declared root in `scripts/sites-bundle-doctor.ts` and that gate is green.
+`done` (content), the hosted runtime exists, and the content domain is served end to end
+in hosted mode by a D1 adapter. A row may only be marked `done` once its module is a
+declared root in `scripts/sites-bundle-doctor.ts` and that gate is green.
 
 **Ported modules move out of `apps/api/src`.** A hosted-reachable service now lives in
 `packages/runtime`, above the ports and below either application, so both runtimes
@@ -30,33 +31,34 @@ Legend:
 These move behind async, domain-oriented ports. Local adapters may satisfy the port by
 wrapping synchronous `better-sqlite3`; the D1 adapter uses the async driver.
 
-| Module                                                       | Reach | Repository port                                     | Sync/async | Node-only dep                            | Conversion | Test / parity suite                               | Capability                                                        |
-| ------------------------------------------------------------ | ----- | --------------------------------------------------- | ---------- | ---------------------------------------- | ---------- | ------------------------------------------------- | ----------------------------------------------------------------- |
-| `packages/runtime/src/content.ts` (was `content-service.ts`) | both  | `ContentReadRepository`                             | **async**  | none                                     | **done**   | `content.contract.ts`                             | operational                                                       |
-| `apps/sites/src/index.ts`, `app.ts`, `runtime.ts`, `env.ts`  | sites | hosted route layer over the ports below             | **async**  | none                                     | **done**   | `apps/sites/src/*.test.ts`, `sites:bundle:doctor` | operational                                                       |
-| `trial-portfolio.ts`                                         | both  | `TrialReadRepository`                               | sync       | none                                     | pending    | `sites:parity` trials                             | operational                                                       |
-| `dossier-service.ts`                                         | both  | `InterventionReadRepository`                        | sync       | none                                     | pending    | `sites:parity` interventions                      | operational                                                       |
-| `comparison-service.ts`                                      | both  | `InterventionReadRepository`                        | sync       | none                                     | pending    | `sites:parity` interventions                      | operational                                                       |
-| `regulatory-safety-service.ts`                               | both  | `InterventionReadRepository`                        | sync       | none                                     | pending    | `sites:parity` regulatory                         | operational                                                       |
-| `assessment-service.ts`                                      | both  | `ClaimAssessmentRepository`                         | sync       | none                                     | pending    | `sites:parity` claims                             | operational                                                       |
-| `intelligence-service.ts`                                    | both  | `ClaimAssessmentRepository`                         | sync       | none                                     | pending    | `sites:parity` claims                             | operational (read models only; analysis run is local-only)        |
-| `creator-evidence-service.ts`                                | both  | `CreatorReadRepository`                             | sync       | none                                     | pending    | `sites:parity` creators                           | operational                                                       |
-| `creator-recurrence-service.ts`                              | both  | `CreatorReadRepository`                             | sync       | none                                     | pending    | `sites:parity` creators                           | operational                                                       |
-| `creator-service.ts`                                         | both  | `CreatorReadRepository`                             | sync       | `node:fs` (document write/delete)        | pending    | `sites:parity` creators                           | operational for reads; document write/delete `disabled`           |
-| `review-service.ts`                                          | both  | `ReviewRepository`                                  | sync       | none                                     | pending    | `sites:parity` review                             | operational                                                       |
-| `creator-review-service.ts`                                  | both  | `ReviewRepository`                                  | sync       | none                                     | pending    | `sites:parity` review                             | operational                                                       |
-| `entity-resolution-service.ts`                               | both  | `ReviewRepository`                                  | sync       | none                                     | pending    | `sites:parity` review                             | operational                                                       |
-| `creator-identity-service.ts`                                | both  | `ReviewRepository`                                  | sync       | none                                     | pending    | `sites:parity` review                             | operational                                                       |
-| `personalization-service.ts`                                 | both  | `PersonalisationRepository`                         | sync       | none                                     | pending    | `sites:parity` personalisation                    | operational                                                       |
-| `personalization-iv.ts`                                      | both  | `PersonalisationRepository`, `AlertBriefRepository` | sync       | none                                     | pending    | `sites:parity` alerts/briefs                      | operational                                                       |
-| `jobs.ts`                                                    | both  | `JobRepository`                                     | sync       | none                                     | pending    | `sites:parity` jobs                               | operational (bounded, request-triggered)                          |
-| `operations-panels.ts`                                       | both  | `ObjectMetadataRepository`, readiness status        | sync       | `node:fs` (storage walk), PRAGMA, VACUUM | pending    | `sites:doctor`                                    | readiness `operational`; VACUUM / storage walk / prune `disabled` |
-| `app.ts`                                                     | both  | route layer over the ports above                    | sync       | none                                     | pending    | `sites:bundle:doctor`                             | operational                                                       |
-| `m6-routes.ts`                                               | both  | route layer over the ports above                    | sync       | none                                     | pending    | `sites:bundle:doctor`                             | operational                                                       |
-| `safe-response.ts`                                           | both  | none (pure)                                         | n/a        | none                                     | n/a        | unit                                              | operational                                                       |
-| `admin-guard.ts`                                             | both  | none (pure)                                         | n/a        | none                                     | n/a        | unit                                              | operational                                                       |
-| `job-priorities.ts`                                          | both  | none (constants)                                    | n/a        | none                                     | n/a        | unit                                              | operational                                                       |
-| `packages/db` schema modules                                 | both  | schema shared by both adapters                      | n/a        | none                                     | n/a        | `sites:db:lint`                                   | operational                                                       |
+| Module                                                       | Reach | Repository port                                       | Sync/async | Node-only dep                            | Conversion | Test / parity suite                               | Capability                                                        |
+| ------------------------------------------------------------ | ----- | ----------------------------------------------------- | ---------- | ---------------------------------------- | ---------- | ------------------------------------------------- | ----------------------------------------------------------------- |
+| `packages/runtime/src/content.ts` (was `content-service.ts`) | both  | `ContentReadRepository`                               | **async**  | none                                     | **done**   | `content.contract.ts`                             | operational                                                       |
+| `apps/sites/src/index.ts`, `app.ts`, `runtime.ts`, `env.ts`  | sites | hosted route layer over the ports below               | **async**  | none                                     | **done**   | `apps/sites/src/*.test.ts`, `sites:bundle:doctor` | operational                                                       |
+| `packages/db/src/adapters/sites-d1/*`                        | sites | D1 adapters behind the ports (`@healthspan/db/sites`) | **async**  | none                                     | **done**   | `sites-d1/content.test.ts` (shared contract)      | operational                                                       |
+| `trial-portfolio.ts`                                         | both  | `TrialReadRepository`                                 | sync       | none                                     | pending    | `sites:parity` trials                             | operational                                                       |
+| `dossier-service.ts`                                         | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` interventions                      | operational                                                       |
+| `comparison-service.ts`                                      | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` interventions                      | operational                                                       |
+| `regulatory-safety-service.ts`                               | both  | `InterventionReadRepository`                          | sync       | none                                     | pending    | `sites:parity` regulatory                         | operational                                                       |
+| `assessment-service.ts`                                      | both  | `ClaimAssessmentRepository`                           | sync       | none                                     | pending    | `sites:parity` claims                             | operational                                                       |
+| `intelligence-service.ts`                                    | both  | `ClaimAssessmentRepository`                           | sync       | none                                     | pending    | `sites:parity` claims                             | operational (read models only; analysis run is local-only)        |
+| `creator-evidence-service.ts`                                | both  | `CreatorReadRepository`                               | sync       | none                                     | pending    | `sites:parity` creators                           | operational                                                       |
+| `creator-recurrence-service.ts`                              | both  | `CreatorReadRepository`                               | sync       | none                                     | pending    | `sites:parity` creators                           | operational                                                       |
+| `creator-service.ts`                                         | both  | `CreatorReadRepository`                               | sync       | `node:fs` (document write/delete)        | pending    | `sites:parity` creators                           | operational for reads; document write/delete `disabled`           |
+| `review-service.ts`                                          | both  | `ReviewRepository`                                    | sync       | none                                     | pending    | `sites:parity` review                             | operational                                                       |
+| `creator-review-service.ts`                                  | both  | `ReviewRepository`                                    | sync       | none                                     | pending    | `sites:parity` review                             | operational                                                       |
+| `entity-resolution-service.ts`                               | both  | `ReviewRepository`                                    | sync       | none                                     | pending    | `sites:parity` review                             | operational                                                       |
+| `creator-identity-service.ts`                                | both  | `ReviewRepository`                                    | sync       | none                                     | pending    | `sites:parity` review                             | operational                                                       |
+| `personalization-service.ts`                                 | both  | `PersonalisationRepository`                           | sync       | none                                     | pending    | `sites:parity` personalisation                    | operational                                                       |
+| `personalization-iv.ts`                                      | both  | `PersonalisationRepository`, `AlertBriefRepository`   | sync       | none                                     | pending    | `sites:parity` alerts/briefs                      | operational                                                       |
+| `jobs.ts`                                                    | both  | `JobRepository`                                       | sync       | none                                     | pending    | `sites:parity` jobs                               | operational (bounded, request-triggered)                          |
+| `operations-panels.ts`                                       | both  | `ObjectMetadataRepository`, readiness status          | sync       | `node:fs` (storage walk), PRAGMA, VACUUM | pending    | `sites:doctor`                                    | readiness `operational`; VACUUM / storage walk / prune `disabled` |
+| `app.ts`                                                     | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                             | operational                                                       |
+| `m6-routes.ts`                                               | both  | route layer over the ports above                      | sync       | none                                     | pending    | `sites:bundle:doctor`                             | operational                                                       |
+| `safe-response.ts`                                           | both  | none (pure)                                           | n/a        | none                                     | n/a        | unit                                              | operational                                                       |
+| `admin-guard.ts`                                             | both  | none (pure)                                           | n/a        | none                                     | n/a        | unit                                              | operational                                                       |
+| `job-priorities.ts`                                          | both  | none (constants)                                      | n/a        | none                                     | n/a        | unit                                              | operational                                                       |
+| `packages/db` schema modules                                 | both  | schema shared by both adapters                        | n/a        | none                                     | n/a        | `sites:db:lint`                                   | operational                                                       |
 
 ---
 
@@ -124,29 +126,53 @@ with `501`. A hosted session provider is required before the first hosted write 
 
 | Group                      | Modules |
 | -------------------------- | ------- |
-| Hosted-reachable (§1)      | 25      |
+| Hosted-reachable (§1)      | 26      |
 | Local-only (§2)            | 18      |
 | Split (§3)                 | 1       |
 | **Rows reading `UNKNOWN`** | **0**   |
 
 Every `apps/api/src` non-test module at the baseline commit appears in exactly one
-section. The §1 count is one higher than at the baseline because the hosted runtime
-(`apps/sites`) is a new module group that did not exist then; `content-service.ts` was
-not removed from the count, it moved to `packages/runtime`. Re-run the inventory and
-update this ledger whenever a module is added, split, or changes runtime reachability.
+section. The §1 count is two higher than at the baseline because the hosted runtime
+(`apps/sites`) and the D1 adapters (`packages/db/src/adapters/sites-d1`) are new module
+groups that did not exist then; `content-service.ts` was not removed from the count, it
+moved to `packages/runtime`. Re-run the inventory and update this ledger whenever a
+module is added, split, or changes runtime reachability.
 
 ---
 
-## 5. Adapters not yet written
+## 5. Adapter status
 
-Distinct from conversion status, and the reason `/api/hosted-readiness` reports `ready:
-false` today. A port can be `done` — contract defined, service converted, local adapter
-passing the contract suite — while no hosted adapter exists to bind it to D1.
+Distinct from conversion status. A port can be `done` — contract defined, service
+converted — while no hosted adapter exists to bind it to D1. `/api/hosted-readiness`
+reports the two separately, as `ported` and `bound`.
 
-| Port                    | Local adapter                                       | D1 adapter  | Bound in hosted |
-| ----------------------- | --------------------------------------------------- | ----------- | --------------- |
-| `ContentReadRepository` | `packages/db/src/repositories/content.ts` — passing | not written | no              |
+| Port                    | Local adapter                                       | D1 adapter                                               | Bound in hosted         |
+| ----------------------- | --------------------------------------------------- | -------------------------------------------------------- | ----------------------- |
+| `ContentReadRepository` | `packages/db/src/repositories/content.ts` — passing | `packages/db/src/adapters/sites-d1/content.ts` — passing | yes, when `DB` is bound |
 
-When the D1 adapter lands it binds `packages/db/src/repositories/content.contract.ts` —
-the same suite the local adapter runs, not a parallel one — and
-`apps/sites/src/runtime.ts`'s `createSitesRepositories` returns it. No route changes.
+Both adapters bind `repositories/content.contract.ts` — the same eleven cases, not a
+parallel suite — and both build their predicate, ordering, and count projection from
+`repositories/content-query.ts`, so they cannot drift on search or sort semantics. They
+differ only in execution: synchronous `.all()` against `better-sqlite3`, awaited against
+the D1 driver.
+
+**Reached as `@healthspan/db/sites`, never `@healthspan/db`.** The package root exposes
+`HealthspanDb`, `openDatabase`, and the native driver and is on the bundle doctor's
+forbidden list; the conditional export reaches only the adapter subtree. The doctor
+resolves and walks that subtree from `apps/sites/src/index.ts` and now lists every module
+it visited, because a bare count cannot distinguish a clean walk from a specifier that
+failed to resolve.
+
+### What the D1 contract run does and does not establish
+
+The suite runs the real adapter through the real `drizzle-orm/d1` driver — SQL
+construction, `prepare`, `bind`, and the async `all`/`raw` paths — against a database
+created by the project's own migrations, so schema drift is excluded. The binding beneath
+it is `src/testing/d1-shim.ts`, a `better-sqlite3`-backed implementation of the D1
+surface.
+
+It is therefore **not evidence about the D1 service**: not network behaviour, statement
+timeouts, result-set limits, real `meta` fields, `batch` atomicity (the shim's batch is a
+sequential loop, not a transaction), or migrations applied to a real D1 instance. Closing
+that gap is the `sites:parity` row — a corpus run against a provisioned D1. No row may
+claim hosted verification on the strength of the shim.

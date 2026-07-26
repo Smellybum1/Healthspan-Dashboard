@@ -196,15 +196,34 @@ describe('sites entrypoint — capabilities and readiness', () => {
     expect(body.allowedOrigin).toBe(ORIGIN);
   });
 
-  it('reports content as ported but unbound when no adapter exists', async () => {
-    // The default factory binds nothing: the D1 adapter is a later ledger row, and
-    // readiness must say so rather than let the route look like an empty database.
-    const res = await createSitesApp().fetch(get('/api/hosted-readiness'), CONFIGURED);
+  it('reports content as ported but unbound when the DB binding is absent', async () => {
+    // Readiness must say so rather than let the route look like an empty database.
+    const res = await createSitesApp().fetch(get('/api/hosted-readiness'), {
+      ...CONFIGURED,
+      DB: undefined,
+    });
     const body = await res.json();
     expect(body.ready).toBe(false);
+    expect(body.bindings.DB).toBe(false);
     expect(body.domains).toContainEqual(
-      expect.objectContaining({ domain: 'content', ported: true, bound: false }),
+      expect.objectContaining({
+        domain: 'content',
+        ported: true,
+        bound: false,
+        reason: 'D1 binding "DB" is not provisioned',
+      }),
     );
+  });
+
+  it('binds content through the real D1 factory when DB is provisioned', async () => {
+    // No factory override: this exercises the default path, so a broken wiring between
+    // apps/sites and @healthspan/db/sites fails here rather than only in production.
+    const res = await createSitesApp().fetch(get('/api/hosted-readiness'), CONFIGURED);
+    const body = await res.json();
+    expect(body.domains).toContainEqual(
+      expect.objectContaining({ domain: 'content', ported: true, bound: true }),
+    );
+    expect(body.ready).toBe(true);
   });
 
   it('reports ready once every ported domain is bound', async () => {
@@ -251,11 +270,11 @@ describe('sites entrypoint — content through the shared port', () => {
   });
 
   it('refuses rather than returning an empty page when no adapter is bound', async () => {
-    const res = await createSitesApp().fetch(get('/api/items'), CONFIGURED);
+    const res = await createSitesApp().fetch(get('/api/items'), { ...CONFIGURED, DB: undefined });
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.capability).toBe('content');
-    expect(body.reason).toContain('D1 adapter');
+    expect(body.reason).toContain('"DB" is not provisioned');
     expect(body.items).toBeUndefined();
   });
 });

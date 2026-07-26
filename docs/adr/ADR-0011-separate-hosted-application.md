@@ -70,6 +70,25 @@ a module in the bundle. A flag cannot make `better-sqlite3` unreachable from a f
 imports it.
 
 **Conditional package exports on `apps/api`.** The brief permits conditional exports and
-they are still the right mechanism for `@healthspan/db`'s local and D1 adapters. They do
-not solve this case, because the local app's route table itself depends on local-only
-services; there is no export condition that yields an edge-safe `app.ts`.
+they are the right mechanism for `@healthspan/db`, which now serves its local adapters
+from the package root and its D1 adapters from `@healthspan/db/sites`. They do not solve
+this case, because the local app's route table itself depends on local-only services;
+there is no export condition that yields an edge-safe `app.ts`.
+
+## Addendum — how the two adapters are kept in parity
+
+The D1 adapter landed after this ADR was accepted and did not change its reasoning, but
+it is worth recording what "shared" turned out to mean in practice. Three things are
+shared and one is not:
+
+- **The port and the DTO mapping** (`@healthspan/core`) — what a caller receives.
+- **The service and request shaping** (`@healthspan/runtime`) — what a route does.
+- **The predicate, ordering, and count projection**
+  (`packages/db/src/repositories/content-query.ts`) — the query _semantics_, built once
+  from one Drizzle schema. This was the piece most likely to drift silently, because two
+  adapters can each look correct while disagreeing about what a case-insensitive search
+  matches.
+- **Execution is not shared**, and cannot be: one driver is synchronous and one is not.
+
+Both adapters then bind the same contract suite rather than two parallel ones. That is
+the check that would catch a drift the shared code did not prevent.

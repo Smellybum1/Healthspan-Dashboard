@@ -8,8 +8,13 @@
 import {
   SITES_RUNTIME_CAPABILITIES,
   type ContentReadRepository,
+  type D1Database,
   type RuntimeCapabilities,
 } from '@healthspan/core';
+// `@healthspan/db/sites`, never `@healthspan/db`. The package root exposes
+// `HealthspanDb`, `openDatabase`, and the native driver and is forbidden in this graph;
+// the conditional export reaches only the D1 adapters, which the bundle doctor walks.
+import { createSitesRepositories as createD1Repositories } from '@healthspan/db/sites';
 import { readSitesEnv, type ConfigProblem, type SitesBindings, type SitesConfig } from './env.js';
 
 /**
@@ -41,14 +46,12 @@ export type DomainStatus = {
 /**
  * Build the repository set from the D1 binding.
  *
- * Takes no binding yet, and returns every port unbound: the shared contracts exist and
- * the local SQLite adapters satisfy them, but no D1 adapter has been written. Reporting
- * that honestly is the point — a hosted `/api/items` that returned `[]` would look like
- * an empty database rather than an unimplemented adapter. The D1 adapters land with
- * their own ledger rows and bind here, taking the `db` argument the factory type allows.
+ * Ports with a D1 adapter are bound here; ports without one stay `null` and are reported
+ * as ported-but-unbound. That distinction is deliberate — a hosted route that returned
+ * `[]` for a missing adapter would look like an empty database.
  */
-export function createSitesRepositories(): SitesRepositories {
-  return { content: null };
+export function createSitesRepositories(db: D1Database): SitesRepositories {
+  return { content: createD1Repositories(db).content };
 }
 
 export type SitesRuntime = {
@@ -65,11 +68,12 @@ export type SitesRuntimeOptions = {
   /**
    * Override the repository factory.
    *
-   * Used by the contract and route tests to bind an adapter that satisfies the shared
-   * port, which is what lets the entrypoint be tested against a real port rather than
-   * against a stub of itself. The D1 adapter will replace the default here.
+   * Used by the route tests to bind an in-memory adapter that satisfies the shared port,
+   * which is what lets the entrypoint be tested without standing up a database. The
+   * default is the real D1 factory; the adapter itself is verified against the shared
+   * contract suite in `packages/db/src/adapters/sites-d1/content.test.ts`.
    */
-  createRepositories?: (db: unknown) => SitesRepositories;
+  createRepositories?: (db: D1Database) => SitesRepositories;
 };
 
 export function createSitesRuntime(
@@ -86,13 +90,7 @@ export function createSitesRuntime(
       port: 'ContentReadRepository',
       ported: true,
       bound: repositories.content !== null,
-      ...(repositories.content
-        ? {}
-        : {
-            reason: bindings.DB
-              ? 'no D1 adapter for this port yet'
-              : 'D1 binding "DB" is not provisioned',
-          }),
+      ...(repositories.content ? {} : { reason: 'D1 binding "DB" is not provisioned' }),
     },
   ];
 
