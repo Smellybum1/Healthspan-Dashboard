@@ -15,6 +15,7 @@ import type {
   IntelligenceReadRepository,
   ContentReadRepository,
   CreatorReadRepository,
+  InterventionReadRepository,
   D1Database,
   ReviewRepository,
 } from '@healthspan/core';
@@ -22,12 +23,14 @@ import { createSitesD1 } from './client.js';
 import { createSitesClaimAssessmentRepository } from './assessment.js';
 import { createSitesContentReadRepository } from './content.js';
 import { createSitesCreatorReadRepository } from './creator.js';
+import { createSitesInterventionReadRepository } from './intervention.js';
 import { createSitesReviewRepository } from './review.js';
 
 export * from './assessment.js';
 export * from './client.js';
 export * from './content.js';
 export * from './creator.js';
+export * from './intervention.js';
 export * from './review.js';
 
 /**
@@ -41,6 +44,7 @@ export type SitesRepositories = {
   assessment: IntelligenceReadRepository;
   content: ContentReadRepository;
   creator: CreatorReadRepository;
+  intervention: InterventionReadRepository;
   review: ReviewRepository;
 };
 
@@ -50,6 +54,7 @@ export function createSitesRepositories(binding: D1Database): SitesRepositories 
     assessment: createSitesClaimAssessmentRepository(db),
     content: createSitesContentReadRepository(db),
     creator: createSitesCreatorReadRepository(db),
+    intervention: createSitesInterventionReadRepository(db),
     review: createSitesReviewRepository(db),
   };
 }

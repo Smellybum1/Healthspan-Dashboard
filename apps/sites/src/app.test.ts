@@ -9,6 +9,7 @@ import {
   type ContentListQuery,
   type ContentReadRepository,
   type CreatorReadRepository,
+  type InterventionReadRepository,
   type ReviewRepository,
   type ReviewTaskDto,
 } from '@healthspan/core';
@@ -378,12 +379,52 @@ function memoryCreatorRepository(): CreatorReadRepository {
   };
 }
 
+/** In-memory intervention port. */
+function memoryInterventionRepository(): InterventionReadRepository {
+  return {
+    listEntities: ({ typeFilter }) =>
+      Promise.resolve(
+        typeFilter.kind === 'peptide'
+          ? { rows: [], total: 0 }
+          : {
+              rows: [
+                {
+                  id: 'ent-metformin',
+                  preferredName: 'Metformin',
+                  entityType: 'small_molecule',
+                  identityConfidence: 'medium',
+                  shortDescription: 'Synthetic profile.',
+                  currentDossierSnapshotId: null,
+                },
+              ],
+              total: 1,
+            },
+      ),
+    listEntityResolutionTasks: () =>
+      Promise.resolve([
+        {
+          id: 'task-new',
+          mentionId: 'mention-1',
+          proposedEntityId: 'ent-metformin',
+          title: 'Ambiguous mention',
+          reason: 'ambiguous mention',
+          priority: 'medium',
+          status: 'open',
+          stale: false,
+          createdAt: Date.UTC(2026, 0, 3),
+        },
+      ]),
+    listTrialPortfolio: () => Promise.resolve([]),
+  };
+}
+
 function bound() {
   return createSitesApp({
     createRepositories: () => ({
       assessment: memoryAssessmentRepository(),
       content: memoryContentRepository(),
       creator: memoryCreatorRepository(),
+      intervention: memoryInterventionRepository(),
       review: memoryReviewRepository(),
     }),
   });
@@ -747,6 +788,30 @@ describe('sites entrypoint — creators through the shared port', () => {
     });
     expect(res.status).toBe(503);
     expect((await res.json()).capability).toBe('creator');
+  });
+});
+
+describe('sites entrypoint — interventions through the shared port', () => {
+  it('serves interventions and peptides from one port', async () => {
+    const interventions = await bound().fetch(get('/api/interventions'), CONFIGURED);
+    expect((await interventions.json()).items[0].id).toBe('ent-metformin');
+    // 'peptide' and 'intervention' are not two values of one column.
+    const peptides = await bound().fetch(get('/api/peptides'), CONFIGURED);
+    expect((await peptides.json()).total).toBe(0);
+  });
+
+  it('serves entity resolution tasks', async () => {
+    const res = await bound().fetch(get('/api/entity-resolution/tasks'), CONFIGURED);
+    expect((await res.json()).tasks[0]).toMatchObject({ id: 'task-new', status: 'open' });
+  });
+
+  it('refuses rather than returning an empty list when unbound', async () => {
+    const res = await createSitesApp().fetch(get('/api/interventions'), {
+      ...CONFIGURED,
+      DB: undefined,
+    });
+    expect(res.status).toBe(503);
+    expect((await res.json()).capability).toBe('intervention');
   });
 });
 

@@ -68,6 +68,8 @@ import {
   listAssessments,
   listContentItems,
   listCreatorClaims,
+  listEntityResolutionTasks,
+  listInterventionEntities,
   listCreators,
   listRecurrenceSnapshots,
   listReviewDecisions,
@@ -123,8 +125,6 @@ import {
   bootstrapInterventionCatalog,
   buildDossierSnapshot,
   getDossier,
-  listEntityResolutionTasks,
-  listInterventionEntities,
   runMentionExtractionAndResolution,
 } from './dossier-service.js';
 import { enrichEntityIdentity } from './identity-enrich-runner.js';
@@ -733,7 +733,7 @@ export function createApp() {
     const type = c.req.query('type');
     if (type === 'intervention' || type === 'peptide') {
       bootstrapInterventionCatalog(live.db);
-      const listed = listInterventionEntities(live.db, {
+      const listed = await listInterventionEntities(repositories.intervention, {
         entityType: type === 'peptide' ? 'peptide' : 'intervention',
         page: Number(c.req.query('page') ?? 1),
         pageSize: Number(c.req.query('pageSize') ?? 25),
@@ -1333,13 +1333,13 @@ export function createApp() {
     return c.json({ dataMode: 'live', ...detail });
   });
 
-  app.get('/api/interventions', (c) => {
+  app.get('/api/interventions', async (c) => {
     if (currentMode() === 'demo') {
       const items = demoRepo.filterItems({ type: 'intervention' });
       return c.json({ dataMode: 'demo', dataOrigin: 'demo', count: items.length, items });
     }
     bootstrapInterventionCatalog(live.db);
-    const listed = listInterventionEntities(live.db, {
+    const listed = await listInterventionEntities(repositories.intervention, {
       entityType: c.req.query('entityType') ?? 'intervention',
       page: Number(c.req.query('page') ?? 1),
       pageSize: Number(c.req.query('pageSize') ?? 50),
@@ -1383,12 +1383,13 @@ export function createApp() {
     return c.json({ dataMode: 'live', ...result });
   });
 
-  app.get('/api/peptides', (c) => {
+  app.get('/api/peptides', async (c) => {
     if (currentMode() === 'demo') {
       const items = demoRepo.filterItems({ type: 'peptide' });
       return c.json({ dataMode: 'demo', dataOrigin: 'demo', count: items.length, items });
     }
-    const listed = listInterventionEntities(live.db, {
+    bootstrapInterventionCatalog(live.db);
+    const listed = await listInterventionEntities(repositories.intervention, {
       entityType: 'peptide',
       page: Number(c.req.query('page') ?? 1),
       pageSize: Number(c.req.query('pageSize') ?? 50),
@@ -2173,9 +2174,9 @@ export function createApp() {
     return c.json({ accepted: true, ...result });
   });
 
-  app.get('/api/entity-resolution/tasks', (c) => {
+  app.get('/api/entity-resolution/tasks', async (c) => {
     if (currentMode() === 'demo') return c.json({ dataMode: 'demo', tasks: [] });
-    const tasks = listEntityResolutionTasks(live.db).map((t) => ({
+    const tasks = (await listEntityResolutionTasks(repositories.intervention)).map((t) => ({
       id: t.id,
       title: t.title,
       reason: t.reason,

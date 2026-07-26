@@ -239,41 +239,6 @@ export function runMentionExtractionAndResolution(db: HealthspanDb, limit = 100)
   return { mentions, autoMapped, reviewTasks, rulesetVersion: RESOLUTION_RULESET_VERSION };
 }
 
-export function listInterventionEntities(
-  db: HealthspanDb,
-  opts?: { entityType?: string; page?: number; pageSize?: number; q?: string },
-) {
-  bootstrapInterventionCatalog(db);
-  const page = Math.max(1, opts?.page ?? 1);
-  const pageSize = Math.min(100, Math.max(1, opts?.pageSize ?? 25));
-  let rows = db
-    .select()
-    .from(interventionEntities)
-    .all()
-    .filter((e) => e.lifecycleState === 'active');
-  if (opts?.entityType === 'peptide') {
-    rows = rows.filter((e) => e.entityType === 'peptide');
-  } else if (opts?.entityType === 'intervention') {
-    rows = rows.filter((e) => e.entityType !== 'peptide');
-  } else if (opts?.entityType && opts.entityType !== 'all') {
-    rows = rows.filter((e) => e.entityType === opts.entityType);
-  }
-  if (opts?.q) {
-    const q = opts.q.toLowerCase();
-    rows = rows.filter((e) => e.preferredName.toLowerCase().includes(q));
-  }
-  const total = rows.length;
-  const items = rows.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize).map((e) => ({
-    id: e.id,
-    preferredName: e.preferredName,
-    entityType: e.entityType,
-    identityConfidence: e.identityConfidence,
-    shortDescription: e.shortDescription,
-    currentDossierSnapshotId: e.currentDossierSnapshotId,
-  }));
-  return { items, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
-}
-
 export function buildDossierSnapshot(
   db: HealthspanDb,
   entityId: string,
@@ -584,13 +549,4 @@ export function getDossier(db: HealthspanDb, entityId: string) {
     trialPortfolio: trialPortfolioForEntity(db, entityId),
     openResolutionTasks: openTasks.length,
   };
-}
-
-export function listEntityResolutionTasks(db: HealthspanDb, limit = 100) {
-  return db
-    .select()
-    .from(entityResolutionTasks)
-    .orderBy(desc(entityResolutionTasks.createdAt))
-    .limit(limit)
-    .all();
 }

@@ -38,7 +38,9 @@ import {
   listCreatorClaims,
   listCreatorReviewTasks,
   listCreators,
+  listEntityResolutionTasks,
   listIdentityTasks,
+  listInterventionEntities,
   listIntelligenceRuns,
   listLiveClaims,
   listRecurrenceSnapshots,
@@ -244,6 +246,36 @@ export function createSitesApp(options: SitesRuntimeOptions = {}) {
     const detail = await getAssessment(repo, c.req.param('id'));
     if (!detail) return c.json({ error: 'Not found' }, 404);
     return c.json({ dataMode: 'live', ...detail });
+  });
+
+  app.get('/api/interventions', async (c) => {
+    const repo = c.get('runtime').repositories.intervention;
+    if (!repo) return unbound(c, 'intervention');
+    const listed = await listInterventionEntities(repo, {
+      entityType: c.req.query('entityType') ?? 'intervention',
+      page: Number(c.req.query('page') ?? 1),
+      pageSize: Number(c.req.query('pageSize') ?? 50),
+      q: c.req.query('q') ?? undefined,
+    });
+    return c.json({ dataMode: 'live', dataOrigin: 'live', ...listed });
+  });
+
+  app.get('/api/peptides', async (c) => {
+    const repo = c.get('runtime').repositories.intervention;
+    if (!repo) return unbound(c, 'intervention');
+    const listed = await listInterventionEntities(repo, {
+      entityType: 'peptide',
+      page: Number(c.req.query('page') ?? 1),
+      pageSize: Number(c.req.query('pageSize') ?? 50),
+      q: c.req.query('q') ?? undefined,
+    });
+    return c.json({ dataMode: 'live', dataOrigin: 'live', ...listed });
+  });
+
+  app.get('/api/entity-resolution/tasks', async (c) => {
+    const repo = c.get('runtime').repositories.intervention;
+    if (!repo) return unbound(c, 'intervention');
+    return c.json({ dataMode: 'live', tasks: await listEntityResolutionTasks(repo) });
   });
 
   app.get('/api/creators', async (c) => {
