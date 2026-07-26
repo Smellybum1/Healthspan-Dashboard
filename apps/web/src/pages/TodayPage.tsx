@@ -196,7 +196,7 @@ export function TodayPage() {
   }
 
   if (error || !data) {
-    return <p className="text-rose-300">Failed to load dashboard: {error}</p>;
+    return <p className="text-[var(--tone-flag-fg)]">Failed to load dashboard: {error}</p>;
   }
 
   const isLive = data.dataMode === 'live' || data.dataOrigin === 'live';
@@ -556,7 +556,9 @@ export function TodayPage() {
                     ) : null}
                   </div>
                   {'unapprovedWarning' in item && item.unapprovedWarning ? (
-                    <span className="shrink-0 text-[10px] uppercase text-rose-300">Unapproved</span>
+                    <span className="shrink-0 text-[10px] uppercase text-[var(--tone-flag-fg)]">
+                      Unapproved
+                    </span>
                   ) : null}
                 </li>
               ))}

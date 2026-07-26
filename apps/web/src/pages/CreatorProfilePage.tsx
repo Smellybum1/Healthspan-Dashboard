@@ -56,7 +56,7 @@ export function CreatorProfilePage() {
   }
 
   if (error || !data) {
-    return <p className="text-rose-300">Failed to load creator: {error}</p>;
+    return <p className="text-[var(--tone-flag-fg)]">Failed to load creator: {error}</p>;
   }
 
   const isLive = data.dataMode === 'live' || data.dataOrigin === 'live';

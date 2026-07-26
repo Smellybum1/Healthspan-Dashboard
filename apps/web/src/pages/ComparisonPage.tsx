@@ -61,7 +61,7 @@ export function ComparisonPage() {
       />
 
       {catalog.loading ? <SkeletonBlock className="h-24 w-full" /> : null}
-      {catalog.error ? <p className="text-rose-300">{catalog.error}</p> : null}
+      {catalog.error ? <p className="text-[var(--tone-flag-fg)]">{catalog.error}</p> : null}
 
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -74,8 +74,11 @@ export function ComparisonPage() {
               <li key={item.id}>
                 <button
                   type="button"
+                  aria-pressed={on}
                   className={`rounded border px-2 py-1 text-sm ${
-                    on ? 'border-teal-500/60 bg-teal-500/10' : 'border-[var(--border)]'
+                    on
+                      ? 'border-[var(--tone-ok-ring)] bg-[var(--tone-ok-bg)] font-medium'
+                      : 'border-[var(--border)]'
                   }`}
                   onClick={() => toggle(item.id)}
                 >
@@ -92,7 +95,7 @@ export function ComparisonPage() {
       ) : compare.loading ? (
         <SkeletonBlock className="h-40 w-full" />
       ) : compare.error ? (
-        <p className="text-rose-300">{compare.error}</p>
+        <p className="text-[var(--tone-flag-fg)]">{compare.error}</p>
       ) : compare.data ? (
         <div className="space-y-4">
           <p className="text-sm text-[var(--muted)]">{compare.data.caveat}</p>
@@ -115,7 +118,9 @@ export function ComparisonPage() {
                     </p>
                     <p>{cell.value}</p>
                     {!cell.comparable ? (
-                      <p className="text-xs text-amber-300">Not comparable on this dimension</p>
+                      <p className="text-xs text-[var(--tone-watch-fg)]">
+                        Not comparable on this dimension
+                      </p>
                     ) : null}
                     {cell.note ? <p className="text-xs text-[var(--muted)]">{cell.note}</p> : null}
                     {cell.detailHref ? (

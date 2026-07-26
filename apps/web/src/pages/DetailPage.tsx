@@ -48,7 +48,9 @@ export function DetailPage() {
   }
 
   if (error || !data) {
-    return <p className="text-rose-300">Unable to load item: {error ?? 'Not found'}</p>;
+    return (
+      <p className="text-[var(--tone-flag-fg)]">Unable to load item: {error ?? 'Not found'}</p>
+    );
   }
 
   const item = data.item as DetailRecord;
@@ -137,7 +139,7 @@ export function DetailPage() {
       {isPeptide ? (
         <div
           role="alert"
-          className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-100"
+          className="rounded-lg border border-[var(--tone-flag-ring)] bg-[var(--tone-flag-bg)] px-3 py-2 text-sm text-[var(--tone-flag-fg)]"
         >
           Strong warning: this is an unapproved / investigational peptide example for research
           intelligence only. Not a sourcing, dosing, prescribing, or enrolment recommendation.
@@ -229,7 +231,7 @@ export function DetailPage() {
             </dl>
 
             {item.isCorrectionOrRetraction ? (
-              <p className="mt-3 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm">
+              <p className="mt-3 rounded-md border border-[var(--tone-flag-ring)] bg-[var(--tone-flag-bg)] px-3 py-2 text-sm">
                 Correction/retraction example: {item.correctionNote ?? 'See record history.'}
               </p>
             ) : null}

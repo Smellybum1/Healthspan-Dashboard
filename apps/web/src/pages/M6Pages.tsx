@@ -236,10 +236,10 @@ function Panel({
 function HealthBadge({ status }: { status: string }) {
   const tone =
     status === 'healthy' || status === 'ok'
-      ? 'text-emerald-600'
+      ? 'text-[var(--tone-ok-fg)]'
       : status === 'degraded' || status === 'warn'
-        ? 'text-amber-600'
-        : 'text-rose-600';
+        ? 'text-[var(--tone-watch-fg)]'
+        : 'text-[var(--tone-flag-fg)]';
   return (
     <span className={`rounded-full border border-[var(--border)] px-2 py-0.5 text-xs ${tone}`}>
       {status}
@@ -257,7 +257,8 @@ function AvailabilityBadge({
   targetType?: string;
 }) {
   if (!availability || availability === 'available') return null;
-  const tone = availability === 'redirected' ? 'text-amber-600' : 'text-rose-600';
+  const tone =
+    availability === 'redirected' ? 'text-[var(--tone-watch-fg)]' : 'text-[var(--tone-flag-fg)]';
   const href =
     availability === 'redirected' && redirectedTo
       ? itemPath(String(targetType || 'content_item'), String(redirectedTo))
@@ -577,7 +578,7 @@ export function WatchlistsPage() {
         description="Named Live watchlists persist in SQLite. Demo follow state remains browser-local."
       />
       {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
 
       {mode === 'live' ? (
         <>
@@ -645,7 +646,9 @@ export function WatchlistsPage() {
                           <span className="text-[var(--muted)]">(default)</span>
                         ) : null}
                         {archived ? (
-                          <span className="text-[10px] uppercase text-amber-600">archived</span>
+                          <span className="text-[10px] uppercase text-[var(--tone-watch-fg)]">
+                            archived
+                          </span>
                         ) : null}
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
@@ -711,7 +714,7 @@ export function WatchlistsPage() {
                         {!w.isDefault ? (
                           <button
                             type="button"
-                            className="text-rose-600 underline"
+                            className="text-[var(--tone-flag-fg)] underline"
                             onClick={() => {
                               if (
                                 !window.confirm(
@@ -1301,7 +1304,7 @@ export function SavedSearchesPage() {
         description="Structured filter builder — no browser SQL or regular expressions."
       />
       {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       {mode === 'live' ? (
         <>
           <form
@@ -1366,7 +1369,7 @@ export function SavedSearchesPage() {
                       </Link>
                       <span className="text-[var(--muted)]">{String(s.state)}</span>
                       {s.needsUpdate ? (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] uppercase text-amber-800">
+                        <span className="rounded bg-[var(--tone-watch-bg)] px-1.5 py-0.5 text-[10px] uppercase text-[var(--tone-watch-fg)]">
                           needs update
                         </span>
                       ) : null}
@@ -1406,7 +1409,7 @@ export function SavedSearchesPage() {
                       {s.needsUpdate ? (
                         <button
                           type="button"
-                          className="underline text-amber-700"
+                          className="underline text-[var(--tone-watch-fg)]"
                           onClick={() => {
                             loadIntoBuilder(s);
                             setShowPreview(true);
@@ -1472,7 +1475,7 @@ export function SavedSearchesPage() {
                       )}
                       <button
                         type="button"
-                        className="text-rose-600 underline"
+                        className="text-[var(--tone-flag-fg)] underline"
                         onClick={() => {
                           if (!window.confirm(`Delete “${String(s.name)}”?`)) return;
                           void m6Api.deleteSavedSearch(sid).then(reload);
@@ -1568,9 +1571,9 @@ export function SavedSearchDetailPage() {
         description="Structured saved search detail"
       />
       {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       {item?.needsUpdate ? (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-amber-700">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--tone-watch-fg)]">
           <p>This search was migrated and may need review.</p>
           <button
             type="button"
@@ -1858,7 +1861,7 @@ export function AlertsPage() {
         description="Deterministic research/operational alerts — not personal clinical risk."
       />
       {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         <select
           className={btnSmClass}
@@ -2037,7 +2040,7 @@ export function AlertDetailPage() {
         title={String(item?.title ?? 'Alert')}
         description="Alert detail and why-included payload"
       />
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       <Panel title="Summary">
         <p className="text-sm">
           <strong>State:</strong> {String(item?.state ?? '—')} · <strong>Family:</strong>{' '}
@@ -2181,7 +2184,7 @@ export function BriefsPage() {
         description="Daily and weekly research briefings from Live personalisation."
       />
       {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
 
       {status ? (
         <Panel title="Schedule & last runs">
@@ -2381,11 +2384,11 @@ export function BriefDetailPage() {
           </div>
         }
       />
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       <Panel title="Source coverage">
         <WhyIncludedPreview value={coverage} />
         {((coverage.partialReasons as string[]) ?? []).length > 0 ? (
-          <p className="mt-2 text-xs text-amber-700">
+          <p className="mt-2 text-xs text-[var(--tone-watch-fg)]">
             Partial: {((coverage.partialReasons as string[]) ?? []).join(', ')}
           </p>
         ) : null}
@@ -2485,7 +2488,9 @@ export function OperationsPage() {
         description="Local runtime, database, scheduler, backups, and storage."
       />
       {overview.loading ? <SkeletonBlock className="h-40 w-full" /> : null}
-      {overview.error ? <p className="text-sm text-red-600">{overview.error}</p> : null}
+      {overview.error ? (
+        <p className="text-sm text-[var(--tone-flag-fg)]">{overview.error}</p>
+      ) : null}
       {actionMsg ? <p className="text-sm text-[var(--muted)]">{actionMsg}</p> : null}
 
       {panels ? (
@@ -3379,7 +3384,7 @@ export function BriefingsSettingsPage() {
         title="Briefing settings"
         description="Daily/weekly schedule, caps, and section toggles for the local profile."
       />
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       <Panel title="Schedule">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
@@ -3593,7 +3598,7 @@ export function AlertsSettingsPage() {
         title="Alert settings"
         description="Deterministic local alert rules — configure evaluation targets and event kinds."
       />
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
 
       <Panel title={editing ? 'Edit rule' : 'New rule'}>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -3680,7 +3685,7 @@ export function AlertsSettingsPage() {
           </label>
         </div>
         {floorLocked ? (
-          <p className="mt-2 text-xs text-amber-700">
+          <p className="mt-2 text-xs text-[var(--tone-watch-fg)]">
             Integrity targets cannot be set below medium priority floor.
           </p>
         ) : null}
@@ -3728,7 +3733,7 @@ export function AlertsSettingsPage() {
                     </button>
                     <button
                       type="button"
-                      className="text-xs text-rose-600 underline"
+                      className="text-xs text-[var(--tone-flag-fg)] underline"
                       onClick={() => {
                         if (!window.confirm(`Delete rule “${String(r.name)}”?`)) return;
                         void m6Api.deleteAlertRule(String(r.id)).then(reload);
@@ -3810,7 +3815,7 @@ export function MuteRulesPage() {
         description="Silence objects, topics, sources, or event types for a period or forever."
       />
       {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
       {mode === 'live' ? (
         <>
           <form
@@ -3931,7 +3936,7 @@ export function MuteRulesPage() {
                         )}
                         <button
                           type="button"
-                          className="text-xs text-rose-600 underline"
+                          className="text-xs text-[var(--tone-flag-fg)] underline"
                           onClick={() => {
                             if (!window.confirm('Delete this mute rule?')) return;
                             void m6Api.deleteMute(String(m.id)).then(reload);

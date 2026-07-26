@@ -1,5 +1,13 @@
 @import 'tailwindcss';
 
+/*
+ * Tailwind v4 auto-detection skips node_modules, and @healthspan/ui resolves through
+ * the workspace symlink there. Without this directive none of the shared package's
+ * utility classes are emitted, so its badges render with no tint, ring, or text
+ * colour at all. Keep this in sync with any new workspace package that ships JSX.
+ */
+@source '../../../packages/ui/src/**/*.{ts,tsx}';
+
 :root {
   color-scheme: dark;
   --bg: #0b1220;
@@ -15,6 +23,40 @@
   --sky: #38bdf8;
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Source Serif 4', Georgia, serif;
+
+  /*
+   * Semantic status tones. These are theme-aware, unlike raw Tailwind palette
+   * classes, which are tuned for exactly one theme and fail contrast in the other.
+   *
+   * Mark steps are validated all-pairs against the theme surface (OKLCH lightness
+   * band, chroma floor, CVD separation, normal-vision floor, contrast). Each -fg
+   * step clears 4.5:1 on both its tint and the plain surface.
+   *
+   * Status colour is never the only signal: every consumer pairs a tone with a
+   * text label and a tone-distinct glyph.
+   */
+  --tone-ok: #0d9488;
+  --tone-ok-fg: #5eead4;
+  --tone-watch: #d97706;
+  --tone-watch-fg: #fcd34d;
+  --tone-flag: #e11d48;
+  --tone-flag-fg: #fda4af;
+  --tone-info: #2563eb;
+  --tone-info-fg: #93c5fd;
+  --tone-neutral: #64748b;
+  --tone-neutral-fg: #cbd5e1;
+
+  /* Derived tint and ring; resolve against whichever theme is active. */
+  --tone-ok-bg: color-mix(in srgb, var(--tone-ok) 15%, var(--surface));
+  --tone-ok-ring: color-mix(in srgb, var(--tone-ok) 40%, var(--border));
+  --tone-watch-bg: color-mix(in srgb, var(--tone-watch) 15%, var(--surface));
+  --tone-watch-ring: color-mix(in srgb, var(--tone-watch) 40%, var(--border));
+  --tone-flag-bg: color-mix(in srgb, var(--tone-flag) 15%, var(--surface));
+  --tone-flag-ring: color-mix(in srgb, var(--tone-flag) 40%, var(--border));
+  --tone-info-bg: color-mix(in srgb, var(--tone-info) 15%, var(--surface));
+  --tone-info-ring: color-mix(in srgb, var(--tone-info) 40%, var(--border));
+  --tone-neutral-bg: color-mix(in srgb, var(--tone-neutral) 15%, var(--surface));
+  --tone-neutral-ring: color-mix(in srgb, var(--tone-neutral) 40%, var(--border));
 }
 
 [data-theme='light'] {
@@ -26,10 +68,28 @@
   --border: #cfd8e6;
   --fg: #152033;
   --muted: #5b6b82;
-  --teal: #0f766e;
+  /* #0f766e sat below the chroma floor (0.086) and read as grey; #0d9488 clears it. */
+  --teal: #0d9488;
   --amber: #b45309;
   --rose: #be123c;
   --sky: #0369a1;
+
+  /*
+   * Light steps are chosen independently, not inverted. In particular --tone-watch
+   * moves to #ca8a04: at the previous #b45309 it scored ΔE 11.5 against the flag
+   * tone for NORMAL vision, below the 15 floor, so safety and regulatory states
+   * were hard to tell apart for every reader.
+   */
+  --tone-ok: #0d9488;
+  --tone-ok-fg: #115e59;
+  --tone-watch: #ca8a04;
+  --tone-watch-fg: #854d0e;
+  --tone-flag: #be123c;
+  --tone-flag-fg: #9f1239;
+  --tone-info: #1d4ed8;
+  --tone-info-fg: #1e40af;
+  --tone-neutral: #64748b;
+  --tone-neutral-fg: #334155;
 }
 
 * {

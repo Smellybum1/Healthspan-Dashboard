@@ -36,7 +36,7 @@ export function DossierPage() {
   }
 
   if (error || !data) {
-    return <p className="text-rose-300">{error ?? 'Dossier not found'}</p>;
+    return <p className="text-[var(--tone-flag-fg)]">{error ?? 'Dossier not found'}</p>;
   }
 
   const entity = data.entity;
@@ -66,7 +66,7 @@ export function DossierPage() {
       </section>
 
       {data.summary.peptide ? (
-        <section className="rounded border border-amber-500/40 px-3 py-2 text-sm">
+        <section className="rounded border border-[var(--tone-watch-ring)] px-3 py-2 text-sm">
           <p className="font-medium">Peptide identity</p>
           <p>
             {String((data.summary.peptide as Record<string, unknown>).classification)} · sequence{' '}
@@ -188,7 +188,7 @@ export function DossierPage() {
               ).map((s, i) => (
                 <li key={i} className="rounded border border-[var(--border)] px-2 py-1">
                   {String(s.quarter)} · {String(s.productOrClass)} · {String(s.signalText)}
-                  <span className="block text-xs text-amber-300">
+                  <span className="block text-xs text-[var(--tone-watch-fg)]">
                     Not proven causality · not incidence
                   </span>
                 </li>
@@ -199,7 +199,7 @@ export function DossierPage() {
       </section>
 
       {data.openResolutionTasks > 0 ? (
-        <p className="text-sm text-amber-300">
+        <p className="text-sm text-[var(--tone-watch-fg)]">
           {data.openResolutionTasks} open entity-resolution tasks.{' '}
           <Link className="underline" to="/entity-resolution">
             Open queue

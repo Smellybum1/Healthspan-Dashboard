@@ -196,6 +196,7 @@ export function SettingsPage() {
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
           placeholder="Paste preferences JSON…"
+          aria-label="Preferences JSON to import"
           className="min-h-28 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-sm"
         />
         <button

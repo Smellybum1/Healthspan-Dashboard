@@ -54,7 +54,7 @@ export function WatchlistsPage() {
         }
       />
       {mode === 'demo' ? <DemoBanner notice={DEMO_SNAPSHOT_NOTICE} /> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--tone-flag-fg)]">{error}</p> : null}
 
       {mode === 'live' ? (
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">

@@ -99,7 +99,7 @@ export function SourceHealthPage() {
                     <p className="text-xs text-[var(--muted)]">{String(source.scheduleNotes)}</p>
                   ) : null}
                   {source.lastError ? (
-                    <p className="text-xs text-rose-300">{String(source.lastError)}</p>
+                    <p className="text-xs text-[var(--tone-flag-fg)]">{String(source.lastError)}</p>
                   ) : null}
                 </div>
                 <button

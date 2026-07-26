@@ -29,7 +29,7 @@ export function ClaimDetailPage() {
   }
 
   if (error || !data) {
-    return <p className="text-rose-300">{error ?? 'Claim not found'}</p>;
+    return <p className="text-[var(--tone-flag-fg)]">{error ?? 'Claim not found'}</p>;
   }
 
   const claim = data.claim;

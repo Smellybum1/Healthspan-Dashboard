@@ -17,73 +17,101 @@ export function cn(...parts: Array<string | false | null | undefined>) {
   return clsx(parts);
 }
 
+/**
+ * Semantic status tones. Each maps to theme-aware tokens rather than a raw Tailwind
+ * palette step, so the same badge stays legible in both themes.
+ *
+ * Class strings are written out literally because Tailwind only emits classes it can
+ * see in source — a template-built class name would silently produce no CSS.
+ */
+export type StatusTone = 'ok' | 'watch' | 'flag' | 'info' | 'neutral';
+
+const TONE_CLASS: Record<StatusTone, string> = {
+  ok: 'bg-[var(--tone-ok-bg)] text-[var(--tone-ok-fg)] ring-[var(--tone-ok-ring)]',
+  watch: 'bg-[var(--tone-watch-bg)] text-[var(--tone-watch-fg)] ring-[var(--tone-watch-ring)]',
+  flag: 'bg-[var(--tone-flag-bg)] text-[var(--tone-flag-fg)] ring-[var(--tone-flag-ring)]',
+  info: 'bg-[var(--tone-info-bg)] text-[var(--tone-info-fg)] ring-[var(--tone-info-ring)]',
+  neutral:
+    'bg-[var(--tone-neutral-bg)] text-[var(--tone-neutral-fg)] ring-[var(--tone-neutral-ring)]',
+};
+
+/**
+ * A tone-distinct glyph so severity survives greyscale, print, and colour-vision
+ * deficiency. Previously every tone shared "●", which carried no signal at all.
+ */
+const TONE_GLYPH: Record<StatusTone, string> = {
+  ok: '●',
+  watch: '▲',
+  flag: '◆',
+  info: '■',
+  neutral: '○',
+};
+
+const BADGE_BASE =
+  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset';
+
+export function StatusBadge({
+  tone,
+  children,
+  title,
+}: {
+  tone: StatusTone;
+  children: ReactNode;
+  title?: string;
+}) {
+  return (
+    <span className={cn(BADGE_BASE, TONE_CLASS[tone])} title={title}>
+      <span aria-hidden="true">{TONE_GLYPH[tone]}</span>
+      {children}
+    </span>
+  );
+}
+
 export function EvidenceMaturityBadge({ maturity }: { maturity: EvidenceMaturity }) {
   const tone = evidenceTone(maturity);
+  const statusTone: StatusTone =
+    tone === 'established' ? 'ok' : tone === 'emerging' ? 'watch' : 'neutral';
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-        tone === 'established' && 'bg-teal-500/15 text-teal-200 ring-teal-500/30',
-        tone === 'emerging' && 'bg-amber-500/15 text-amber-100 ring-amber-500/30',
-        tone === 'weak' && 'bg-slate-500/20 text-slate-200 ring-slate-400/30',
-      )}
-      title={EVIDENCE_MATURITY_LABELS[maturity]}
-    >
-      <span aria-hidden="true">●</span>
+    <StatusBadge tone={statusTone} title={EVIDENCE_MATURITY_LABELS[maturity]}>
       {EVIDENCE_MATURITY_LABELS[maturity]}
-    </span>
+    </StatusBadge>
   );
 }
 
 export function ConfidenceBadge({ score }: { score: number }) {
   const band = confidenceBand(score);
+  const tone: StatusTone = band === 'high' ? 'ok' : band === 'moderate' ? 'watch' : 'flag';
   return (
-    <span
-      className={cn(
-        'inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-        band === 'high' && 'bg-teal-500/15 text-teal-200 ring-teal-500/30',
-        band === 'moderate' && 'bg-amber-500/15 text-amber-100 ring-amber-500/30',
-        band === 'low' && 'bg-rose-500/10 text-rose-200 ring-rose-400/30',
-      )}
-    >
+    <StatusBadge tone={tone}>
       Confidence: {band} ({Math.round(score * 100)}%)
-    </span>
+    </StatusBadge>
   );
 }
 
 export function RegulatoryBadge({ status }: { status: RegulatoryStatus }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-        status === 'approved' && 'bg-teal-500/15 text-teal-200 ring-teal-500/30',
-        status === 'off_label' && 'bg-sky-500/15 text-sky-100 ring-sky-500/30',
-        status === 'investigational' && 'bg-amber-500/15 text-amber-100 ring-amber-500/30',
-        (status === 'unapproved' || status === 'prohibited') &&
-          'bg-rose-500/15 text-rose-100 ring-rose-500/40',
-        status === 'unknown' && 'bg-slate-500/20 text-slate-200 ring-slate-400/30',
-      )}
-    >
-      {REGULATORY_STATUS_LABELS[status]}
-    </span>
-  );
+  const tone: StatusTone =
+    status === 'approved'
+      ? 'ok'
+      : status === 'off_label'
+        ? 'info'
+        : status === 'investigational'
+          ? 'watch'
+          : status === 'unapproved' || status === 'prohibited'
+            ? 'flag'
+            : 'neutral';
+  return <StatusBadge tone={tone}>{REGULATORY_STATUS_LABELS[status]}</StatusBadge>;
 }
 
 export function SafetyBadge({ severity }: { severity: SafetySeverity }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-        severity === 'info' && 'bg-slate-500/20 text-slate-200 ring-slate-400/30',
-        severity === 'low' && 'bg-sky-500/15 text-sky-100 ring-sky-500/30',
-        severity === 'moderate' && 'bg-amber-500/15 text-amber-100 ring-amber-500/30',
-        (severity === 'high' || severity === 'critical') &&
-          'bg-rose-500/15 text-rose-100 ring-rose-500/40',
-      )}
-    >
-      Safety: {SAFETY_SEVERITY_LABELS[severity]}
-    </span>
-  );
+  const tone: StatusTone =
+    severity === 'info'
+      ? 'neutral'
+      : severity === 'low'
+        ? 'info'
+        : severity === 'moderate'
+          ? 'watch'
+          : 'flag';
+  return <StatusBadge tone={tone}>Safety: {SAFETY_SEVERITY_LABELS[severity]}</StatusBadge>;
 }
 
 export function TranslationGapChips({ gaps }: { gaps: TranslationGapType[] }) {
@@ -95,7 +123,7 @@ export function TranslationGapChips({ gaps }: { gaps: TranslationGapType[] }) {
       {gaps.map((gap) => (
         <span
           key={gap}
-          className="rounded-md bg-amber-500/10 px-2 py-0.5 text-xs text-amber-100 ring-1 ring-amber-500/25"
+          className="rounded-md bg-[var(--tone-watch-bg)] px-2 py-0.5 text-xs text-[var(--tone-watch-fg)] ring-1 ring-[var(--tone-watch-ring)]"
         >
           {TRANSLATION_GAP_LABELS[gap]}
         </span>
@@ -108,7 +136,7 @@ export function DemoBanner({ notice }: { notice: string }) {
   return (
     <div
       role="status"
-      className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-50"
+      className="rounded-lg border border-[var(--tone-watch-ring)] bg-[var(--tone-watch-bg)] px-3 py-2 text-sm text-[var(--tone-watch-fg)]"
     >
       {notice}
     </div>
