@@ -48,6 +48,23 @@ function backupsRoot(dataDir: string) {
   return dir;
 }
 
+/**
+ * Normalise a domain storage key (raw_snapshots.storage_key /
+ * creator_documents.storage_key) to a safe relative POSIX key.
+ */
+export function toDomainRelKey(storageKey: string): string {
+  const normalised = storageKey.replace(/\\/g, '/').replace(/^\.\//, '');
+  assertSafeRelPath(normalised);
+  if (normalised.endsWith('/')) {
+    throw new Error(`Unsafe path rejected: ${storageKey}`);
+  }
+  return normalised;
+}
+
+/** Legacy (pre-hotfix) archive payload paths, resolved via the restored database. */
+const LEGACY_RAW_RE = /^raw\/sha256\/([a-f0-9]{64})$/i;
+const LEGACY_DOC_RE = /^documents\/([^/]+)\/[^/]+$/;
+
 /** Sanitize a temporary SQLite copy (never the live DB). */
 export function sanitizeBackupSqlite(tempDbPath: string) {
   const { sqlite: db } = openDatabase({ dbPath: tempDbPath, migrateOnOpen: false });
@@ -164,43 +181,83 @@ export async function createBackup(opts: CreateBackupOptions) {
               'fair_dealing_research_notes',
             ].includes(d.rightsBasis),
         );
+      // Archive documents under their domain storage key so restore lands where
+      // the normal creator-document reader looks (dataDir/<storage_key>).
+      const claimedDocKeys = new Map<string, string>();
+      const missingDocs: string[] = [];
       for (const doc of docs) {
-        const full = path.isAbsolute(doc.storageKey)
-          ? doc.storageKey
-          : path.join(opts.dataDir, doc.storageKey);
-        if (!fs.existsSync(full)) continue;
+        if (path.isAbsolute(doc.storageKey)) {
+          throw new Error(`unsupported-document-storage-key:absolute:${doc.id}`);
+        }
+        const storageKey = toDomainRelKey(doc.storageKey);
+        const priorDocId = claimedDocKeys.get(storageKey);
+        if (priorDocId && priorDocId !== doc.id) {
+          throw new Error(`document-storage-key-collision:${storageKey}`);
+        }
+        claimedDocKeys.set(storageKey, doc.id);
+        const full = path.join(opts.dataDir, storageKey);
+        if (!fs.existsSync(full)) {
+          missingDocs.push(`${doc.id}:${storageKey}`);
+          continue;
+        }
         const st = fs.statSync(full);
         const sha = sha256File(full);
-        if (sha !== doc.sha256) continue;
-        const rel = `documents/${doc.id}/${path.basename(doc.filename)}`;
-        assertSafeRelPath(rel);
+        if (sha !== doc.sha256) {
+          missingDocs.push(`${doc.id}:${storageKey}:hash-mismatch`);
+          continue;
+        }
+        assertSafeRelPath(storageKey);
         entries.push({
-          path: rel,
+          path: storageKey,
           kind: 'file',
           filePath: full,
           byteLength: st.size,
           sha256: sha,
         });
       }
+      if (missingDocs.length) {
+        throw new Error(
+          `missing-referenced-documents:${missingDocs.length}:${missingDocs.slice(0, 5).join(',')}`,
+        );
+      }
     }
 
     if (tier === 'portable_full') {
       // Only referenced official immutable raw objects from raw_snapshots.
-      const refs = opts.db.select({ sha256: rawSnapshots.sha256 }).from(rawSnapshots).all();
-      const unique = [...new Set(refs.map((r) => r.sha256).filter(Boolean))];
-      for (const hash of unique) {
-        const full = path.join(opts.dataDir, 'raw', 'sha256', hash);
-        if (!fs.existsSync(full)) continue;
+      // The authoritative on-disk location is dataDir/raw/<raw_snapshots.storage_key>;
+      // the key is sharded and suffixed, so it cannot be reconstructed from the SHA alone.
+      const refs = opts.db
+        .select({ sha256: rawSnapshots.sha256, storageKey: rawSnapshots.storageKey })
+        .from(rawSnapshots)
+        .all();
+      const seenKeys = new Set<string>();
+      const missingRaw: string[] = [];
+      for (const ref of refs) {
+        if (!ref.storageKey) continue;
+        const storageKey = toDomainRelKey(ref.storageKey);
+        if (seenKeys.has(storageKey)) continue;
+        seenKeys.add(storageKey);
+        const full = path.join(opts.dataDir, 'raw', storageKey);
+        if (!fs.existsSync(full)) {
+          missingRaw.push(storageKey);
+          continue;
+        }
         const st = fs.statSync(full);
-        const rel = `raw/sha256/${hash}`;
+        const rel = `raw/${storageKey}`;
         assertSafeRelPath(rel);
         entries.push({
           path: rel,
           kind: 'file',
           filePath: full,
           byteLength: st.size,
+          // Compressed object bytes; raw_snapshots.sha256 remains the uncompressed digest.
           sha256: sha256File(full),
         });
+      }
+      if (missingRaw.length) {
+        throw new Error(
+          `missing-referenced-raw-objects:${missingRaw.length}:${missingRaw.slice(0, 5).join(',')}`,
+        );
       }
     }
 
@@ -489,24 +546,100 @@ export async function restoreBackup(opts: {
         throw new Error('injected-failure:after-restored-db-placement');
       }
 
+      // Resolve payload destinations against the restored database. Payload paths
+      // are domain storage keys; legacy archives carry pre-hotfix paths that must
+      // be mapped back through the database rather than restored where they sit.
+      const docKeyBySha = new Map<string, string>();
+      const docKeyById = new Map<string, string>();
+      const rawKeyBySha = new Map<string, string>();
+      const ambiguousRawSha = new Set<string>();
+      const knownDocKeys = new Set<string>();
+      {
+        const probeRestored = openDatabase({ dbPath: opts.dbPath, migrateOnOpen: false });
+        try {
+          for (const row of probeRestored.db
+            .select({
+              id: creatorDocuments.id,
+              storageKey: creatorDocuments.storageKey,
+              sha256: creatorDocuments.sha256,
+            })
+            .from(creatorDocuments)
+            .all()) {
+            if (!row.storageKey) continue;
+            const key = toDomainRelKey(row.storageKey);
+            docKeyById.set(row.id, key);
+            knownDocKeys.add(key);
+            if (row.sha256) docKeyBySha.set(key, row.sha256);
+          }
+          for (const row of probeRestored.db
+            .select({ sha256: rawSnapshots.sha256, storageKey: rawSnapshots.storageKey })
+            .from(rawSnapshots)
+            .all()) {
+            if (!row.sha256 || !row.storageKey) continue;
+            const sha = row.sha256.toLowerCase();
+            const key = toDomainRelKey(row.storageKey);
+            const prior = rawKeyBySha.get(sha);
+            if (prior && prior !== key) ambiguousRawSha.add(sha);
+            else rawKeyBySha.set(sha, key);
+          }
+        } finally {
+          probeRestored.sqlite.close();
+        }
+      }
+
+      const resolvePayloadKey = (rel: string): string => {
+        const legacyDoc = LEGACY_DOC_RE.exec(rel);
+        if (legacyDoc) {
+          const mapped = docKeyById.get(legacyDoc[1]!);
+          if (!mapped) {
+            throw new Error(`unsupported-archive:unmapped-legacy-document:${legacyDoc[1]}`);
+          }
+          return mapped;
+        }
+        const legacyRaw = LEGACY_RAW_RE.exec(rel);
+        if (legacyRaw) {
+          const sha = legacyRaw[1]!.toLowerCase();
+          if (ambiguousRawSha.has(sha)) {
+            throw new Error(`unsupported-archive:ambiguous-legacy-raw:${sha}`);
+          }
+          const mapped = rawKeyBySha.get(sha);
+          if (!mapped) {
+            throw new Error(`unsupported-archive:unmapped-legacy-raw:${sha}`);
+          }
+          return `raw/${mapped}`;
+        }
+        return rel;
+      };
+
       // Restore eligible document and raw payload files from archive.
       fs.mkdirSync(payloadBackupRoot, { recursive: true });
+      const managedRoot = path.resolve(opts.dataDir);
       for (const [rel, bytes] of Object.entries(files)) {
         if (rel === 'manifest.json' || rel === 'checksums.json') continue;
         if (rel === 'database/healthspan-dashboard.sqlite3') continue;
         assertSafeRelPath(rel);
-        const dest = path.join(opts.dataDir, rel);
-        const managedRoot = path.resolve(opts.dataDir);
+        const key = resolvePayloadKey(rel);
+        assertSafeRelPath(key);
+        const dest = path.join(opts.dataDir, key);
         if (!path.resolve(dest).startsWith(managedRoot)) {
           throw new Error(`path-escape:${rel}`);
         }
         const expected = sha256Hex(bytes);
-        if (rel.startsWith('documents/')) {
+        const payloadKind = key.startsWith('raw/')
+          ? 'raw'
+          : knownDocKeys.has(key)
+            ? 'document'
+            : 'other';
+        if (payloadKind === 'document') {
           if (failAt === 'while-restoring-documents') {
             throw new Error('injected-failure:while-restoring-documents');
           }
+          const declared = docKeyBySha.get(key);
+          if (declared && declared !== expected) {
+            throw new Error(`document-hash-mismatch-vs-database:${key}`);
+          }
         }
-        if (rel.startsWith('raw/')) {
+        if (payloadKind === 'raw') {
           if (failAt === 'while-restoring-raw') {
             throw new Error('injected-failure:while-restoring-raw');
           }
@@ -514,7 +647,7 @@ export async function restoreBackup(opts: {
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         let backupOfExisting: string | undefined;
         if (fs.existsSync(dest)) {
-          backupOfExisting = path.join(payloadBackupRoot, rel.replace(/[\\/]/g, '__'));
+          backupOfExisting = path.join(payloadBackupRoot, key.replace(/[\\/]/g, '__'));
           fs.mkdirSync(path.dirname(backupOfExisting), { recursive: true });
           fs.copyFileSync(dest, backupOfExisting);
         }

@@ -12,7 +12,12 @@ import {
   sealBackupArchive,
   sha256Hex,
 } from '@healthspan/operations';
-import { closeDatabase, openDatabase, seedOperationalSources } from '@healthspan/db';
+import {
+  FileRawSnapshotStore,
+  closeDatabase,
+  openDatabase,
+  seedOperationalSources,
+} from '@healthspan/db';
 import {
   createBackup,
   pruneBackups,
@@ -397,18 +402,24 @@ add(
 );
 add('temporary-files-removed', !fs.existsSync(path.join(os.tmpdir(), 'should-not-matter')));
 
-// Named document/raw/policy cases (environment-gated inclusion)
-const docsDir = path.join(live2.paths.dataDir, 'creator-docs');
-fs.mkdirSync(docsDir, { recursive: true });
-const eligiblePath = path.join(docsDir, 'eligible.txt');
-const deletedPath = path.join(docsDir, 'deleted.txt');
-const ineligiblePath = path.join(docsDir, 'ineligible.txt');
-fs.writeFileSync(eligiblePath, 'eligible creator document body');
-fs.writeFileSync(deletedPath, 'deleted document body');
-fs.writeFileSync(ineligiblePath, 'ineligible rights body');
-const eligibleSha = sha256Hex(fs.readFileSync(eligiblePath));
-const deletedSha = sha256Hex(fs.readFileSync(deletedPath));
-const ineligibleSha = sha256Hex(fs.readFileSync(ineligiblePath));
+// Named document/raw/policy cases (environment-gated inclusion).
+// Fixtures mirror the production on-disk layout: creator documents live at
+// dataDir/<creator_documents.storage_key> and raw objects at
+// dataDir/raw/<raw_snapshots.storage_key>. Earlier revisions of this harness used
+// absolute document keys and flat raw paths, which no production writer emits —
+// that is why the payload-path defect passed this gate.
+function writeEvalDocument(body: string) {
+  const bytes = Buffer.from(body, 'utf8');
+  const digest = sha256Hex(bytes);
+  const storageKey = `creator-docs/${digest.slice(0, 2)}/${digest}`;
+  const abs = path.join(live2.paths.dataDir, storageKey);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(abs, bytes);
+  return { storageKey, abs, sha: digest, size: bytes.length };
+}
+const eligibleDoc = writeEvalDocument('eligible creator document body');
+const deletedDoc = writeEvalDocument('deleted document body');
+const ineligibleDoc = writeEvalDocument('ineligible rights body');
 const now = Date.now();
 live2.sqlite
   .prepare(
@@ -417,7 +428,7 @@ live2.sqlite
        lifecycle_state, review_state, deleted_at, purged_at, storage_purged, created_at)
      VALUES (?, 'c1', 'eligible.txt', 'notes', 'user_owned', 1, ?, ?, ?, 'current', 'accepted', NULL, NULL, 0, ?)`,
   )
-  .run('doc-eligible', eligiblePath, fs.statSync(eligiblePath).size, eligibleSha, now);
+  .run('doc-eligible', eligibleDoc.storageKey, eligibleDoc.size, eligibleDoc.sha, now);
 live2.sqlite
   .prepare(
     `INSERT INTO creator_documents
@@ -425,7 +436,7 @@ live2.sqlite
        lifecycle_state, review_state, deleted_at, purged_at, storage_purged, created_at)
      VALUES (?, 'c1', 'deleted.txt', 'notes', 'user_owned', 1, ?, ?, ?, 'current', 'accepted', ?, NULL, 0, ?)`,
   )
-  .run('doc-deleted', deletedPath, fs.statSync(deletedPath).size, deletedSha, now, now);
+  .run('doc-deleted', deletedDoc.storageKey, deletedDoc.size, deletedDoc.sha, now, now);
 live2.sqlite
   .prepare(
     `INSERT INTO creator_documents
@@ -433,27 +444,30 @@ live2.sqlite
        lifecycle_state, review_state, deleted_at, purged_at, storage_purged, created_at)
      VALUES (?, 'c1', 'ineligible.txt', 'notes', 'third_party_scraped', 0, ?, ?, ?, 'current', 'accepted', NULL, NULL, 0, ?)`,
   )
-  .run('doc-ineligible', ineligiblePath, fs.statSync(ineligiblePath).size, ineligibleSha, now);
+  .run('doc-ineligible', ineligibleDoc.storageKey, ineligibleDoc.size, ineligibleDoc.sha, now);
 
-const rawRoot = path.join(live2.paths.dataDir, 'raw', 'sha256');
-fs.mkdirSync(rawRoot, { recursive: true });
-const referencedRaw = 'a'.repeat(64);
-const unreferencedRaw = 'b'.repeat(64);
-fs.writeFileSync(path.join(rawRoot, referencedRaw), 'official referenced raw');
-fs.writeFileSync(path.join(rawRoot, unreferencedRaw), 'orphan raw must stay out');
+// Raw objects are written through the production store so their sharded,
+// suffixed storage keys match what the app actually emits.
+const evalRawStore = new FileRawSnapshotStore(path.join(live2.paths.dataDir, 'raw'));
+const referencedRawBytes = Buffer.from('official referenced raw', 'utf8');
+const referencedRawStored = evalRawStore.put(referencedRawBytes, 'json');
+const unreferencedRawStored = evalRawStore.put(
+  Buffer.from('orphan raw must stay out', 'utf8'),
+  'json',
+);
 fs.writeFileSync(path.join(live2.paths.dataDir, 'raw', 'x-text-blob.txt'), 'x platform text');
 live2.sqlite
   .prepare(
     `INSERT INTO raw_snapshots
       (id, source_id, sha256, storage_key, media_type, compression, byte_length, compressed_byte_length,
        retrieved_at, connector_version, parser_version)
-     VALUES ('raw1', 'pubmed', ?, ?, 'application/json', 'none', ?, ?, ?, '1', '1')`,
+     VALUES ('raw1', 'pubmed', ?, ?, 'application/json', 'gzip', ?, ?, ?, '1', '1')`,
   )
   .run(
-    referencedRaw,
-    `raw/sha256/${referencedRaw}`,
-    fs.statSync(path.join(rawRoot, referencedRaw)).size,
-    fs.statSync(path.join(rawRoot, referencedRaw)).size,
+    referencedRawStored.sha256,
+    referencedRawStored.storageKey,
+    referencedRawBytes.length,
+    referencedRawStored.compressedByteLength,
     now,
   );
 
@@ -469,22 +483,19 @@ const withDocs = await createBackup({
 });
 const withDocsOpened = openBackupArchive(fs.readFileSync(withDocs.archivePath), passphrase);
 const withDocsFiles = extractZip(withDocsOpened.zip);
+// Payloads are archived under their domain storage keys so restore lands where
+// the normal readers look.
+add('creator-document-included', Boolean(withDocsFiles[eligibleDoc.storageKey]));
+add('creator-document-excluded', !withDocsFiles[ineligibleDoc.storageKey]);
+add('deleted-document-excluded', !withDocsFiles[deletedDoc.storageKey]);
 add(
-  'creator-document-included',
-  Object.keys(withDocsFiles).some((p) => p.includes('documents/doc-eligible/')),
+  'referenced-raw-included',
+  Boolean(withDocsFiles[`raw/${referencedRawStored.storageKey}`]),
+  `raw/${referencedRawStored.storageKey}`,
 );
-add(
-  'creator-document-excluded',
-  !Object.keys(withDocsFiles).some((p) => p.includes('documents/doc-ineligible/')),
-);
-add(
-  'deleted-document-excluded',
-  !Object.keys(withDocsFiles).some((p) => p.includes('documents/doc-deleted/')),
-);
-add('referenced-raw-included', Boolean(withDocsFiles[`raw/sha256/${referencedRaw}`]));
 add(
   'unreferenced-raw-excluded',
-  !Object.keys(withDocsFiles).some((p) => p.includes(unreferencedRaw)),
+  !Object.keys(withDocsFiles).some((p) => p.includes(unreferencedRawStored.sha256)),
 );
 add('x-text-excluded', !Object.keys(withDocsFiles).some((p) => /x-text|x_posts|youtube/i.test(p)));
 add(
@@ -505,9 +516,9 @@ try {
 add(
   'document-raw-restore-bytes',
   await (async () => {
-    const docRel = Object.keys(withDocsFiles).find((p) => p.includes('documents/doc-eligible/'));
-    const rawRel = `raw/sha256/${referencedRaw}`;
-    if (!docRel || !withDocsFiles[docRel] || !withDocsFiles[rawRel]) {
+    const docRel = eligibleDoc.storageKey;
+    const rawRel = `raw/${referencedRawStored.storageKey}`;
+    if (!withDocsFiles[docRel] || !withDocsFiles[rawRel]) {
       return false;
     }
     const expectedDoc = sha256Hex(withDocsFiles[docRel]!);
@@ -542,7 +553,7 @@ add(
 add(
   'document-resync-state',
   Boolean(restored.restoreId) &&
-    withDocs.manifest.files.some((f) => f.path.startsWith('documents/')),
+    withDocs.manifest.files.some((f) => f.path === eligibleDoc.storageKey),
 );
 {
   const liveWarn = openDatabase({ allowRelativeOverride: true, migrateOnOpen: false });
